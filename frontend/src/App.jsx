@@ -1,22 +1,23 @@
 import React from 'react';
-import Header from './components/Header';
-import Hero from './components/Hero';
-import Features from './components/Features';
-import Categories from './components/Categories';
-import Footer from './components/Footer';
+import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
+import Layout from './components/Layout';
+import Home from './pages/Home';
+import Login from './pages/Login';
+import Register from './pages/Register';
 
 function App() {
   return (
-    <div className="min-h-screen bg-brand-light flex flex-col font-sans text-brand-dark">
-      <Header />
-      <main className="flex-grow">
-        <Hero />
-        <Features />
-        <Categories />
-      </main>
-      <Footer />
-    </div>
+    <Router>
+      <Layout>
+        <Routes>
+          <Route path="/" element={<Home />} />
+          <Route path="/login" element={<Login />} />
+          <Route path="/register" element={<Register />} />
+        </Routes>
+      </Layout>
+    </Router>
   );
 }
 
 export default App;
+
