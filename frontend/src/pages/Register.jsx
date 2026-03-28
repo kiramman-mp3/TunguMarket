@@ -1,10 +1,56 @@
-import React from 'react';
-import { Link } from 'react-router-dom';
+import React, { useState } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faEnvelope, faLock, faUser, faArrowRight } from '@fortawesome/free-solid-svg-icons';
 import { motion } from 'framer-motion';
+import { registerUser, googleLogin as apiGoogleLogin } from '../api/auth';
+import { useAuth } from '../context/AuthContext';
+import { auth, googleProvider } from '../config/firebase';
+import { signInWithPopup } from 'firebase/auth';
 
 const Register = () => {
+  const [name, setName] = useState('');
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [error, setError] = useState('');
+  const [loading, setLoading] = useState(false);
+  
+  const { login } = useAuth();
+  const navigate = useNavigate();
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    setError('');
+    setLoading(true);
+
+    try {
+      await registerUser({ name, email, password });
+      // Redirect to login after successful traditional registration
+      navigate('/login');
+    } catch (err) {
+      setError(err.message || 'Error al registrarse');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleGoogleLogin = async () => {
+    setError('');
+    setLoading(true);
+    try {
+      const result = await signInWithPopup(auth, googleProvider);
+      const idToken = await result.user.getIdToken();
+      // Google login also acts as registration if user doesn't exist
+      const data = await apiGoogleLogin(idToken);
+      login(data.user, data.token);
+      navigate('/');
+    } catch (err) {
+      setError(err.message || 'Error al iniciar sesión con Google');
+    } finally {
+      setLoading(false);
+    }
+  };
+
   return (
     <div className="min-h-[90vh] flex items-center justify-center px-4 py-12 sm:px-6 lg:px-8 bg-brand-light/30">
       <motion.div 
@@ -26,6 +72,8 @@ const Register = () => {
         <div className="mt-6">
           <button
             type="button"
+            onClick={handleGoogleLogin}
+            disabled={loading}
             className="w-full flex items-center justify-center gap-3 px-4 py-3 border border-gray-200 rounded-xl bg-white hover:bg-gray-50 text-gray-700 font-medium transition-all shadow-sm group"
           >
             <svg className="w-5 h-5 group-hover:scale-110 transition-transform" viewBox="0 0 48 48">
@@ -47,7 +95,13 @@ const Register = () => {
           </div>
         </div>
         
-        <form className="mt-8 space-y-5" action="#" method="POST">
+        <form className="mt-8 space-y-5" onSubmit={handleSubmit}>
+          {error && (
+            <div className="bg-red-50 border-l-4 border-red-500 p-4 rounded-md">
+              <p className="text-sm text-red-700">{error}</p>
+            </div>
+          )}
+
           <div className="space-y-4">
             <div>
               <label htmlFor="full-name" className="block text-sm font-medium text-gray-700 mb-1">
@@ -59,9 +113,11 @@ const Register = () => {
                 </div>
                 <input
                   id="full-name"
-                  name="full-name"
+                  name="name"
                   type="text"
                   required
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
                   className="appearance-none block w-full pl-10 pr-3 py-3 border border-gray-200 placeholder-gray-400 text-gray-900 rounded-xl focus:outline-none focus:ring-2 focus:ring-brand-primary/50 focus:border-brand-primary transition-all sm:text-sm bg-white/50 backdrop-blur-sm"
                   placeholder="Juan Pérez"
                 />
@@ -82,6 +138,8 @@ const Register = () => {
                   type="email"
                   autoComplete="email"
                   required
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
                   className="appearance-none block w-full pl-10 pr-3 py-3 border border-gray-200 placeholder-gray-400 text-gray-900 rounded-xl focus:outline-none focus:ring-2 focus:ring-brand-primary/50 focus:border-brand-primary transition-all sm:text-sm bg-white/50 backdrop-blur-sm"
                   placeholder="ejemplo@correo.com"
                 />
@@ -101,6 +159,8 @@ const Register = () => {
                   name="password"
                   type="password"
                   required
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
                   className="appearance-none block w-full pl-10 pr-3 py-3 border border-gray-200 placeholder-gray-400 text-gray-900 rounded-xl focus:outline-none focus:ring-2 focus:ring-brand-primary/50 focus:border-brand-primary transition-all sm:text-sm bg-white/50 backdrop-blur-sm"
                   placeholder="Mínimo 8 caracteres"
                 />
@@ -128,11 +188,12 @@ const Register = () => {
           <div>
             <button
               type="submit"
-              className="group relative w-full flex justify-center py-3 px-4 border border-transparent text-sm font-bold rounded-xl text-brand-dark bg-brand-primary hover:bg-brand-primary/90 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-brand-primary transition-all shadow-lg hover:shadow-brand-primary/25"
+              disabled={loading}
+              className={`group relative w-full flex justify-center py-3 px-4 border border-transparent text-sm font-bold rounded-xl text-brand-dark bg-brand-primary hover:bg-brand-primary/90 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-brand-primary transition-all shadow-lg hover:shadow-brand-primary/25 ${loading ? 'opacity-70 cursor-not-allowed' : ''}`}
             >
-              Crear cuenta
+              {loading ? 'Creando cuenta...' : 'Crear cuenta'}
               <span className="absolute right-4 inset-y-0 flex items-center pl-3">
-                <FontAwesomeIcon icon={faArrowRight} className="h-4 w-4 group-hover:translate-x-1 transition-transform" />
+                <FontAwesomeIcon icon={faArrowRight} className={`h-4 w-4 transition-transform ${loading ? '' : 'group-hover:translate-x-1'}`} />
               </span>
             </button>
           </div>

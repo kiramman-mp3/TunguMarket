@@ -1,10 +1,70 @@
-import React from 'react';
-import { View, Text, StyleSheet, TextInput, Pressable, KeyboardAvoidingView, Platform, ScrollView, SafeAreaView, Image } from 'react-native';
+import React, { useState, useEffect } from 'react';
+import { View, Text, StyleSheet, TextInput, Pressable, KeyboardAvoidingView, Platform, ScrollView, SafeAreaView, Image, ActivityIndicator, Alert } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
+import * as WebBrowser from 'expo-web-browser';
+import * as Google from 'expo-auth-session/providers/google';
+import { useAuth } from '../../src/context/AuthContext';
+import { registerUser, googleLogin as apiGoogleLogin } from '../../src/api/auth';
+
+WebBrowser.maybeCompleteAuthSession();
 
 export default function RegisterScreen() {
+  const [name, setName] = useState('');
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [loading, setLoading] = useState(false);
+  
+  const { login } = useAuth();
   const router = useRouter();
+
+  // Google Auth Request
+  const [request, response, promptAsync] = Google.useAuthRequest({
+    webClientId: process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID,
+    iosClientId: process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID, // Use the same for Expo Go
+    androidClientId: process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID,
+  });
+
+  useEffect(() => {
+    if (response?.type === 'success') {
+      const { id_token } = response.params;
+      if (id_token) {
+        handleGoogleLogin(id_token);
+      }
+    }
+  }, [response]);
+
+  const handleGoogleLogin = async (idToken: string) => {
+    setLoading(true);
+    try {
+      const data = await apiGoogleLogin(idToken);
+      await login(data.user, data.token);
+      router.replace('/(tabs)');
+    } catch (error: any) {
+      Alert.alert('Error de Google', error.message || 'No se pudo iniciar sesión con Google');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleRegister = async () => {
+    if (!name || !email || !password) {
+      Alert.alert('Error', 'Por favor completa todos los campos');
+      return;
+    }
+
+    setLoading(true);
+    try {
+      await registerUser({ name, email, password });
+      Alert.alert('Éxito', 'Cuenta creada con éxito. Ahora puedes iniciar sesión.', [
+        { text: 'OK', onPress: () => router.push('/(auth)/login') }
+      ]);
+    } catch (error: any) {
+      Alert.alert('Error de registro', error.message || 'No se pudo crear la cuenta');
+    } finally {
+      setLoading(false);
+    }
+  };
 
   return (
     <SafeAreaView style={styles.container}>
@@ -33,11 +93,10 @@ export default function RegisterScreen() {
                 styles.socialButton,
                 pressed && styles.buttonPressed
               ]}
+              onPress={() => promptAsync()}
+              disabled={!request || loading}
             >
-              <Image 
-                source={{ uri: 'https://upload.wikimedia.org/wikipedia/commons/5/53/Google_%22G%22_Logo.svg' }} 
-                style={styles.googleIcon} 
-              />
+              <Ionicons name="logo-google" size={20} color="#1e3a8a" style={{ marginRight: 10 }} />
               <Text style={styles.socialButtonText}>Continuar con Google</Text>
             </Pressable>
 
@@ -57,6 +116,8 @@ export default function RegisterScreen() {
                   style={styles.input}
                   placeholder="Juan Pérez"
                   autoComplete="name"
+                  value={name}
+                  onChangeText={setName}
                 />
               </View>
             </View>
@@ -70,6 +131,8 @@ export default function RegisterScreen() {
                   placeholder="ejemplo@correo.com"
                   keyboardType="email-address"
                   autoCapitalize="none"
+                  value={email}
+                  onChangeText={setEmail}
                 />
               </View>
             </View>
@@ -82,6 +145,8 @@ export default function RegisterScreen() {
                   style={styles.input}
                   placeholder="••••••••"
                   secureTextEntry
+                  value={password}
+                  onChangeText={setPassword}
                 />
               </View>
             </View>
@@ -98,11 +163,16 @@ export default function RegisterScreen() {
             <Pressable
               style={({ pressed }) => [
                 styles.registerButton,
-                pressed && styles.buttonPressed
+                (pressed || loading) && styles.buttonPressed
               ]}
-              onPress={() => router.replace('/(tabs)')}
+              onPress={handleRegister}
+              disabled={loading}
             >
-              <Text style={styles.registerButtonText}>Crear Cuenta</Text>
+              {loading ? (
+                <ActivityIndicator color="#1e3a8a" />
+              ) : (
+                <Text style={styles.registerButtonText}>Crear Cuenta</Text>
+              )}
             </Pressable>
           </View>
 
