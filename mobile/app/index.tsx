@@ -33,16 +33,44 @@ export default function WelcomeScreen() {
           Apoya a los pequeños y medianos emprendimientos de Tungurahua. Descubre productos únicos, seguros y validados por nuestra comunidad.
         </Text>
 
-        {/* Call to Action Button */}
-        <Pressable
-          style={({ pressed }) => [
-            styles.button,
-            pressed && styles.buttonPressed
-          ]}
-          onPress={() => router.replace('/(tabs)')}
-        >
-          <Text style={styles.buttonText}>Comenzar a comprar</Text>
-        </Pressable>
+        {/* Call to Action Buttons */}
+        <View style={styles.buttonContainer}>
+          <Pressable
+            style={({ pressed }) => [
+              styles.buttonPrimary,
+              pressed && styles.buttonPressed
+            ]}
+            onPress={() => router.replace('/(tabs)')}
+          >
+            <Text style={styles.buttonPrimaryText}>Comenzar a comprar</Text>
+          </Pressable>
+
+          <View style={styles.authRow}>
+            <Pressable
+              style={({ pressed }) => [
+                styles.buttonOutline,
+                pressed && styles.buttonPressed,
+                { flex: 1 }
+              ]}
+              onPress={() => router.push('/(auth)/login')}
+            >
+              <Text style={styles.buttonOutlineText}>Ingresar</Text>
+            </Pressable>
+
+            <View style={{ width: 12 }} />
+
+            <Pressable
+              style={({ pressed }) => [
+                styles.buttonOutline,
+                pressed && styles.buttonPressed,
+                { flex: 1 }
+              ]}
+              onPress={() => router.push('/(auth)/register')}
+            >
+              <Text style={styles.buttonOutlineText}>Registrarse</Text>
+            </Pressable>
+          </View>
+        </View>
       </View>
     </View>
   );
@@ -60,11 +88,11 @@ const styles = StyleSheet.create({
     width: 300,
     height: 300,
     borderRadius: 150,
-    backgroundColor: 'rgba(251, 191, 36, 0.2)', // brand-primary alpha
+    backgroundColor: 'rgba(251, 191, 36, 0.2)',
   },
   heroImage: {
     width: '100%',
-    height: '45%',
+    height: '40%',
     borderBottomLeftRadius: 40,
     borderBottomRightRadius: 40,
   },
@@ -89,31 +117,38 @@ const styles = StyleSheet.create({
     elevation: 2,
   },
   badgeText: {
-    color: '#ea580c', // brand-accent
+    color: '#ea580c',
     fontSize: 12,
     fontWeight: '700',
   },
   title: {
-    fontSize: 42,
+    fontSize: 38,
     fontWeight: '900',
-    color: '#1e3a8a', // brand-secondary
-    lineHeight: 46,
-    marginBottom: 16,
+    color: '#1e3a8a',
+    lineHeight: 42,
+    marginBottom: 12,
   },
   highlightText: {
-    color: '#fbbf24', // brand-primary
+    color: '#fbbf24',
   },
   description: {
-    fontSize: 16,
+    fontSize: 15,
     color: '#64748b',
-    lineHeight: 24,
-    marginBottom: 40,
+    lineHeight: 22,
+    marginBottom: 32,
   },
-  button: {
+  buttonContainer: {
+    width: '100%',
+    gap: 12,
+    position: 'absolute',
+    bottom: 50,
+    left: 24,
+    right: 24,
+  },
+  buttonPrimary: {
     backgroundColor: '#fbbf24',
-    paddingVertical: 16,
-    paddingHorizontal: 32,
-    borderRadius: 30,
+    paddingVertical: 18,
+    borderRadius: 20,
     width: '100%',
     alignItems: 'center',
     shadowColor: "#fbbf24",
@@ -122,13 +157,35 @@ const styles = StyleSheet.create({
     shadowRadius: 4,
     elevation: 5,
   },
-  buttonPressed: {
-    transform: [{ scale: 0.98 }],
-    opacity: 0.9,
-  },
-  buttonText: {
+  buttonPrimaryText: {
     color: '#1e3a8a',
     fontSize: 18,
     fontWeight: 'bold',
+  },
+  authRow: {
+    flexDirection: 'row',
+    width: '100%',
+  },
+  buttonOutline: {
+    backgroundColor: '#fff',
+    paddingVertical: 16,
+    borderRadius: 20,
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: '#e2e8f0',
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 2,
+    elevation: 1,
+  },
+  buttonOutlineText: {
+    color: '#1e3a8a',
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  buttonPressed: {
+    transform: [{ scale: 0.98 }],
+    opacity: 0.9,
   }
 });
