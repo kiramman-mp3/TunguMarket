@@ -7,7 +7,7 @@ const router = express.Router();
 // Public routes
 router.post('/register', AuthController.register);
 router.post('/login', AuthController.login);
-router.post('/google', AuthController.googleLogin);
+router.post('/google-login', AuthController.googleLogin);
 
 // Protected routes (require valid token and session)
 router.post('/logout', authMiddleware, AuthController.logout);

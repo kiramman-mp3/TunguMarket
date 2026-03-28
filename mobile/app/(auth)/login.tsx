@@ -1,10 +1,68 @@
-import React from 'react';
-import { View, Text, StyleSheet, TextInput, Pressable, KeyboardAvoidingView, Platform, ScrollView, SafeAreaView } from 'react-native';
+import React, { useState, useEffect } from 'react';
+import { View, Text, StyleSheet, TextInput, Pressable, KeyboardAvoidingView, Platform, ScrollView, SafeAreaView, Alert, ActivityIndicator } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
+import * as WebBrowser from 'expo-web-browser';
+import * as Google from 'expo-auth-session/providers/google';
+import { useAuth } from '../../src/context/AuthContext';
+import { loginUser, googleLogin as apiGoogleLogin } from '../../src/api/auth';
+
+WebBrowser.maybeCompleteAuthSession();
 
 export default function LoginScreen() {
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [loading, setLoading] = useState(false);
+  
+  const { login } = useAuth();
   const router = useRouter();
+
+  // Google Auth Request
+  const [request, response, promptAsync] = Google.useAuthRequest({
+    webClientId: process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID,
+    iosClientId: process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID, // Use the same for Expo Go
+    androidClientId: process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID,
+  });
+
+  useEffect(() => {
+    if (response?.type === 'success') {
+      const { id_token } = response.params;
+      if (id_token) {
+        handleGoogleLogin(id_token);
+      }
+    }
+  }, [response]);
+
+  const handleGoogleLogin = async (idToken: string) => {
+    setLoading(true);
+    try {
+      const data = await apiGoogleLogin(idToken);
+      await login(data.user, data.token);
+      router.replace('/(tabs)');
+    } catch (error: any) {
+      Alert.alert('Error de Google', error.message || 'No se pudo iniciar sesión con Google');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleLogin = async () => {
+    if (!email || !password) {
+      Alert.alert('Error', 'Por favor completa todos los campos');
+      return;
+    }
+
+    setLoading(true);
+    try {
+      const data = await loginUser({ email, password });
+      await login(data.user, data.token);
+      router.replace('/(tabs)');
+    } catch (error: any) {
+      Alert.alert('Error de inicio de sesión', error.message || 'Credenciales inválidas');
+    } finally {
+      setLoading(false);
+    }
+  };
 
   return (
     <SafeAreaView style={styles.container}>
@@ -36,6 +94,8 @@ export default function LoginScreen() {
                   placeholder="ejemplo@correo.com"
                   keyboardType="email-address"
                   autoCapitalize="none"
+                  value={email}
+                  onChangeText={setEmail}
                 />
               </View>
             </View>
@@ -53,6 +113,8 @@ export default function LoginScreen() {
                   style={styles.input}
                   placeholder="••••••••"
                   secureTextEntry
+                  value={password}
+                  onChangeText={setPassword}
                 />
               </View>
             </View>
@@ -60,11 +122,29 @@ export default function LoginScreen() {
             <Pressable
               style={({ pressed }) => [
                 styles.loginButton,
+                (pressed || loading) && styles.buttonPressed
+              ]}
+              onPress={handleLogin}
+              disabled={loading}
+            >
+              {loading ? (
+                <ActivityIndicator color="#1e3a8a" />
+              ) : (
+                <Text style={styles.loginButtonText}>Iniciar Sesión</Text>
+              )}
+            </Pressable>
+
+            {/* Google Login Button */}
+            <Pressable
+              style={({ pressed }) => [
+                styles.googleButton,
                 pressed && styles.buttonPressed
               ]}
-              onPress={() => router.replace('/(tabs)')}
+              onPress={() => promptAsync()}
+              disabled={!request || loading}
             >
-              <Text style={styles.loginButtonText}>Iniciar Sesión</Text>
+              <Ionicons name="logo-google" size={20} color="#1e3a8a" style={{ marginRight: 10 }} />
+              <Text style={styles.googleButtonText}>Continuar con Google</Text>
             </Pressable>
           </View>
 
@@ -122,7 +202,7 @@ const styles = StyleSheet.create({
   },
   labelRow: {
     flexDirection: 'row',
-    justifyContent: 'between',
+    justifyContent: 'space-between',
     alignItems: 'center',
   },
   label: {
@@ -170,6 +250,21 @@ const styles = StyleSheet.create({
     color: '#1e3a8a',
     fontSize: 18,
     fontWeight: 'bold',
+  },
+  googleButton: {
+    backgroundColor: '#fff',
+    height: 56,
+    borderRadius: 16,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: '#e2e8f0',
+    flexDirection: 'row',
+  },
+  googleButtonText: {
+    color: '#1e3a8a',
+    fontSize: 16,
+    fontWeight: '600',
   },
   buttonPressed: {
     opacity: 0.9,
