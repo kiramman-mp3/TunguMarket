@@ -1,35 +1,30 @@
 import express from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
-import pg from 'pg';
+import authRoutes from './src/routes/authRoutes.js';
+import { notFound, errorHandler } from './src/middlewares/errorMiddleware.js';
+import './src/config/firebase.js'; // Ensure Firebase is initialized
 
 dotenv.config();
 
 const app = express();
 const port = process.env.PORT || 5000;
 
+// Middleware
 app.use(cors());
 app.use(express.json());
 
-// Database connection pool
-const { Pool } = pg;
-const pool = new Pool({
-  user: process.env.POSTGRES_USER || 'postgres',
-  host: process.env.POSTGRES_HOST || 'db',
-  database: process.env.POSTGRES_DB || 'tungumarket',
-  password: process.env.POSTGRES_PASSWORD || 'postgres',
-  port: parseInt(process.env.POSTGRES_PORT || '5432', 10),
-});
+// Routes
+app.use('/api/auth', authRoutes);
 
-// Test DB Connection
-pool.connect()
-  .then(() => console.log('Successfully connected to PostgreSQL database'))
-  .catch((err) => console.error('Error connecting to the database', err.stack));
-
-// Basic Routes
+// Health check
 app.get('/api/health', (req, res) => {
-  res.status(200).json({ status: 'ok', message: 'API is running' });
+  res.status(200).json({ status: 'ok', message: 'TunguMarket API is running' });
 });
+
+// Error handling
+app.use(notFound);
+app.use(errorHandler);
 
 app.listen(port, () => {
   console.log(`Backend server listening on port ${port}`);
