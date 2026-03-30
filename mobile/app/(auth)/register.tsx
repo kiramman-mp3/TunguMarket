@@ -1,66 +1,45 @@
-import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, TextInput, Pressable, KeyboardAvoidingView, Platform, ScrollView, SafeAreaView, Image, ActivityIndicator, Alert } from 'react-native';
+import React, { useState } from 'react';
+import { View, Text, StyleSheet, TextInput, Pressable, KeyboardAvoidingView, Platform, SafeAreaView, ActivityIndicator, Alert, ScrollView } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
-import * as WebBrowser from 'expo-web-browser';
-import * as Google from 'expo-auth-session/providers/google';
-import { useAuth } from '../../src/context/AuthContext';
-import { registerUser, googleLogin as apiGoogleLogin } from '../../src/api/auth';
-
-WebBrowser.maybeCompleteAuthSession();
+import { registerUser } from '@/api/auth';
+import { Colors, Rounding, Shadow, Spacing } from '@/constants/theme';
 
 export default function RegisterScreen() {
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
-  
-  const { login } = useAuth();
+  const [showPassword, setShowPassword] = useState(false);
+  const [acceptTerms, setAcceptTerms] = useState(false);
   const router = useRouter();
-
-  // Google Auth Request
-  const [request, response, promptAsync] = Google.useAuthRequest({
-    webClientId: process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID,
-    iosClientId: process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID, // Use the same for Expo Go
-    androidClientId: process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID,
-  });
-
-  useEffect(() => {
-    if (response?.type === 'success') {
-      const { id_token } = response.params;
-      if (id_token) {
-        handleGoogleLogin(id_token);
-      }
-    }
-  }, [response]);
-
-  const handleGoogleLogin = async (idToken: string) => {
-    setLoading(true);
-    try {
-      const data = await apiGoogleLogin(idToken) as any;
-      await login(data.user, data.token);
-      router.replace('/(tabs)' as any);
-    } catch (error: any) {
-      Alert.alert('Error de Google', error.message || 'No se pudo iniciar sesión con Google');
-    } finally {
-      setLoading(false);
-    }
-  };
 
   const handleRegister = async () => {
     if (!name || !email || !password) {
-      Alert.alert('Error', 'Por favor completa todos los campos');
+      Alert.alert('Error', 'Por favor llena todos los campos');
+      return;
+    }
+
+    if (password.length < 8) {
+      Alert.alert('Error', 'La contraseña debe tener al menos 8 caracteres');
+      return;
+    }
+
+    if (!acceptTerms) {
+      Alert.alert('Error', 'Debes aceptar los términos y condiciones');
       return;
     }
 
     setLoading(true);
     try {
       await registerUser({ name, email, password });
-      Alert.alert('Éxito', 'Cuenta creada con éxito. Ingresa el código enviado a tu correo.', [
-        { text: 'OK', onPress: () => router.push({ pathname: '/(auth)/pending-verification' as any, params: { email } }) }
-      ]);
+      Alert.alert(
+        '¡Registro exitoso!',
+        'Por favor verifica tu correo para activar tu cuenta.',
+        [{ text: 'Aceptar', onPress: () => router.push({ pathname: '/(auth)/pending-verification' as any, params: { email } }) }]
+      );
     } catch (error: any) {
-      Alert.alert('Error de registro', error.message || 'No se pudo crear la cuenta');
+      Alert.alert('Error', error.message || 'No se pudo crear la cuenta');
     } finally {
       setLoading(false);
     }
@@ -72,13 +51,9 @@ export default function RegisterScreen() {
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         style={{ flex: 1 }}
       >
-        <ScrollView contentContainerStyle={styles.scrollContent}>
-          {/* Back Button */}
-          <Pressable 
-            onPress={() => router.back()} 
-            style={styles.backButton}
-          >
-            <Ionicons name="arrow-back" size={24} color="#1e3a8a" />
+        <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
+          <Pressable onPress={() => router.back()} style={styles.backButton}>
+            <Ionicons name="arrow-back" size={24} color={Colors.brand.secondary} />
           </Pressable>
 
           <View style={styles.header}>
@@ -86,38 +61,17 @@ export default function RegisterScreen() {
             <Text style={styles.subtitle}>Únete a la comunidad y apoya lo local.</Text>
           </View>
 
-          {/* Social Register Section */}
-          <View style={styles.socialSection}>
-            <Pressable
-              style={({ pressed }) => [
-                styles.socialButton,
-                pressed && styles.buttonPressed
-              ]}
-              onPress={() => promptAsync()}
-              disabled={!request || loading}
-            >
-              <Ionicons name="logo-google" size={20} color="#1e3a8a" style={{ marginRight: 10 }} />
-              <Text style={styles.socialButtonText}>Continuar con Google</Text>
-            </Pressable>
-
-            <View style={styles.separator}>
-              <View style={styles.separatorLine} />
-              <Text style={styles.separatorText}>o regístrate con correo</Text>
-              <View style={styles.separatorLine} />
-            </View>
-          </View>
-
           <View style={styles.form}>
             <View style={styles.inputContainer}>
               <Text style={styles.label}>Nombre completo</Text>
               <View style={styles.inputWrapper}>
-                <Ionicons name="person-outline" size={20} color="#64748b" style={styles.inputIcon} />
+                <Ionicons name="person-outline" size={20} color={Colors.brand.muted} style={styles.inputIcon} />
                 <TextInput 
                   style={styles.input}
                   placeholder="Juan Pérez"
-                  autoComplete="name"
                   value={name}
                   onChangeText={setName}
+                  autoCapitalize="words"
                 />
               </View>
             </View>
@@ -125,7 +79,7 @@ export default function RegisterScreen() {
             <View style={styles.inputContainer}>
               <Text style={styles.label}>Correo electrónico</Text>
               <View style={styles.inputWrapper}>
-                <Ionicons name="mail-outline" size={20} color="#64748b" style={styles.inputIcon} />
+                <Ionicons name="mail-outline" size={20} color={Colors.brand.muted} style={styles.inputIcon} />
                 <TextInput 
                   style={styles.input}
                   placeholder="ejemplo@correo.com"
@@ -140,46 +94,75 @@ export default function RegisterScreen() {
             <View style={styles.inputContainer}>
               <Text style={styles.label}>Contraseña</Text>
               <View style={styles.inputWrapper}>
-                <Ionicons name="lock-closed-outline" size={20} color="#64748b" style={styles.inputIcon} />
+                <Ionicons name="lock-closed-outline" size={20} color={Colors.brand.muted} style={styles.inputIcon} />
                 <TextInput 
                   style={styles.input}
-                  placeholder="••••••••"
-                  secureTextEntry
+                  placeholder="Mínimo 8 caracteres"
+                  secureTextEntry={!showPassword}
                   value={password}
                   onChangeText={setPassword}
                 />
+                <Pressable onPress={() => setShowPassword(!showPassword)}>
+                  <Ionicons 
+                    name={showPassword ? "eye-off-outline" : "eye-outline"} 
+                    size={20} 
+                    color={Colors.brand.muted} 
+                  />
+                </Pressable>
               </View>
             </View>
 
-            <View style={styles.termsRow}>
-              <View style={styles.checkboxContainer}>
-                <Ionicons name="checkbox" size={20} color="#fbbf24" />
-              </View>
+            <View style={styles.termsContainer}>
+              <Pressable 
+                onPress={() => setAcceptTerms(!acceptTerms)}
+                style={[styles.checkbox, acceptTerms && styles.checkboxActive]}
+              >
+                {acceptTerms && <Ionicons name="checkmark" size={12} color={Colors.brand.secondary} />}
+              </Pressable>
               <Text style={styles.termsText}>
-                Acepto los <Text style={styles.linkText}>Términos y Condiciones</Text> y la <Text style={styles.linkText}>Política de Privacidad</Text>
+                Acepto los <Text style={styles.termsLink}>Términos</Text> y la <Text style={styles.termsLink}>Política de Privacidad</Text>
               </Text>
             </View>
 
             <Pressable
               style={({ pressed }) => [
-                styles.registerButton,
-                (pressed || loading) && styles.buttonPressed
+                styles.actionButton,
+                pressed && styles.buttonPressed,
+                loading && styles.buttonDisabled
               ]}
               onPress={handleRegister}
               disabled={loading}
             >
               {loading ? (
-                <ActivityIndicator color="#1e3a8a" />
+                <ActivityIndicator color={Colors.brand.secondary} />
               ) : (
-                <Text style={styles.registerButtonText}>Crear Cuenta</Text>
+                <Text style={styles.actionButtonText}>Crear cuenta</Text>
               )}
+            </Pressable>
+
+            <View style={styles.dividerContainer}>
+              <View style={styles.divider} />
+              <Text style={styles.dividerText}>O REGÍSTRATE CON</Text>
+              <View style={styles.divider} />
+            </View>
+
+            <Pressable
+              style={({ pressed }) => [
+                styles.googleButton,
+                pressed && styles.buttonPressed
+              ]}
+              onPress={() => Alert.alert('Próximamente', 'Registro con Google disponible pronto.')}
+              disabled={loading}
+            >
+              <Ionicons name="logo-google" size={20} color={Colors.brand.secondary} />
+              <Text style={styles.googleButtonText}>Google</Text>
             </Pressable>
           </View>
 
           <View style={styles.footer}>
-            <Text style={styles.footerText}>¿Ya tienes una cuenta?</Text>
+            <Text style={styles.footerText}>¿Ya tienes cuenta? </Text>
             <Pressable onPress={() => router.push('/(auth)/login' as any)}>
-              <Text style={styles.signInText}> Inicia sesión</Text>
+              <Text style={styles.signInText}>Inicia sesión</Text>
             </Pressable>
           </View>
         </ScrollView>
@@ -191,76 +174,37 @@ export default function RegisterScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#fff',
+    backgroundColor: Colors.brand.light,
   },
   scrollContent: {
-    flexGrow: 1,
-    paddingHorizontal: 24,
+    paddingHorizontal: Spacing.lg,
     paddingTop: 20,
     paddingBottom: 40,
   },
   backButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: '#f8fafc',
+    width: 44,
+    height: 44,
+    borderRadius: Rounding.large,
+    backgroundColor: Colors.brand.surface,
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: 24,
+    marginBottom: 32,
+    ...Shadow.light,
   },
   header: {
-    marginBottom: 32,
+    marginBottom: 40,
   },
   title: {
-    fontSize: 32,
+    fontSize: 28,
     fontWeight: '800',
-    color: '#1e3a8a',
+    color: Colors.brand.secondary,
     marginBottom: 8,
   },
   subtitle: {
     fontSize: 16,
-    color: '#64748b',
+    color: Colors.brand.muted,
     lineHeight: 24,
-  },
-  socialSection: {
-    marginBottom: 32,
-  },
-  socialButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    height: 56,
-    borderWidth: 1,
-    borderColor: '#e2e8f0',
-    borderRadius: 16,
-    backgroundColor: '#fff',
-    gap: 12,
-  },
-  googleIcon: {
-    width: 24,
-    height: 24,
-  },
-  socialButtonText: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#334155',
-  },
-  separator: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginVertical: 24,
-    gap: 12,
-  },
-  separatorLine: {
-    flex: 1,
-    height: 1,
-    backgroundColor: '#f1f5f9',
-  },
-  separatorText: {
-    fontSize: 12,
-    color: '#94a3b8',
-    textTransform: 'uppercase',
-    letterSpacing: 1,
+    fontWeight: '500',
   },
   form: {
     gap: 20,
@@ -270,18 +214,19 @@ const styles = StyleSheet.create({
   },
   label: {
     fontSize: 14,
-    fontWeight: '600',
-    color: '#334155',
+    fontWeight: '700',
+    color: Colors.brand.dark,
+    marginLeft: 4,
   },
   inputWrapper: {
     flexDirection: 'row',
     alignItems: 'center',
-    borderWidth: 1,
-    borderColor: '#e2e8f0',
-    borderRadius: 16,
+    borderWidth: 1.5,
+    borderColor: Colors.brand.border,
+    borderRadius: Rounding.large,
     paddingHorizontal: 16,
-    backgroundColor: '#f8fafc',
-    height: 56,
+    backgroundColor: Colors.brand.surface,
+    height: 58,
   },
   inputIcon: {
     marginRight: 10,
@@ -289,62 +234,108 @@ const styles = StyleSheet.create({
   input: {
     flex: 1,
     fontSize: 16,
-    color: '#1e293b',
+    color: Colors.brand.dark,
+    fontWeight: '500',
   },
-  termsRow: {
+  termsContainer: {
     flexDirection: 'row',
-    alignItems: 'flex-start',
-    marginTop: 8,
+    alignItems: 'center',
     gap: 12,
-    paddingRight: 12,
+    marginVertical: 4,
   },
-  checkboxContainer: {
-    marginTop: 2,
-  },
-  termsText: {
-    fontSize: 12,
-    color: '#64748b',
-    lineHeight: 18,
-    flexShrink: 1,
-  },
-  linkText: {
-    color: '#1e3a8a',
-    fontWeight: '600',
-  },
-  registerButton: {
-    backgroundColor: '#fbbf24',
-    height: 56,
-    borderRadius: 16,
+  checkbox: {
+    width: 22,
+    height: 22,
+    borderRadius: 6,
+    borderWidth: 2,
+    borderColor: Colors.brand.border,
     alignItems: 'center',
     justifyContent: 'center',
-    marginTop: 12,
-    shadowColor: "#fbbf24",
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.2,
-    shadowRadius: 8,
-    elevation: 4,
+    backgroundColor: Colors.brand.surface,
   },
-  registerButtonText: {
-    color: '#1e3a8a',
+  checkboxActive: {
+    backgroundColor: Colors.brand.primary,
+    borderColor: Colors.brand.primary,
+  },
+  termsText: {
+    fontSize: 13,
+    color: Colors.brand.muted,
+    flex: 1,
+    fontWeight: '500',
+  },
+  termsLink: {
+    color: Colors.brand.secondary,
+    fontWeight: '800',
+  },
+  actionButton: {
+    backgroundColor: Colors.brand.primary,
+    height: 58,
+    borderRadius: Rounding.large,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: 10,
+    ...Shadow.medium,
+  },
+  actionButtonText: {
+    color: Colors.brand.secondary,
     fontSize: 18,
-    fontWeight: 'bold',
+    fontWeight: '800',
+  },
+  dividerContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginVertical: 10,
+    gap: 10,
+  },
+  divider: {
+    flex: 1,
+    height: 1,
+    backgroundColor: Colors.brand.border,
+  },
+  dividerText: {
+    fontSize: 11,
+    color: Colors.brand.muted,
+    fontWeight: '700',
+    letterSpacing: 1,
+  },
+  googleButton: {
+    backgroundColor: Colors.brand.surface,
+    height: 58,
+    borderRadius: Rounding.large,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1.5,
+    borderColor: Colors.brand.border,
+    flexDirection: 'row',
+    gap: 10,
+    ...Shadow.light,
+  },
+  googleButtonText: {
+    color: Colors.brand.secondary,
+    fontSize: 16,
+    fontWeight: '700',
   },
   buttonPressed: {
     opacity: 0.9,
     transform: [{ scale: 0.98 }],
   },
+  buttonDisabled: {
+    opacity: 0.7,
+  },
   footer: {
     flexDirection: 'row',
     justifyContent: 'center',
-    marginTop: 40,
+    marginTop: 'auto',
+    paddingTop: 40,
   },
   footerText: {
-    color: '#64748b',
-    fontSize: 16,
+    color: Colors.brand.muted,
+    fontSize: 15,
+    fontWeight: '500',
   },
   signInText: {
-    color: '#1e3a8a',
-    fontSize: 16,
-    fontWeight: 'bold',
+    color: Colors.brand.secondary,
+    fontSize: 15,
+    fontWeight: '800',
   },
 });

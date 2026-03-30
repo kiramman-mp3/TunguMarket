@@ -1,8 +1,8 @@
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { faEnvelope, faArrowLeft, faPaperPlane } from '@fortawesome/free-solid-svg-icons';
+import { faEnvelope, faArrowLeft, faPaperPlane, faSpinner, faCheckCircle } from '@fortawesome/free-solid-svg-icons';
 import { forgotPassword } from '../api/auth';
 
 const ForgotPassword = () => {
@@ -11,6 +11,7 @@ const ForgotPassword = () => {
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState('');
   const [error, setError] = useState('');
+  const [sent, setSent] = useState(false);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -29,90 +30,105 @@ const ForgotPassword = () => {
     }
   };
 
-  const [sent, setSent] = useState(false);
-
   return (
-    <div className="min-h-[70vh] flex items-center justify-center px-4 py-12">
+    <div className="min-h-[80vh] flex items-center justify-center px-4 py-8">
       <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        className="max-w-md w-full glass-card p-10 space-y-6 shadow-2xl rounded-3xl border border-white/20"
+        initial={{ opacity: 0, scale: 0.95 }}
+        animate={{ opacity: 1, scale: 1 }}
+        className="max-w-md w-full glass-card p-10 space-y-8"
       >
         <div className="text-center">
-            <h2 className="text-2xl font-display font-bold text-brand-dark">¿Olvidaste tu contraseña?</h2>
-            <p className="mt-2 text-sm text-gray-600">No te preocupes. Ingresa tu correo para recibir un código.</p>
+          <h2 className="text-3xl font-display font-bold text-brand-secondary">
+            ¿Olvidaste tu contraseña?
+          </h2>
+          <p className="mt-2 text-sm text-gray-500 font-medium font-sans">
+            No te preocupes. Ingresa tu correo para recibir un código de recuperación.
+          </p>
         </div>
 
-        {sent ? (
-          <div className="text-center space-y-6">
-            <div className="p-4 bg-green-50 border border-green-200 text-green-700 rounded-xl font-medium">
-              {message}
-            </div>
-            
-            <button
-              onClick={() => navigate('/reset-password', { state: { email } })}
-              className="w-full py-3 px-4 bg-brand-primary hover:bg-brand-primary/90 text-brand-dark font-bold rounded-xl transition-all shadow-lg"
+        <AnimatePresence mode="wait">
+          {sent ? (
+            <motion.div
+              key="sent"
+              initial={{ opacity: 0, scale: 0.9 }}
+              animate={{ opacity: 1, scale: 1 }}
+              className="text-center space-y-8"
             >
-              Ingresar código
-            </button>
-
-            <Link
-              to="/login"
-              className="flex items-center justify-center gap-2 text-sm text-brand-secondary hover:text-brand-primary font-bold transition-colors"
-            >
-              <FontAwesomeIcon icon={faArrowLeft} />
-              Volver al inicio de sesión
-            </Link>
-          </div>
-        ) : (
-          <form className="space-y-6" onSubmit={handleSubmit}>
-            {error && (
-              <div className="p-3 bg-red-50 border border-red-200 text-red-700 rounded-xl text-sm font-medium">
-                {error}
-              </div>
-            )}
-
-            <div>
-              <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-1">
-                Tu correo electrónico
-              </label>
-              <div className="relative group">
-                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none group-focus-within:text-brand-primary transition-colors">
-                  <FontAwesomeIcon icon={faEnvelope} className="text-gray-400 group-focus-within:text-brand-primary" />
+              <div className="flex justify-center">
+                <div className="w-20 h-20 bg-green-50 rounded-full flex items-center justify-center text-green-500 shadow-inner">
+                  <FontAwesomeIcon icon={faCheckCircle} size="3x" />
                 </div>
-                <input
-                  id="email"
-                  name="email"
-                  type="email"
-                  required
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  className="appearance-none block w-full pl-10 pr-3 py-3 border border-gray-200 placeholder-gray-400 text-gray-900 rounded-xl focus:outline-none focus:ring-2 focus:ring-brand-primary/50 focus:border-brand-primary transition-all sm:text-sm bg-white/50 backdrop-blur-sm"
-                  placeholder="ejemplo@correo.com"
-                />
               </div>
-            </div>
 
-            <button
-              type="submit"
-              disabled={loading}
-              className="w-full flex items-center justify-center gap-2 py-3 px-4 bg-brand-primary hover:bg-brand-primary/90 text-brand-dark font-bold rounded-xl transition-all shadow-lg shadow-brand-primary/20 disabled:opacity-50"
-            >
-              <FontAwesomeIcon icon={faPaperPlane} className={loading ? 'animate-pulse' : ''} />
-              {loading ? 'Enviando...' : 'Enviar instrucciones'}
-            </button>
+              <div className="p-4 bg-green-50 border border-green-200 text-green-700 rounded-2xl font-semibold text-sm">
+                {message}
+              </div>
 
-            <div className="text-center">
-              <Link
-                to="/login"
-                className="flex items-center justify-center gap-2 text-sm text-brand-secondary hover:text-brand-primary font-bold transition-colors"
+              <div className="space-y-4">
+                <button
+                  onClick={() => navigate('/reset-password', { state: { email } })}
+                  className="btn-primary w-full"
+                >
+                  Continuar e ingresar código
+                </button>
+
+                <button
+                  onClick={() => { setSent(false); setMessage(''); }}
+                  className="flex items-center justify-center gap-2 text-sm font-bold text-gray-400 hover:text-brand-secondary transition-colors"
+                >
+                  <FontAwesomeIcon icon={faEnvelope} />
+                  ¿No recibiste nada? Intentar de nuevo
+                </button>
+              </div>
+            </motion.div>
+          ) : (
+            <form className="space-y-6" onSubmit={handleSubmit}>
+              <AnimatePresence>
+                {error && (
+                  <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="p-4 bg-red-50 border border-red-200 text-red-700 rounded-2xl text-sm font-semibold">
+                    {error}
+                  </motion.div>
+                )}
+              </AnimatePresence>
+
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-1">Tu correo electrónico</label>
+                <div className="relative group">
+                  <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none group-focus-within:text-brand-secondary text-gray-400 transition-colors">
+                    <FontAwesomeIcon icon={faEnvelope} />
+                  </div>
+                  <input
+                    type="email"
+                    required
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    className="input-field pl-12"
+                    placeholder="ejemplo@correo.com"
+                  />
+                </div>
+              </div>
+
+              <button
+                type="submit"
+                disabled={loading}
+                className="btn-primary w-full group py-4"
               >
-                <FontAwesomeIcon icon={faArrowLeft} />
-                Volver al inicio de sesión
-              </Link>
-            </div>
-          </form>
-        )}
+                {loading ? <FontAwesomeIcon icon={faSpinner} className="animate-spin" /> : 'Enviar código'}
+                {!loading && <FontAwesomeIcon icon={faPaperPlane} className="h-4 w-4 group-hover:-translate-y-1 group-hover:translate-x-1 transition-transform" />}
+              </button>
+
+              <div className="text-center pt-2">
+                <Link
+                  to="/login"
+                  className="inline-flex items-center gap-2 text-sm font-bold text-gray-500 hover:text-brand-secondary transition-colors"
+                >
+                  <FontAwesomeIcon icon={faArrowLeft} />
+                  Volver al inicio de sesión
+                </Link>
+              </div>
+            </form>
+          )}
+        </AnimatePresence>
       </motion.div>
     </div>
   );

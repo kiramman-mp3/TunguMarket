@@ -2,7 +2,8 @@ import React, { useState, useRef } from 'react';
 import { View, Text, StyleSheet, TextInput, Pressable, KeyboardAvoidingView, Platform, SafeAreaView, ActivityIndicator, Alert, ScrollView } from 'react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
-import { validateResetToken, resetPassword } from '../../src/api/auth';
+import { validateResetToken, resetPassword } from '@/api/auth';
+import { Colors, Rounding, Shadow, Spacing } from '@/constants/theme';
 
 export default function ResetPasswordScreen() {
   const { email: paramEmail } = useLocalSearchParams<{ email: string }>();
@@ -12,6 +13,7 @@ export default function ResetPasswordScreen() {
   const [confirmPassword, setConfirmPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [step, setStep] = useState(1); // 1: Validate, 2: Reset
+  const [success, setSuccess] = useState(false);
   const router = useRouter();
 
   const inputRefs = [
@@ -34,7 +36,6 @@ export default function ResetPasswordScreen() {
       inputRefs[index + 1].current?.focus();
     }
 
-    // Auto-validate if 6th digit is entered
     if (newCode.every(digit => digit !== '') && value) {
       handleValidate(newCode.join(''));
     }
@@ -76,17 +77,20 @@ export default function ResetPasswordScreen() {
       return;
     }
 
-    if (password.length < 6) {
-      Alert.alert('Error', 'La contraseña debe tener al menos 6 caracteres');
+    if (password.length < 8) {
+      Alert.alert('Error', 'La contraseña debe tener al menos 8 caracteres');
       return;
     }
 
     setLoading(true);
     try {
       await resetPassword(email, finalCode, password);
-      Alert.alert('¡Éxito!', 'Tu contraseña ha sido restablecida correctamente.', [
-        { text: 'Aceptar', onPress: () => router.replace('/(auth)/login' as any) }
-      ]);
+      setSuccess(true);
+      setTimeout(() => {
+        Alert.alert('¡Éxito!', 'Tu contraseña ha sido restablecida correctamente.', [
+          { text: 'Aceptar', onPress: () => router.replace('/(auth)/login' as any) }
+        ]);
+      }, 500);
     } catch (error: any) {
       Alert.alert('Error', error.message || 'No se pudo restablecer la contraseña');
     } finally {
@@ -100,127 +104,154 @@ export default function ResetPasswordScreen() {
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         style={{ flex: 1 }}
       >
-        <ScrollView contentContainerStyle={styles.scrollContent}>
+        <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
           <Pressable onPress={() => router.back()} style={styles.backButton}>
-            <Ionicons name="arrow-back" size={24} color="#1e3a8a" />
+            <Ionicons name="arrow-back" size={24} color={Colors.brand.secondary} />
           </Pressable>
 
           <View style={styles.header}>
-            <Text style={styles.title}>Nueva contraseña</Text>
+            <View style={styles.iconCircle}>
+              <Ionicons 
+                name={success ? "checkmark-circle" : step === 1 ? "shield-checkmark-outline" : "lock-open-outline"} 
+                size={40} 
+                color={success ? Colors.brand.success : Colors.brand.primary} 
+              />
+            </View>
+            <Text style={styles.title}>{success ? '¡Contraseña Cambiada!' : 'Nueva contraseña'}</Text>
             <Text style={styles.subtitle}>
               {step === 1 
                 ? 'Ingresa el código que recibiste para validar tu identidad.' 
-                : 'Ingresa tu nueva clave de acceso.'}
+                : success 
+                  ? 'Ya puedes iniciar sesión con tu nueva clave.' 
+                  : 'Ingresa tu nueva clave de acceso segura.'}
             </Text>
           </View>
 
-          <View style={styles.form}>
-            {step === 1 ? (
-              <>
-                {!paramEmail && (
+          {!success && (
+            <View style={styles.form}>
+              {step === 1 ? (
+                <>
+                  {!paramEmail && (
+                    <View style={styles.inputContainer}>
+                      <Text style={styles.label}>Correo electrónico</Text>
+                      <View style={styles.inputWrapper}>
+                        <Ionicons name="mail-outline" size={20} color={Colors.brand.muted} style={styles.inputIcon} />
+                        <TextInput 
+                          style={styles.input}
+                          placeholder="ejemplo@correo.com"
+                          keyboardType="email-address"
+                          autoCapitalize="none"
+                          value={email}
+                          onChangeText={setEmail}
+                        />
+                      </View>
+                    </View>
+                  )}
+
                   <View style={styles.inputContainer}>
-                    <Text style={styles.label}>Correo electrónico</Text>
+                    <Text style={styles.label}>Código de 6 dígitos</Text>
+                    <View style={styles.codeContainer}>
+                      {code.map((digit, index) => (
+                        <TextInput
+                          key={index}
+                          ref={inputRefs[index]}
+                          style={[
+                            styles.codeInput,
+                            digit !== '' && styles.codeInputActive,
+                            loading && styles.codeInputDisabled
+                          ]}
+                          keyboardType="number-pad"
+                          maxLength={1}
+                          value={digit}
+                          onChangeText={(v) => handleChange(index, v)}
+                          onKeyPress={({ nativeEvent }) => handleKeyPress(index, nativeEvent.key)}
+                          editable={!loading}
+                        />
+                      ))}
+                    </View>
+                  </View>
+
+                  <Pressable
+                    style={({ pressed }) => [
+                      styles.actionButton,
+                      (pressed || loading || code.some(d => !d)) && styles.buttonDisabled
+                    ]}
+                    onPress={() => handleValidate()}
+                    disabled={loading || code.some(d => !d)}
+                  >
+                    {loading ? (
+                      <ActivityIndicator color={Colors.brand.secondary} />
+                    ) : (
+                      <Text style={styles.actionButtonText}>Validar código</Text>
+                    )}
+                  </Pressable>
+                </>
+              ) : (
+                <>
+                  <View style={styles.validationNotice}>
+                    <Ionicons name="checkmark-circle" size={18} color={Colors.brand.success} />
+                    <Text style={styles.validationText}>Código validado para {email}</Text>
+                  </View>
+
+                  <View style={styles.inputContainer}>
+                    <Text style={styles.label}>Nueva contraseña</Text>
                     <View style={styles.inputWrapper}>
-                      <Ionicons name="mail-outline" size={20} color="#64748b" style={styles.inputIcon} />
+                      <Ionicons name="lock-closed-outline" size={20} color={Colors.brand.muted} style={styles.inputIcon} />
                       <TextInput 
                         style={styles.input}
-                        placeholder="ejemplo@correo.com"
-                        keyboardType="email-address"
-                        autoCapitalize="none"
-                        value={email}
-                        onChangeText={setEmail}
+                        placeholder="••••••••"
+                        secureTextEntry
+                        autoFocus
+                        value={password}
+                        onChangeText={setPassword}
                       />
                     </View>
                   </View>
-                )}
 
-                <View style={styles.inputContainer}>
-                  <Text style={styles.label}>Código de 6 dígitos</Text>
-                  <View style={styles.codeContainer}>
-                    {code.map((digit, index) => (
-                      <TextInput
-                        key={index}
-                        ref={inputRefs[index]}
-                        style={styles.codeInput}
-                        keyboardType="number-pad"
-                        maxLength={1}
-                        value={digit}
-                        onChangeText={(v) => handleChange(index, v)}
-                        onKeyPress={({ nativeEvent }) => handleKeyPress(index, nativeEvent.key)}
-                        editable={!loading}
+                  <View style={styles.inputContainer}>
+                    <Text style={styles.label}>Confirmar contraseña</Text>
+                    <View style={styles.inputWrapper}>
+                      <Ionicons name="key-outline" size={20} color={Colors.brand.muted} style={styles.inputIcon} />
+                      <TextInput 
+                        style={styles.input}
+                        placeholder="••••••••"
+                        secureTextEntry
+                        value={confirmPassword}
+                        onChangeText={setConfirmPassword}
                       />
-                    ))}
+                    </View>
                   </View>
-                </View>
 
-                <Pressable
-                  style={({ pressed }) => [
-                    styles.actionButton,
-                    (pressed || loading || code.some(d => !d)) && styles.buttonDisabled
-                  ]}
-                  onPress={() => handleValidate()}
-                  disabled={loading || code.some(d => !d)}
-                >
-                  {loading ? (
-                    <ActivityIndicator color="#1e3a8a" />
-                  ) : (
-                    <Text style={styles.actionButtonText}>Validar código</Text>
-                  )}
-                </Pressable>
-              </>
-            ) : (
-              <>
-                <View style={styles.validationNotice}>
-                  <Ionicons name="checkmark-circle" size={20} color="#10b981" />
-                  <Text style={styles.validationText}>Código validado para {email}</Text>
-                </View>
+                  <Pressable
+                    style={({ pressed }) => [
+                      styles.actionButton,
+                      (pressed || loading) && styles.buttonPressed
+                    ]}
+                    onPress={handleReset}
+                    disabled={loading}
+                  >
+                    {loading ? (
+                      <ActivityIndicator color={Colors.brand.secondary} />
+                    ) : (
+                      <Text style={styles.actionButtonText}>Restablecer contraseña</Text>
+                    )}
+                  </Pressable>
+                </>
+              )}
 
-                <View style={styles.inputContainer}>
-                  <Text style={styles.label}>Nueva contraseña</Text>
-                  <View style={styles.inputWrapper}>
-                    <Ionicons name="lock-closed-outline" size={20} color="#64748b" style={styles.inputIcon} />
-                    <TextInput 
-                      style={styles.input}
-                      placeholder="••••••••"
-                      secureTextEntry
-                      autoFocus
-                      value={password}
-                      onChangeText={setPassword}
-                    />
-                  </View>
-                </View>
+              <Pressable onPress={() => router.replace('/(auth)/login' as any)} style={styles.backLinkRow}>
+                <Ionicons name="arrow-back" size={16} color={Colors.brand.secondary} />
+                <Text style={styles.backLinkTextBlue}>Volver al inicio de sesión</Text>
+              </Pressable>
+            </View>
+          )}
 
-                <View style={styles.inputContainer}>
-                  <Text style={styles.label}>Confirmar contraseña</Text>
-                  <View style={styles.inputWrapper}>
-                    <Ionicons name="lock-closed-outline" size={20} color="#64748b" style={styles.inputIcon} />
-                    <TextInput 
-                      style={styles.input}
-                      placeholder="••••••••"
-                      secureTextEntry
-                      value={confirmPassword}
-                      onChangeText={setConfirmPassword}
-                    />
-                  </View>
-                </View>
-
-                <Pressable
-                  style={({ pressed }) => [
-                    styles.actionButton,
-                    (pressed || loading) && styles.buttonPressed
-                  ]}
-                  onPress={handleReset}
-                  disabled={loading}
-                >
-                  {loading ? (
-                    <ActivityIndicator color="#1e3a8a" />
-                  ) : (
-                    <Text style={styles.actionButtonText}>Restablecer contraseña</Text>
-                  )}
-                </Pressable>
-              </>
-            )}
-          </View>
+          {success && (
+            <View style={styles.successContainer}>
+              <ActivityIndicator color={Colors.brand.secondary} size="large" />
+              <Text style={styles.redirectText}>Redirigiéndote al login...</Text>
+            </View>
+          )}
         </ScrollView>
       </KeyboardAvoidingView>
     </SafeAreaView>
@@ -230,121 +261,170 @@ export default function ResetPasswordScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#fff',
+    backgroundColor: Colors.brand.light,
   },
   scrollContent: {
-    paddingHorizontal: 24,
+    paddingHorizontal: Spacing.lg,
     paddingTop: 20,
     paddingBottom: 40,
+    flexGrow: 1,
   },
   backButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: '#f8fafc',
+    width: 44,
+    height: 44,
+    borderRadius: Rounding.large,
+    backgroundColor: Colors.brand.surface,
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: 32,
+    marginBottom: 20,
+    ...Shadow.light,
   },
   header: {
+    alignItems: 'center',
     marginBottom: 40,
+    gap: 12,
+  },
+  iconCircle: {
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    backgroundColor: Colors.brand.surface,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 16,
+    ...Shadow.light,
   },
   title: {
     fontSize: 28,
     fontWeight: '800',
-    color: '#1e3a8a',
-    marginBottom: 8,
+    color: Colors.brand.secondary,
+    textAlign: 'center',
   },
   subtitle: {
     fontSize: 16,
-    color: '#64748b',
+    color: Colors.brand.muted,
+    textAlign: 'center',
     lineHeight: 24,
+    fontWeight: '500',
   },
   form: {
-    gap: 24,
+    gap: 20,
+    width: '100%',
+    alignItems: 'center',
   },
   validationNotice: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
+    gap: 10,
     backgroundColor: '#ecfdf5',
     padding: 12,
-    borderRadius: 12,
+    borderRadius: Rounding.large,
     borderWidth: 1,
     borderColor: '#d1fae5',
+    width: '100%',
   },
   validationText: {
     color: '#065f46',
-    fontSize: 14,
-    fontWeight: '600',
+    fontSize: 13,
+    fontWeight: '700',
   },
   inputContainer: {
     gap: 8,
+    width: '100%',
   },
   label: {
     fontSize: 14,
-    fontWeight: '600',
-    color: '#334155',
+    fontWeight: '700',
+    color: Colors.brand.dark,
+    marginLeft: 4,
   },
   inputWrapper: {
     flexDirection: 'row',
     alignItems: 'center',
-    borderWidth: 1,
-    borderColor: '#e2e8f0',
-    borderRadius: 16,
+    borderWidth: 1.5,
+    borderColor: Colors.brand.border,
+    borderRadius: Rounding.large,
     paddingHorizontal: 16,
-    backgroundColor: '#f8fafc',
-    height: 56,
+    backgroundColor: Colors.brand.surface,
+    height: 58,
+    width: '100%',
   },
   inputIcon: {
-    marginRight: 12,
+    marginRight: 10,
   },
   input: {
     flex: 1,
     fontSize: 16,
-    color: '#1e293b',
+    color: Colors.brand.dark,
+    fontWeight: '500',
   },
   codeContainer: {
     flexDirection: 'row',
     justifyContent: 'space-between',
+    gap: 8,
     width: '100%',
-    gap: 6,
   },
   codeInput: {
     flex: 1,
-    height: 56,
-    borderWidth: 1.5,
-    borderColor: '#e2e8f0',
-    borderRadius: 12,
-    fontSize: 18,
-    fontWeight: '700',
-    color: '#1e3a8a',
+    height: 64,
+    borderWidth: 2,
+    borderColor: Colors.brand.border,
+    borderRadius: Rounding.large,
+    fontSize: 24,
+    fontWeight: '800',
+    color: Colors.brand.secondary,
     textAlign: 'center',
-    backgroundColor: '#f8fafc',
+    backgroundColor: Colors.brand.surface,
+  },
+  codeInputActive: {
+    borderColor: Colors.brand.primary,
+    backgroundColor: '#fffdf4',
+  },
+  codeInputDisabled: {
+    opacity: 0.6,
   },
   actionButton: {
-    backgroundColor: '#fbbf24',
-    height: 56,
-    borderRadius: 16,
+    backgroundColor: Colors.brand.primary,
+    height: 58,
+    borderRadius: Rounding.large,
     alignItems: 'center',
     justifyContent: 'center',
-    marginTop: 12,
-    shadowColor: "#fbbf24",
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.2,
-    shadowRadius: 8,
-    elevation: 4,
+    width: '100%',
+    marginTop: 10,
+    ...Shadow.medium,
   },
   actionButtonText: {
-    color: '#1e3a8a',
+    color: Colors.brand.secondary,
     fontSize: 18,
-    fontWeight: 'bold',
+    fontWeight: '800',
   },
-  buttonDisabled: {
-    opacity: 0.6,
+  backLinkRow: {
+    marginTop: 10,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    padding: 10,
+  },
+  backLinkTextBlue: {
+    color: Colors.brand.secondary,
+    fontSize: 15,
+    fontWeight: '800',
   },
   buttonPressed: {
     opacity: 0.9,
     transform: [{ scale: 0.98 }],
+  },
+  buttonDisabled: {
+    opacity: 0.6,
+  },
+  successContainer: {
+    alignItems: 'center',
+    marginTop: 40,
+    gap: 16,
+  },
+  redirectText: {
+    color: Colors.brand.muted,
+    fontSize: 14,
+    fontWeight: '700',
   },
 });
