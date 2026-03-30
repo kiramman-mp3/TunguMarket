@@ -27,7 +27,11 @@ const Login = () => {
       login(data.user, data.token);
       navigate('/');
     } catch (err) {
-      setError(err.message || 'Credenciales inválidas');
+      if (err.message === 'EMAIL_NOT_VERIFIED') {
+        navigate('/pending-verification', { state: { email } });
+      } else {
+        setError(err.message || 'Credenciales inválidas');
+      }
     } finally {
       setLoading(false);
     }

@@ -1,13 +1,13 @@
 import pool from '../config/db.js';
 
 class UserModel {
-  static async createUser({ name, email, passwordHash, firebaseUid, roleId }) {
+  static async createUser({ name, email, passwordHash, firebaseUid, roleId, birthDate }) {
     const query = `
-      INSERT INTO users (name, email, password_hash, firebase_uid, role_id)
-      VALUES ($1, $2, $3, $4, $5)
+      INSERT INTO users (name, email, password_hash, firebase_uid, role_id, birth_date)
+      VALUES ($1, $2, $3, $4, $5, $6)
       RETURNING *
     `;
-    const values = [name, email, passwordHash, firebaseUid, roleId];
+    const values = [name, email, passwordHash, firebaseUid ?? null, roleId, birthDate];
     const { rows } = await pool.query(query, values);
     return rows[0];
   }
@@ -100,6 +100,18 @@ class UserModel {
   static async updatePassword(id, passwordHash) {
     const query = 'UPDATE users SET password_hash = $2, updated_at = CURRENT_TIMESTAMP WHERE id = $1 RETURNING *';
     const { rows } = await pool.query(query, [id, passwordHash]);
+    return rows[0];
+  }
+
+  // Login Logs
+  static async recordLoginLog({ userId, email, ipAddress, deviceInfo, status, message }) {
+    const query = `
+      INSERT INTO login_logs (user_id, email, ip_address, device_info, status, message)
+      VALUES ($1, $2, $3, $4, $5, $6)
+      RETURNING *
+    `;
+    const values = [userId, email, ipAddress, deviceInfo, status, message];
+    const { rows } = await pool.query(query, values);
     return rows[0];
   }
 }

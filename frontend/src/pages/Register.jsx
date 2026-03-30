@@ -12,6 +12,7 @@ const Register = () => {
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [birthDate, setBirthDate] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
 
@@ -21,11 +22,26 @@ const Register = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
+    
+    // Simple client-side age check
+    const today = new Date();
+    const birthDateObj = new Date(birthDate);
+    let age = today.getFullYear() - birthDateObj.getFullYear();
+    const m = today.getMonth() - birthDateObj.getMonth();
+    if (m < 0 || (m === 0 && today.getDate() < birthDateObj.getDate())) {
+      age--;
+    }
+    
+    if (age < 18) {
+      setError('Debes tener al menos 18 años para registrarte.');
+      return;
+    }
+
     setLoading(true);
 
     try {
-      await registerUser({ name, email, password });
-      navigate('/login');
+      await registerUser({ name, email, password, birthDate });
+      navigate('/pending-verification', { state: { email } });
     } catch (err) {
       setError(err.message || 'Error al registrarse');
     } finally {
@@ -138,6 +154,23 @@ const Register = () => {
                   placeholder="ejemplo@correo.com"
                 />
               </div>
+            </div>
+
+            <div>
+              <label className="block text-sm font-semibold text-gray-700 mb-1">Fecha de nacimiento</label>
+              <div className="relative group">
+                <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none group-focus-within:text-brand-secondary text-gray-400 transition-colors">
+                  <FontAwesomeIcon icon={faUser} />
+                </div>
+                <input
+                  type="date"
+                  required
+                  value={birthDate}
+                  onChange={(e) => setBirthDate(e.target.value)}
+                  className="input-field pl-12 text-gray-500"
+                />
+              </div>
+              <p className="mt-1 text-[10px] text-gray-400">Debes ser mayor de 18 años.</p>
             </div>
 
             <div>
