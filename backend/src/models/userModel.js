@@ -46,6 +46,62 @@ class UserModel {
     const { rows } = await pool.query(query, [id, isBanned]);
     return rows[0];
   }
+
+  // Verification Token Management
+  static async createVerificationToken(userId, token) {
+    const expiresAt = new Date();
+    expiresAt.setMinutes(expiresAt.getMinutes() + 30); // 30 minutes
+    const query = 'INSERT INTO verification_tokens (user_id, token, expires_at) VALUES ($1, $2, $3) RETURNING *';
+    const { rows } = await pool.query(query, [userId, token, expiresAt]);
+    return rows[0];
+  }
+
+  static async findVerificationToken(token) {
+    const query = 'SELECT * FROM verification_tokens WHERE token = $1 AND expires_at > CURRENT_TIMESTAMP';
+    const { rows } = await pool.query(query, [token]);
+    return rows[0];
+  }
+
+  static async deleteVerificationToken(token) {
+    const query = 'DELETE FROM verification_tokens WHERE token = $1';
+    await pool.query(query, [token]);
+  }
+
+  static async deleteVerificationTokensByUser(userId) {
+    const query = 'DELETE FROM verification_tokens WHERE user_id = $1';
+    await pool.query(query, [userId]);
+  }
+
+  // Password Reset Token Management
+  static async createPasswordResetToken(userId, token) {
+    const expiresAt = new Date();
+    expiresAt.setHours(expiresAt.getHours() + 1); // 1 hour
+    const query = 'INSERT INTO password_resets (user_id, token, expires_at) VALUES ($1, $2, $3) RETURNING *';
+    const { rows } = await pool.query(query, [userId, token, expiresAt]);
+    return rows[0];
+  }
+
+  static async findPasswordResetToken(token) {
+    const query = 'SELECT * FROM password_resets WHERE token = $1 AND expires_at > CURRENT_TIMESTAMP';
+    const { rows } = await pool.query(query, [token]);
+    return rows[0];
+  }
+
+  static async deletePasswordResetToken(token) {
+    const query = 'DELETE FROM password_resets WHERE token = $1';
+    await pool.query(query, [token]);
+  }
+
+  static async deletePasswordResetTokensByUser(userId) {
+    const query = 'DELETE FROM password_resets WHERE user_id = $1';
+    await pool.query(query, [userId]);
+  }
+
+  static async updatePassword(id, passwordHash) {
+    const query = 'UPDATE users SET password_hash = $2, updated_at = CURRENT_TIMESTAMP WHERE id = $1 RETURNING *';
+    const { rows } = await pool.query(query, [id, passwordHash]);
+    return rows[0];
+  }
 }
 
 export default UserModel;

@@ -109,6 +109,17 @@ const initDb = async () => {
       );
     `);
 
+    // Verification Tokens Table
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS verification_tokens (
+        id SERIAL PRIMARY KEY,
+        user_id UUID REFERENCES users(id) ON DELETE CASCADE,
+        token VARCHAR(255) UNIQUE NOT NULL,
+        expires_at TIMESTAMP NOT NULL,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      );
+    `);
+
     // Products Table (Basic structure for future use as requested)
     await client.query(`
       CREATE TABLE IF NOT EXISTS products (

@@ -41,6 +41,11 @@ services:
       - POSTGRES_HOST=db
       - PORT=${PORT:-5000}
       - JWT_SECRET=${JWT_SECRET:-super_secret_jwt_key_here}
+      - EMAIL_USER=${EMAIL_USER}
+      - EMAIL_PASS=${EMAIL_PASS}
+      - EMAIL_HOST=${EMAIL_HOST}
+      - EMAIL_PORT=${EMAIL_PORT}
+      - EMAIL_FROM=${EMAIL_FROM}
     volumes:
       - ./backend:/app
       - /app/node_modules

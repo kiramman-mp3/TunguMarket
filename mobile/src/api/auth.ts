@@ -14,7 +14,7 @@ export const registerUser = async (userData: any) => {
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(userData),
   });
-  const data = await response.json();
+  const data = await response.json() as any;
   if (!response.ok) throw new Error(data.error || 'Failed to register');
   return data;
 };
@@ -25,7 +25,7 @@ export const loginUser = async (credentials: any) => {
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(credentials),
   });
-  const data = await response.json();
+  const data = await response.json() as any;
   if (!response.ok) throw new Error(data.error || 'Failed to login');
   return data;
 };
@@ -36,7 +36,7 @@ export const googleLogin = async (idToken: string) => {
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ idToken }),
   });
-  const data = await response.json();
+  const data = await response.json() as any;
   if (!response.ok) throw new Error(data.error || 'Failed to login with Google');
   return data;
 };
@@ -50,4 +50,61 @@ export const logoutUser = async (token: string) => {
     },
   });
   return response.ok;
+};
+
+// --- New methods for Module 1 ---
+
+export const verifyEmail = async (email: string, token: string) => {
+  const response = await fetch(`${API_URL}/verify-email`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ email, token }),
+  });
+  const data = await response.json() as any;
+  if (!response.ok) throw new Error(data.error || 'Failed to verify email');
+  return data;
+};
+
+export const resendVerification = async (email: string) => {
+  const response = await fetch(`${API_URL}/resend-verification`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ email }),
+  });
+  const data = await response.json() as any;
+  if (!response.ok) throw new Error(data.error || 'Failed to resend');
+  return data;
+};
+
+export const forgotPassword = async (email: string) => {
+  const response = await fetch(`${API_URL}/forgot-password`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ email }),
+  });
+  const data = await response.json() as any;
+  if (!response.ok) throw new Error(data.error || 'Failed to request reset');
+  return data;
+};
+
+export const validateResetToken = async (email: string, token: string) => {
+  const response = await fetch(`${API_URL}/validate-reset-token`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ email, token }),
+  });
+  const data = await response.json() as any;
+  if (!response.ok) throw new Error(data.error || 'Failed to validate code');
+  return data;
+};
+
+export const resetPassword = async (email: string, token: string, password: string) => {
+  const response = await fetch(`${API_URL}/reset-password`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ email, token, password }),
+  });
+  const data = await response.json() as any;
+  if (!response.ok) throw new Error(data.error || 'Failed to reset password');
+  return data;
 };
