@@ -5,7 +5,8 @@ WORKDIR /app
 COPY package*.json ./
 
 RUN npm install
-
+ARG EXPO_TOKEN
+ENV EXPO_TOKEN=$EXPO_TOKEN
 # Exponemos el puerto del Metro Bundler de Expo
 EXPOSE 8081
 
