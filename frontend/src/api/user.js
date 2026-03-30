@@ -1,4 +1,4 @@
-const API_URL = 'http://localhost:5000/api/users';
+const API_URL = `http://${window.location.hostname}:5000/api/users`;
 
 const getHeaders = () => {
   const token = localStorage.getItem('tungu_token');

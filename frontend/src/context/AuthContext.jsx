@@ -1,10 +1,12 @@
 import React, { createContext, useState, useContext, useEffect } from 'react';
+import BanModal from '../components/BanModal';
 
 const AuthContext = createContext();
 
 export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [showBanModal, setShowBanModal] = useState(false);
 
   useEffect(() => {
     // Check for stored user on load
@@ -19,8 +21,7 @@ export const AuthProvider = ({ children }) => {
     // Global listener for critical auth errors (like being banned)
     const handleAuthError = (event) => {
       if (event.detail === 'ACCOUNT_BANNED') {
-        alert('Tu cuenta ha sido baneada, se cerrará la sesión.');
-        logout();
+        setShowBanModal(true);
       }
     };
     window.addEventListener('tungu-auth-error', handleAuthError);
@@ -34,14 +35,13 @@ export const AuthProvider = ({ children }) => {
 
     if (user && token) {
       console.log('[SSE] Connecting to notification stream...');
-      eventSource = new EventSource(`http://localhost:5000/api/notifications/stream?token=${token}`);
+      eventSource = new EventSource(`http://${window.location.hostname}:5000/api/notifications/stream?token=${token}`);
 
       eventSource.onmessage = (event) => {
         try {
           const data = JSON.parse(event.data);
           if (data.type === 'ACCOUNT_BANNED') {
-            alert('🚨 Tu cuenta ha sido baneada. La sesión se cerrará inmediatamente.');
-            logout();
+            setShowBanModal(true);
           }
         } catch (err) {
           console.error('[SSE] Error parsing message:', err);
@@ -78,6 +78,7 @@ export const AuthProvider = ({ children }) => {
   return (
     <AuthContext.Provider value={{ user, loading, login, logout }}>
       {children}
+      <BanModal isOpen={showBanModal} onClose={logout} />
     </AuthContext.Provider>
   );
 };
