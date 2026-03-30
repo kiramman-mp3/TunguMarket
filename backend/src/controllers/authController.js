@@ -68,6 +68,58 @@ class AuthController {
       res.status(500).json({ error: error.message });
     }
   }
+
+  // --- New Handlers for Module 1 ---
+
+  static async verifyEmail(req, res) {
+    try {
+      const { email, token } = req.body;
+      const result = await AuthService.verifyEmail(email, token);
+      res.status(200).json(result);
+    } catch (error) {
+      res.status(400).json({ error: error.message });
+    }
+  }
+
+  static async resendVerification(req, res) {
+    try {
+      const { email } = req.body;
+      const result = await AuthService.resendVerificationEmail(email);
+      res.status(200).json(result);
+    } catch (error) {
+      res.status(400).json({ error: error.message });
+    }
+  }
+
+  static async forgotPassword(req, res) {
+    try {
+      const { email } = req.body;
+      const result = await AuthService.forgotPassword(email);
+      res.status(200).json(result);
+    } catch (error) {
+      res.status(400).json({ error: error.message });
+    }
+  }
+
+  static async validateResetToken(req, res) {
+    try {
+      const { email, token } = req.body;
+      const result = await AuthService.validateResetToken(email, token);
+      res.status(200).json(result);
+    } catch (error) {
+      res.status(400).json({ error: error.message });
+    }
+  }
+
+  static async resetPassword(req, res) {
+    try {
+      const { email, token, password } = req.body;
+      const result = await AuthService.resetPassword(email, token, password);
+      res.status(200).json(result);
+    } catch (error) {
+      res.status(400).json({ error: error.message });
+    }
+  }
 }
 
 export default AuthController;

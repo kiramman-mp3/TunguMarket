@@ -27,7 +27,11 @@ const Login = () => {
       login(data.user, data.token);
       navigate('/');
     } catch (err) {
-      setError(err.message || 'Error al iniciar sesión');
+      if (err.message === 'EMAIL_NOT_VERIFIED') {
+        navigate('/pending-verification', { state: { email } });
+      } else {
+        setError(err.message || 'Error al iniciar sesión');
+      }
     } finally {
       setLoading(false);
     }
@@ -59,10 +63,10 @@ const Login = () => {
       >
         <div>
           <h2 className="mt-6 text-center text-3xl font-display font-bold text-brand-dark">
-            Bienvenido de nuevo
+            ¡Bienvenido de nuevo!
           </h2>
           <p className="mt-2 text-center text-sm text-gray-600">
-            Ingresa a tu cuenta en <span className="text-brand-primary font-bold">TunguMarket</span>
+            Te extrañamos. Ingresa tus datos para continuar.
           </p>
         </div>
 
@@ -129,9 +133,9 @@ const Login = () => {
                   Contraseña
                 </label>
                 <div className="text-sm">
-                  <a href="#" className="font-medium text-brand-secondary hover:text-brand-primary transition-colors">
+                  <Link to="/forgot-password" size="sm" className="font-medium text-brand-secondary hover:text-brand-primary transition-colors">
                     ¿Olvidaste tu contraseña?
-                  </a>
+                  </Link>
                 </div>
               </div>
               <div className="relative group">

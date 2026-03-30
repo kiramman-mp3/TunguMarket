@@ -36,9 +36,9 @@ export default function LoginScreen() {
   const handleGoogleLogin = async (idToken: string) => {
     setLoading(true);
     try {
-      const data = await apiGoogleLogin(idToken);
+      const data = await apiGoogleLogin(idToken) as any;
       await login(data.user, data.token);
-      router.replace('/(tabs)');
+      router.replace('/(tabs)' as any);
     } catch (error: any) {
       Alert.alert('Error de Google', error.message || 'No se pudo iniciar sesión con Google');
     } finally {
@@ -54,11 +54,18 @@ export default function LoginScreen() {
 
     setLoading(true);
     try {
-      const data = await loginUser({ email, password });
+      const data = await loginUser({ email, password }) as any;
       await login(data.user, data.token);
-      router.replace('/(tabs)');
+      router.replace('/(tabs)' as any);
     } catch (error: any) {
-      Alert.alert('Error de inicio de sesión', error.message || 'Credenciales inválidas');
+      if (error.message === 'EMAIL_NOT_VERIFIED') {
+        router.push({ 
+          pathname: '/(auth)/pending-verification' as any, 
+          params: { email } 
+        });
+      } else {
+        Alert.alert('Error de inicio de sesión', error.message || 'Credenciales inválidas');
+      }
     } finally {
       setLoading(false);
     }
@@ -80,7 +87,7 @@ export default function LoginScreen() {
           </Pressable>
 
           <View style={styles.header}>
-            <Text style={styles.title}>¡Hola de nuevo!</Text>
+            <Text style={styles.title}>¡Bienvenido de nuevo!</Text>
             <Text style={styles.subtitle}>Te extrañamos. Ingresa tus datos para continuar.</Text>
           </View>
 
@@ -103,7 +110,7 @@ export default function LoginScreen() {
             <View style={styles.inputContainer}>
               <View style={styles.labelRow}>
                 <Text style={styles.label}>Contraseña</Text>
-                <Pressable>
+                <Pressable onPress={() => router.push('/(auth)/forgot-password' as any)}>
                   <Text style={styles.forgotText}>¿Olvidaste tu contraseña?</Text>
                 </Pressable>
               </View>
@@ -150,7 +157,7 @@ export default function LoginScreen() {
 
           <View style={styles.footer}>
             <Text style={styles.footerText}>¿No tienes una cuenta?</Text>
-            <Pressable onPress={() => router.push('/(auth)/register')}>
+            <Pressable onPress={() => router.push('/(auth)/register' as any)}>
               <Text style={styles.signUpText}> Regístrate</Text>
             </Pressable>
           </View>
