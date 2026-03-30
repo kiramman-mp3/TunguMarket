@@ -64,7 +64,7 @@ const Register = () => {
             Crea tu cuenta
           </h2>
           <p className="mt-2 text-center text-sm text-gray-600">
-            Únete a la comunidad de <span className="text-brand-primary font-bold">TunguMarket</span>
+            Únete a la comunidad y apoya lo local.
           </p>
         </div>
 

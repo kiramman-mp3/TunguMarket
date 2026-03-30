@@ -37,9 +37,9 @@ export default function RegisterScreen() {
   const handleGoogleLogin = async (idToken: string) => {
     setLoading(true);
     try {
-      const data = await apiGoogleLogin(idToken);
+      const data = await apiGoogleLogin(idToken) as any;
       await login(data.user, data.token);
-      router.replace('/(tabs)');
+      router.replace('/(tabs)' as any);
     } catch (error: any) {
       Alert.alert('Error de Google', error.message || 'No se pudo iniciar sesión con Google');
     } finally {
@@ -56,8 +56,8 @@ export default function RegisterScreen() {
     setLoading(true);
     try {
       await registerUser({ name, email, password });
-      Alert.alert('Éxito', 'Cuenta creada con éxito. Ahora puedes iniciar sesión.', [
-        { text: 'OK', onPress: () => router.push('/(auth)/login') }
+      Alert.alert('Éxito', 'Cuenta creada con éxito. Ingresa el código enviado a tu correo.', [
+        { text: 'OK', onPress: () => router.push({ pathname: '/(auth)/pending-verification' as any, params: { email } }) }
       ]);
     } catch (error: any) {
       Alert.alert('Error de registro', error.message || 'No se pudo crear la cuenta');
@@ -83,7 +83,7 @@ export default function RegisterScreen() {
 
           <View style={styles.header}>
             <Text style={styles.title}>Crea tu cuenta</Text>
-            <Text style={styles.subtitle}>Empieza a apoyar lo local hoy mismo.</Text>
+            <Text style={styles.subtitle}>Únete a la comunidad y apoya lo local.</Text>
           </View>
 
           {/* Social Register Section */}
@@ -178,7 +178,7 @@ export default function RegisterScreen() {
 
           <View style={styles.footer}>
             <Text style={styles.footerText}>¿Ya tienes una cuenta?</Text>
-            <Pressable onPress={() => router.push('/(auth)/login')}>
+            <Pressable onPress={() => router.push('/(auth)/login' as any)}>
               <Text style={styles.signInText}> Inicia sesión</Text>
             </Pressable>
           </View>
