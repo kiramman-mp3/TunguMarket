@@ -36,8 +36,8 @@ const features = [
 
 const Features = () => {
   return (
-    <section id="beneficios" className="py-24 bg-gray-50 border-t border-gray-100 relative">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+    <section id="beneficios" className="py-16 bg-gray-50 border-t border-gray-100 relative">
+      <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="text-center max-w-3xl mx-auto mb-16">
           <h2 className="text-brand-accent font-semibold tracking-wide uppercase text-sm mb-3">Compromiso TunguMarket</h2>
           <h3 className="mt-2 text-3xl leading-8 font-black tracking-tight text-brand-secondary sm:text-4xl">

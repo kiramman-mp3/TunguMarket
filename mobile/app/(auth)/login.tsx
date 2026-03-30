@@ -1,71 +1,32 @@
-import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, TextInput, Pressable, KeyboardAvoidingView, Platform, ScrollView, SafeAreaView, Alert, ActivityIndicator } from 'react-native';
+import React, { useState } from 'react';
+import { View, Text, StyleSheet, TextInput, Pressable, KeyboardAvoidingView, Platform, SafeAreaView, ActivityIndicator, Alert, ScrollView } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
-import * as WebBrowser from 'expo-web-browser';
-import * as Google from 'expo-auth-session/providers/google';
-import { useAuth } from '../../src/context/AuthContext';
-import { loginUser, googleLogin as apiGoogleLogin } from '../../src/api/auth';
-
-WebBrowser.maybeCompleteAuthSession();
+import { useAuth } from '@/context/AuthContext';
+import { loginUser } from '@/api/auth';
+import { Colors, Rounding, Shadow, Spacing, Fonts } from '@/constants/theme';
 
 export default function LoginScreen() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
-  
+  const [showPassword, setShowPassword] = useState(false);
   const { login } = useAuth();
   const router = useRouter();
 
-  // Google Auth Request
-  const [request, response, promptAsync] = Google.useAuthRequest({
-    webClientId: process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID,
-    iosClientId: process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID, // Use the same for Expo Go
-    androidClientId: process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID,
-  });
-
-  useEffect(() => {
-    if (response?.type === 'success') {
-      const { id_token } = response.params;
-      if (id_token) {
-        handleGoogleLogin(id_token);
-      }
-    }
-  }, [response]);
-
-  const handleGoogleLogin = async (idToken: string) => {
-    setLoading(true);
-    try {
-      const data = await apiGoogleLogin(idToken) as any;
-      await login(data.user, data.token);
-      router.replace('/(tabs)' as any);
-    } catch (error: any) {
-      Alert.alert('Error de Google', error.message || 'No se pudo iniciar sesión con Google');
-    } finally {
-      setLoading(false);
-    }
-  };
-
   const handleLogin = async () => {
     if (!email || !password) {
-      Alert.alert('Error', 'Por favor completa todos los campos');
+      Alert.alert('Error', 'Por favor ingresa todos los campos');
       return;
     }
 
     setLoading(true);
     try {
-      const data = await loginUser({ email, password }) as any;
+      const data = await loginUser({ email, password });
       await login(data.user, data.token);
-      router.replace('/(tabs)' as any);
+      router.replace('/(tabs)');
     } catch (error: any) {
-      if (error.message === 'EMAIL_NOT_VERIFIED') {
-        router.push({ 
-          pathname: '/(auth)/pending-verification' as any, 
-          params: { email } 
-        });
-      } else {
-        Alert.alert('Error de inicio de sesión', error.message || 'Credenciales inválidas');
-      }
+      Alert.alert('Error', error.message || 'Credenciales inválidas');
     } finally {
       setLoading(false);
     }
@@ -77,17 +38,13 @@ export default function LoginScreen() {
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         style={{ flex: 1 }}
       >
-        <ScrollView contentContainerStyle={styles.scrollContent}>
-          {/* Back Button */}
-          <Pressable 
-            onPress={() => router.back()} 
-            style={styles.backButton}
-          >
-            <Ionicons name="arrow-back" size={24} color="#1e3a8a" />
+        <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
+          <Pressable onPress={() => router.back()} style={styles.backButton}>
+            <Ionicons name="arrow-back" size={24} color={Colors.brand.secondary} />
           </Pressable>
 
           <View style={styles.header}>
-            <Text style={styles.title}>¡Bienvenido de nuevo!</Text>
+            <Text style={styles.title}>¡Bienvenido!</Text>
             <Text style={styles.subtitle}>Te extrañamos. Ingresa tus datos para continuar.</Text>
           </View>
 
@@ -95,7 +52,7 @@ export default function LoginScreen() {
             <View style={styles.inputContainer}>
               <Text style={styles.label}>Correo electrónico</Text>
               <View style={styles.inputWrapper}>
-                <Ionicons name="mail-outline" size={20} color="#64748b" style={styles.inputIcon} />
+                <Ionicons name="mail-outline" size={20} color={Colors.brand.muted} style={styles.inputIcon} />
                 <TextInput 
                   style={styles.input}
                   placeholder="ejemplo@correo.com"
@@ -111,18 +68,25 @@ export default function LoginScreen() {
               <View style={styles.labelRow}>
                 <Text style={styles.label}>Contraseña</Text>
                 <Pressable onPress={() => router.push('/(auth)/forgot-password' as any)}>
-                  <Text style={styles.forgotText}>¿Olvidaste tu contraseña?</Text>
+                  <Text style={styles.forgotText}>¿Olvidaste tu clave?</Text>
                 </Pressable>
               </View>
               <View style={styles.inputWrapper}>
-                <Ionicons name="lock-closed-outline" size={20} color="#64748b" style={styles.inputIcon} />
+                <Ionicons name="lock-closed-outline" size={20} color={Colors.brand.muted} style={styles.inputIcon} />
                 <TextInput 
                   style={styles.input}
                   placeholder="••••••••"
-                  secureTextEntry
+                  secureTextEntry={!showPassword}
                   value={password}
                   onChangeText={setPassword}
                 />
+                <Pressable onPress={() => setShowPassword(!showPassword)}>
+                  <Ionicons 
+                    name={showPassword ? "eye-off-outline" : "eye-outline"} 
+                    size={20} 
+                    color={Colors.brand.muted} 
+                  />
+                </Pressable>
               </View>
             </View>
 
@@ -135,30 +99,35 @@ export default function LoginScreen() {
               disabled={loading}
             >
               {loading ? (
-                <ActivityIndicator color="#1e3a8a" />
+                <ActivityIndicator color={Colors.brand.secondary} />
               ) : (
                 <Text style={styles.loginButtonText}>Iniciar Sesión</Text>
               )}
             </Pressable>
 
-            {/* Google Login Button */}
+            <View style={styles.dividerContainer}>
+              <View style={styles.divider} />
+              <Text style={styles.dividerText}>O CONTINUAR CON</Text>
+              <View style={styles.divider} />
+            </View>
+
             <Pressable
               style={({ pressed }) => [
                 styles.googleButton,
                 pressed && styles.buttonPressed
               ]}
-              onPress={() => promptAsync()}
-              disabled={!request || loading}
+              onPress={() => Alert.alert('Próximamente', 'Inicio con Google disponible pronto.')}
+              disabled={loading}
             >
-              <Ionicons name="logo-google" size={20} color="#1e3a8a" style={{ marginRight: 10 }} />
-              <Text style={styles.googleButtonText}>Continuar con Google</Text>
+              <Ionicons name="logo-google" size={20} color={Colors.brand.secondary} style={styles.googleIcon} />
+              <Text style={styles.googleButtonText}>Google</Text>
             </Pressable>
           </View>
 
           <View style={styles.footer}>
-            <Text style={styles.footerText}>¿No tienes una cuenta?</Text>
+            <Text style={styles.footerText}>¿No tienes cuenta? </Text>
             <Pressable onPress={() => router.push('/(auth)/register' as any)}>
-              <Text style={styles.signUpText}> Regístrate</Text>
+              <Text style={styles.signUpText}>Crea una aquí</Text>
             </Pressable>
           </View>
         </ScrollView>
@@ -170,22 +139,23 @@ export default function LoginScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#fff',
+    backgroundColor: Colors.brand.light,
   },
   scrollContent: {
     flexGrow: 1,
-    paddingHorizontal: 24,
+    paddingHorizontal: Spacing.lg,
     paddingTop: 20,
     paddingBottom: 40,
   },
   backButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: '#f8fafc',
+    width: 44,
+    height: 44,
+    borderRadius: Rounding.large,
+    backgroundColor: Colors.brand.surface,
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: 32,
+    ...Shadow.light,
   },
   header: {
     marginBottom: 40,
@@ -193,16 +163,18 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 32,
     fontWeight: '800',
-    color: '#1e3a8a',
+    color: Colors.brand.secondary,
     marginBottom: 8,
+    fontFamily: Fonts?.display,
   },
   subtitle: {
     fontSize: 16,
-    color: '#64748b',
+    color: Colors.brand.muted,
     lineHeight: 24,
+    fontWeight: '500',
   },
   form: {
-    gap: 24,
+    gap: 20,
   },
   inputContainer: {
     gap: 8,
@@ -214,64 +186,83 @@ const styles = StyleSheet.create({
   },
   label: {
     fontSize: 14,
-    fontWeight: '600',
-    color: '#334155',
+    fontWeight: '700',
+    color: Colors.brand.dark,
+    marginLeft: 4,
   },
   forgotText: {
-    fontSize: 14,
-    color: '#ea580c',
-    fontWeight: '600',
+    fontSize: 13,
+    color: Colors.brand.secondary,
+    fontWeight: '700',
   },
   inputWrapper: {
     flexDirection: 'row',
     alignItems: 'center',
-    borderWidth: 1,
-    borderColor: '#e2e8f0',
-    borderRadius: 16,
+    borderWidth: 1.5,
+    borderColor: Colors.brand.border,
+    borderRadius: Rounding.large,
     paddingHorizontal: 16,
-    backgroundColor: '#f8fafc',
-    height: 56,
+    backgroundColor: Colors.brand.surface,
+    height: 58,
   },
   inputIcon: {
-    marginRight: 12,
+    marginRight: 10,
   },
   input: {
     flex: 1,
     fontSize: 16,
-    color: '#1e293b',
+    color: Colors.brand.dark,
+    fontWeight: '500',
   },
   loginButton: {
-    backgroundColor: '#fbbf24',
-    height: 56,
-    borderRadius: 16,
+    backgroundColor: Colors.brand.primary,
+    height: 58,
+    borderRadius: Rounding.large,
     alignItems: 'center',
     justifyContent: 'center',
-    marginTop: 12,
-    shadowColor: "#fbbf24",
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.2,
-    shadowRadius: 8,
-    elevation: 4,
+    marginTop: 10,
+    ...Shadow.medium,
   },
   loginButtonText: {
-    color: '#1e3a8a',
+    color: Colors.brand.secondary,
     fontSize: 18,
-    fontWeight: 'bold',
+    fontWeight: '800',
+  },
+  dividerContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginVertical: 10,
+    gap: 10,
+  },
+  divider: {
+    flex: 1,
+    height: 1,
+    backgroundColor: Colors.brand.border,
+  },
+  dividerText: {
+    fontSize: 11,
+    color: Colors.brand.muted,
+    fontWeight: '700',
+    letterSpacing: 1,
   },
   googleButton: {
-    backgroundColor: '#fff',
-    height: 56,
-    borderRadius: 16,
+    backgroundColor: Colors.brand.surface,
+    height: 58,
+    borderRadius: Rounding.large,
     alignItems: 'center',
     justifyContent: 'center',
-    borderWidth: 1,
-    borderColor: '#e2e8f0',
+    borderWidth: 1.5,
+    borderColor: Colors.brand.border,
     flexDirection: 'row',
+    ...Shadow.light,
+  },
+  googleIcon: {
+    marginRight: 10,
   },
   googleButtonText: {
-    color: '#1e3a8a',
+    color: Colors.brand.secondary,
     fontSize: 16,
-    fontWeight: '600',
+    fontWeight: '700',
   },
   buttonPressed: {
     opacity: 0.9,
@@ -284,12 +275,13 @@ const styles = StyleSheet.create({
     paddingTop: 40,
   },
   footerText: {
-    color: '#64748b',
-    fontSize: 16,
+    color: Colors.brand.muted,
+    fontSize: 15,
+    fontWeight: '500',
   },
   signUpText: {
-    color: '#1e3a8a',
-    fontSize: 16,
-    fontWeight: 'bold',
+    color: Colors.brand.secondary,
+    fontSize: 15,
+    fontWeight: '800',
   },
 });
