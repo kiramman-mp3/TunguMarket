@@ -21,7 +21,13 @@ class AuthController {
 
       res.status(200).json({
         message: 'Login successful',
-        user: { id: user.id, name: user.name, email: user.email, role: user.role_name },
+        user: { 
+          id: user.id, 
+          name: user.name, 
+          email: user.email, 
+          role: user.role_name,
+          birthDate: user.birth_date 
+        },
         token,
       });
     } catch (error) {
@@ -39,7 +45,13 @@ class AuthController {
 
       res.status(200).json({
         message: 'Google login successful',
-        user: { id: user.id, name: user.name, email: user.email, role: user.role_name },
+        user: { 
+          id: user.id, 
+          name: user.name, 
+          email: user.email, 
+          role: user.role_name,
+          birthDate: user.birth_date
+        },
         token,
       });
     } catch (error) {

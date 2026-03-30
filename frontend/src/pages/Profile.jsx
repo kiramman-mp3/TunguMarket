@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { faHistory, faShieldAlt, faLaptop, faMobileAlt, faTabletAlt, faSignOutAlt, faTimesCircle, faCheckCircle, faClock } from '@fortawesome/free-solid-svg-icons';
+import { faHistory, faShieldAlt, faLaptop, faMobileAlt, faTabletAlt, faSignOutAlt, faTimesCircle, faCheckCircle, faClock, faUserCircle } from '@fortawesome/free-solid-svg-icons';
 import { useAuth } from '../context/AuthContext';
 import { getSessions, getLogs, deleteSession } from '../api/user';
 
@@ -50,27 +50,54 @@ const Profile = () => {
           animate={{ opacity: 1, x: 0 }}
           className="glass-card p-8 h-fit lg:col-span-1"
         >
-          <div className="text-center">
+          <div className="text-center mb-10 pb-10 border-b border-gray-100">
             <div className="w-24 h-24 bg-brand-primary/20 rounded-2xl mx-auto flex items-center justify-center mb-6">
               <span className="text-4xl font-bold text-brand-secondary">
                 {user?.name?.[0].toUpperCase()}
               </span>
             </div>
             <h2 className="text-2xl font-bold text-brand-secondary">{user?.name}</h2>
-            <p className="text-gray-500 font-medium mb-4">{user?.email}</p>
-            <div className="inline-flex items-center px-4 py-1.5 rounded-full bg-brand-primary/10 border border-brand-primary/30 text-brand-secondary text-sm font-bold capitalize">
-              {user?.role}
+            <div className="inline-flex mt-2 items-center px-4 py-1.5 rounded-full bg-brand-primary/10 border border-brand-primary/30 text-brand-secondary text-sm font-bold capitalize">
+              {user?.role === 'admin' ? '🛡️ Administrador' : '👤 Cliente'}
             </div>
           </div>
 
-          <div className="mt-10 space-y-6 pt-10 border-t border-gray-100">
+          <div className="space-y-6">
+            <h3 className="text-xs font-bold uppercase tracking-widest text-gray-400 mb-6">Información General</h3>
+            
             <div className="flex items-center gap-4 text-gray-600">
-              <div className="w-10 h-10 rounded-xl bg-gray-50 flex items-center justify-center">
+              <div className="w-10 h-10 rounded-xl bg-gray-50 flex items-center justify-center text-brand-secondary/60">
+                <FontAwesomeIcon icon={faUserCircle} />
+              </div>
+              <div className="flex-1 overflow-hidden">
+                <p className="text-[10px] font-bold uppercase tracking-wider text-gray-400">Correo Electrónico</p>
+                <p className="font-semibold text-sm text-brand-secondary truncate">{user?.email}</p>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-4 text-gray-600">
+              <div className="w-10 h-10 rounded-xl bg-gray-50 flex items-center justify-center text-brand-secondary/60">
                 <FontAwesomeIcon icon={faShieldAlt} />
               </div>
-              <div>
-                <p className="text-xs font-bold uppercase tracking-wider text-gray-400">Estado de cuenta</p>
-                <p className="font-semibold text-green-600">Activa & Verificada</p>
+              <div className="flex-1 overflow-hidden">
+                <p className="text-[10px] font-bold uppercase tracking-wider text-gray-400">Fecha de Nacimiento</p>
+                <p className="font-semibold text-sm text-brand-secondary">
+                  {user?.birthDate ? new Date(user.birthDate).toLocaleDateString('es-ES', { 
+                    day: 'numeric', 
+                    month: 'long', 
+                    year: 'numeric' 
+                  }) : 'No disponible'}
+                </p>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-4 text-gray-600">
+              <div className="w-10 h-10 rounded-xl bg-green-50 flex items-center justify-center text-green-600">
+                <FontAwesomeIcon icon={faCheckCircle} />
+              </div>
+              <div className="flex-1 overflow-hidden">
+                <p className="text-[10px] font-bold uppercase tracking-wider text-gray-400">Estado de cuenta</p>
+                <p className="font-semibold text-sm text-green-600">Activa & Verificada</p>
               </div>
             </div>
           </div>

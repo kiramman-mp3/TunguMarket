@@ -3,6 +3,7 @@ import pool from '../config/db.js';
 import { authMiddleware, isAdmin } from '../middlewares/authMiddleware.js';
 import SessionModel from '../models/sessionModel.js';
 import UserModel from '../models/userModel.js';
+import SSEService from '../services/sseService.js';
 
 const router = express.Router();
 
@@ -10,11 +11,16 @@ const router = express.Router();
 
 // Get active sessions for the current user
 router.get('/sessions', authMiddleware, async (req, res) => {
+  console.log('[DEBUG /sessions] Entering handler. User ID:', req.user.id);
+  console.log('[DEBUG /sessions] SessionModel type:', typeof SessionModel);
+  console.log('[DEBUG /sessions] findActiveSessionsByUser type:', typeof SessionModel?.findActiveSessionsByUser);
+  
   try {
-    const sessions = await SessionModel.findByUser(req.user.id);
+    const sessions = await SessionModel.findActiveSessionsByUser(req.user.id);
     res.json(sessions);
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    console.error('[DATABASE ERROR /sessions]:', error);
+    res.status(500).json({ error: 'Internal server error fetching sessions' });
   }
 });
 
@@ -75,9 +81,10 @@ router.patch('/admin/users/:id/status', authMiddleware, isAdmin, async (req, res
 
     const updatedUser = await UserModel.banUser(id, isBanned);
     
-    // If banning, close all sessions
+    // If banning, close all sessions and notify in real-time
     if (isBanned) {
       await SessionModel.deleteByUser(id);
+      SSEService.sendToUser(id, { type: 'ACCOUNT_BANNED' });
     }
 
     res.json({ message: `User ${isBanned ? 'banned' : 'unbanned'} successfully`, user: updatedUser });
