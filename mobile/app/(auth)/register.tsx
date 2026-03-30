@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, TextInput, Pressable, KeyboardAvoidingView, Platform, SafeAreaView, ActivityIndicator, Alert, ScrollView } from 'react-native';
+import { View, Text, StyleSheet, TextInput, Pressable, KeyboardAvoidingView, Platform, SafeAreaView, ActivityIndicator, Alert, ScrollView, Modal, TouchableOpacity } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
+import DateTimePicker from '@react-native-community/datetimepicker';
 import { registerUser } from '@/api/auth';
 import { Colors, Rounding, Shadow, Spacing } from '@/constants/theme';
 
@@ -9,14 +10,46 @@ export default function RegisterScreen() {
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [birthDate, setBirthDate] = useState('');
+  const [date, setDate] = useState(new Date());
+  const [showDatePicker, setShowDatePicker] = useState(false);
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [acceptTerms, setAcceptTerms] = useState(false);
   const router = useRouter();
 
+  const onDateChange = (event: any, selectedDate?: Date) => {
+    // Only auto-close on Android. iOS has the manual 'Aceptar' button in the modal.
+    if (Platform.OS === 'android') {
+      setShowDatePicker(false);
+    }
+    
+    if (selectedDate) {
+      setDate(selectedDate);
+      // Format to YYYY-MM-DD
+      const year = selectedDate.getFullYear();
+      const month = String(selectedDate.getMonth() + 1).padStart(2, '0');
+      const day = String(selectedDate.getDate()).padStart(2, '0');
+      setBirthDate(`${year}-${month}-${day}`);
+    }
+  };
+
   const handleRegister = async () => {
-    if (!name || !email || !password) {
+    if (!name || !email || !password || !birthDate) {
       Alert.alert('Error', 'Por favor llena todos los campos');
+      return;
+    }
+
+    // Age validation (18+)
+    const today = new Date();
+    let age = today.getFullYear() - date.getFullYear();
+    const m = today.getMonth() - date.getMonth();
+    if (m < 0 || (m === 0 && today.getDate() < date.getDate())) {
+      age--;
+    }
+
+    if (age < 18) {
+      Alert.alert('Restricción', 'Debes ser mayor de 18 años para registrarte en TunguMarket.');
       return;
     }
 
@@ -32,7 +65,7 @@ export default function RegisterScreen() {
 
     setLoading(true);
     try {
-      await registerUser({ name, email, password });
+      await registerUser({ name, email, password, birthDate });
       Alert.alert(
         '¡Registro exitoso!',
         'Por favor verifica tu correo para activar tu cuenta.',
@@ -62,6 +95,7 @@ export default function RegisterScreen() {
           </View>
 
           <View style={styles.form}>
+            {/* 1. NAME */}
             <View style={styles.inputContainer}>
               <Text style={styles.label}>Nombre completo</Text>
               <View style={styles.inputWrapper}>
@@ -76,6 +110,7 @@ export default function RegisterScreen() {
               </View>
             </View>
 
+            {/* 2. EMAIL */}
             <View style={styles.inputContainer}>
               <Text style={styles.label}>Correo electrónico</Text>
               <View style={styles.inputWrapper}>
@@ -91,6 +126,61 @@ export default function RegisterScreen() {
               </View>
             </View>
 
+            {/* 3. BIRTH DATE (Picker) */}
+            <View style={styles.inputContainer}>
+              <Text style={styles.label}>Fecha de nacimiento</Text>
+              <Pressable 
+                onPress={() => setShowDatePicker(true)}
+                style={[styles.inputWrapper, showDatePicker && { borderColor: Colors.brand.secondary, borderWidth: 2 }]}
+              >
+                <Ionicons name="calendar-outline" size={20} color={showDatePicker ? Colors.brand.secondary : Colors.brand.muted} style={styles.inputIcon} />
+                <Text style={[styles.input, !birthDate && { color: '#9ca3af' }]}>
+                  {birthDate || 'YYYY-MM-DD (ej: 1990-01-01)'}
+                </Text>
+              </Pressable>
+              
+              {/* Android Native Picker */}
+              {showDatePicker && Platform.OS === 'android' && (
+                <DateTimePicker
+                  value={date}
+                  mode="date"
+                  display="default"
+                  maximumDate={new Date()}
+                  onChange={onDateChange}
+                />
+              )}
+
+              {/* iOS Styled Modal Picker */}
+              {Platform.OS === 'ios' && (
+                <Modal visible={showDatePicker} transparent animationType="slide">
+                  <View style={styles.modalOverlay}>
+                    <View style={styles.pickerWrapper}>
+                      <View style={styles.pickerHeader}>
+                        <Text style={styles.pickerTitle}>Fecha de Nacimiento</Text>
+                        <TouchableOpacity 
+                          onPress={() => setShowDatePicker(false)} 
+                          style={styles.doneButton}
+                        >
+                          <Text style={styles.doneButtonText}>Aceptar</Text>
+                        </TouchableOpacity>
+                      </View>
+                      <DateTimePicker
+                        value={date}
+                        mode="date"
+                        display="spinner"
+                        maximumDate={new Date()}
+                        onChange={onDateChange}
+                        textColor="white"
+                        accentColor={Colors.brand.primary}
+                        style={{ height: 250 }}
+                      />
+                    </View>
+                  </View>
+                </Modal>
+              )}
+            </View>
+
+            {/* 4. PASSWORD */}
             <View style={styles.inputContainer}>
               <Text style={styles.label}>Contraseña</Text>
               <View style={styles.inputWrapper}>
@@ -337,5 +427,44 @@ const styles = StyleSheet.create({
     color: Colors.brand.secondary,
     fontSize: 15,
     fontWeight: '800',
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    justifyContent: 'flex-end',
+  },
+  pickerWrapper: {
+    backgroundColor: Colors.brand.secondary,
+    borderTopLeftRadius: 32,
+    borderTopRightRadius: 32,
+    paddingBottom: 40,
+    alignItems: 'center',
+    ...Shadow.medium,
+  },
+  pickerHeader: {
+    width: '100%',
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: 24,
+    paddingVertical: 20,
+    borderBottomWidth: 1,
+    borderBottomColor: 'rgba(255,255,255,0.1)',
+  },
+  pickerTitle: {
+    color: 'white',
+    fontSize: 18,
+    fontWeight: '800',
+  },
+  doneButton: {
+    backgroundColor: Colors.brand.primary,
+    paddingHorizontal: 20,
+    paddingVertical: 10,
+    borderRadius: 12,
+  },
+  doneButtonText: {
+    color: Colors.brand.secondary,
+    fontWeight: '900',
+    fontSize: 15,
   },
 });

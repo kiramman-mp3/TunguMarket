@@ -1,5 +1,8 @@
 import React, { createContext, useState, useContext, useEffect } from 'react';
 import * as SecureStore from 'expo-secure-store';
+import EventSource from 'react-native-sse';
+import Constants from 'expo-constants';
+import BanModal from '../components/BanModal';
 
 interface AuthContextType {
   user: any;
@@ -13,6 +16,7 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [user, setUser] = useState<any>(null);
   const [loading, setLoading] = useState(true);
+  const [showBanModal, setShowBanModal] = useState(false);
 
   useEffect(() => {
     const loadStorageData = async () => {
@@ -33,7 +37,55 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     loadStorageData();
   }, []);
 
+  // Real-time notifications connection (SSE) for Mobile
+  useEffect(() => {
+    let es: EventSource | null = null;
+
+    const connectSSE = async () => {
+      const token = await SecureStore.getItemAsync('tungu_token');
+      if (user && token) {
+        const debuggerHost = Constants.expoConfig?.hostUri;
+        const ip = debuggerHost ? debuggerHost.split(':')[0] : 'localhost';
+        const url = `http://${ip}:5000/api/notifications/stream?token=${token}`;
+
+        console.log('[SSE Mobile] Connecting to:', url);
+        es = new EventSource(url);
+
+        es.addEventListener('message', (event: any) => {
+          if (event.data) {
+            try {
+              const data = JSON.parse(event.data);
+              if (data.type === 'ACCOUNT_BANNED') {
+                setShowBanModal(true);
+              }
+            } catch (err) {
+              console.error('[SSE Mobile] Error parsing message:', err);
+            }
+          }
+        });
+
+        es.addEventListener('error', (event: any) => {
+          console.error('[SSE Mobile] Connection error:', event.message);
+        });
+      }
+    };
+
+    connectSSE();
+
+    return () => {
+      if (es) {
+        console.log('[SSE Mobile] Closing stream...');
+        es.close();
+      }
+    };
+  }, [user]);
+
   const login = async (userData: any, token: string) => {
+    // RESTRICTION: Admins cannot login on Mobile
+    if (userData.role_name === 'admin') {
+      throw new Error('El acceso administrativo solo está disponible en la versión web.');
+    }
+
     setUser(userData);
     await SecureStore.setItemAsync('tungu_user', JSON.stringify(userData));
     await SecureStore.setItemAsync('tungu_token', token);
@@ -41,6 +93,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const logout = async () => {
     setUser(null);
+    setShowBanModal(false);
     await SecureStore.deleteItemAsync('tungu_user');
     await SecureStore.deleteItemAsync('tungu_token');
   };
@@ -48,6 +101,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   return (
     <AuthContext.Provider value={{ user, loading, login, logout }}>
       {children}
+      <BanModal isOpen={showBanModal} onClose={logout} />
     </AuthContext.Provider>
   );
 };
