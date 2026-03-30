@@ -134,11 +134,12 @@ class DockerManager {
         console.log('¿Qué deseas hacer?');
         console.log('1. 🚀 Reinicio TOTAL (Limpiar todo, rebuild e iniciar)');
         console.log('2. ⚡ Inicio RÁPIDO (Solo iniciar existentes)');
-        console.log('3. ❌ Salir');
+        console.log('3. 🔄 RECARGAR CONTENEDORES (Rebuild sin borrar datos)');
+        console.log('4. ❌ Salir');
 
-        const option = await this.ask('\nSelecciona una opción (1-3): ');
+        const option = await this.ask('\nSelecciona una opción (1-4): ');
 
-        if (option === '3' || !['1', '2'].includes(option)) {
+        if (option === '4' || !['1', '2', '3'].includes(option)) {
             console.log('Saliendo...');
             this.rl.close();
             return;
@@ -154,8 +155,10 @@ class DockerManager {
                 if (loadTables === '1') {
                     await this.initDB();
                 }
-            } else {
+            } else if (option === '2') {
                 await this.launch(false);
+            } else if (option === '3') {
+                await this.launch(true);
             }
 
             this.openLogWindows();
