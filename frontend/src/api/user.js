@@ -8,22 +8,33 @@ const getHeaders = () => {
   };
 };
 
+const handleResponse = async (response) => {
+  const data = await response.json();
+  
+  if (!response.ok) {
+    // Global notification for specific errors
+    if (data.error === 'ACCOUNT_BANNED') {
+      window.dispatchEvent(new CustomEvent('tungu-auth-error', { detail: 'ACCOUNT_BANNED' }));
+    }
+    
+    throw new Error(data.error || 'Request failed');
+  }
+  
+  return data;
+};
+
 export const getSessions = async () => {
   const response = await fetch(`${API_URL}/sessions`, {
     headers: getHeaders(),
   });
-  const data = await response.json();
-  if (!response.ok) throw new Error(data.error || 'Failed to fetch sessions');
-  return data;
+  return handleResponse(response);
 };
 
 export const getLogs = async () => {
   const response = await fetch(`${API_URL}/logs`, {
     headers: getHeaders(),
   });
-  const data = await response.json();
-  if (!response.ok) throw new Error(data.error || 'Failed to fetch logs');
-  return data;
+  return handleResponse(response);
 };
 
 export const deleteSession = async (token) => {
@@ -31,18 +42,14 @@ export const deleteSession = async (token) => {
     method: 'DELETE',
     headers: getHeaders(),
   });
-  const data = await response.json();
-  if (!response.ok) throw new Error(data.error || 'Failed to delete session');
-  return data;
+  return handleResponse(response);
 };
 
 export const getAdminUsers = async () => {
   const response = await fetch(`${API_URL}/admin/users`, {
     headers: getHeaders(),
   });
-  const data = await response.json();
-  if (!response.ok) throw new Error(data.error || 'Failed to fetch users');
-  return data;
+  return handleResponse(response);
 };
 
 export const updateUserStatus = async (id, isBanned) => {
@@ -51,7 +58,5 @@ export const updateUserStatus = async (id, isBanned) => {
     headers: getHeaders(),
     body: JSON.stringify({ isBanned }),
   });
-  const data = await response.json();
-  if (!response.ok) throw new Error(data.error || 'Failed to update user status');
-  return data;
+  return handleResponse(response);
 };

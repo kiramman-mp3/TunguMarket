@@ -1,14 +1,25 @@
 const API_URL = 'http://localhost:5000/api/auth';
 
+const handleResponse = async (response) => {
+  const data = await response.json();
+  
+  if (!response.ok) {
+    if (data.error === 'ACCOUNT_BANNED') {
+      window.dispatchEvent(new CustomEvent('tungu-auth-error', { detail: 'ACCOUNT_BANNED' }));
+    }
+    throw new Error(data.error || 'Request failed');
+  }
+  
+  return data;
+};
+
 export const registerUser = async (userData) => {
   const response = await fetch(`${API_URL}/register`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(userData),
   });
-  const data = await response.json();
-  if (!response.ok) throw new Error(data.error || 'Failed to register');
-  return data;
+  return handleResponse(response);
 };
 
 export const loginUser = async (credentials) => {
@@ -17,9 +28,7 @@ export const loginUser = async (credentials) => {
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(credentials),
   });
-  const data = await response.json();
-  if (!response.ok) throw new Error(data.error || 'Failed to login');
-  return data;
+  return handleResponse(response);
 };
 
 export const googleLogin = async (idToken) => {
@@ -28,9 +37,7 @@ export const googleLogin = async (idToken) => {
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ idToken }),
   });
-  const data = await response.json();
-  if (!response.ok) throw new Error(data.error || 'Failed to login with Google');
-  return data;
+  return handleResponse(response);
 };
 
 export const logoutUser = async (token) => {
@@ -44,17 +51,13 @@ export const logoutUser = async (token) => {
   return response.ok;
 };
 
-// --- New functions for Module 1 ---
-
 export const verifyEmail = async (email, token) => {
   const response = await fetch(`${API_URL}/verify-email`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ email, token }),
   });
-  const data = await response.json();
-  if (!response.ok) throw new Error(data.error || 'Failed to verify email');
-  return data;
+  return handleResponse(response);
 };
 
 export const resendVerification = async (email) => {
@@ -63,9 +66,7 @@ export const resendVerification = async (email) => {
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ email }),
   });
-  const data = await response.json();
-  if (!response.ok) throw new Error(data.error || 'Failed to resend verification');
-  return data;
+  return handleResponse(response);
 };
 
 export const forgotPassword = async (email) => {
@@ -74,9 +75,7 @@ export const forgotPassword = async (email) => {
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ email }),
   });
-  const data = await response.json();
-  if (!response.ok) throw new Error(data.error || 'Failed to request password reset');
-  return data;
+  return handleResponse(response);
 };
 
 export const validateResetToken = async (email, token) => {
@@ -85,9 +84,7 @@ export const validateResetToken = async (email, token) => {
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ email, token }),
   });
-  const data = await response.json();
-  if (!response.ok) throw new Error(data.error || 'Failed to validate code');
-  return data;
+  return handleResponse(response);
 };
 
 export const resetPassword = async (email, token, password) => {
@@ -96,7 +93,5 @@ export const resetPassword = async (email, token, password) => {
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ email, token, password }),
   });
-  const data = await response.json();
-  if (!response.ok) throw new Error(data.error || 'Failed to reset password');
-  return data;
+  return handleResponse(response);
 };
