@@ -1,4 +1,4 @@
-const API_URL = 'http://localhost:5000/api/auth';
+const API_URL = `http://${window.location.hostname}:5000/api/auth`;
 
 const handleResponse = async (response) => {
   const data = await response.json();
