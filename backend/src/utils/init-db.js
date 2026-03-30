@@ -62,6 +62,7 @@ const initDb = async () => {
         name VARCHAR(100) NOT NULL,
         email VARCHAR(150) UNIQUE NOT NULL,
         password_hash VARCHAR(255), -- Nullable for Google Auth users
+        birth_date DATE, -- Required for age validation (>= 18)
         role_id INTEGER REFERENCES roles(id),
         is_verified BOOLEAN DEFAULT FALSE,
         is_banned BOOLEAN DEFAULT FALSE,
@@ -85,13 +86,14 @@ const initDb = async () => {
       );
     `);
 
-    // Login Logs Table
+    // Login Logs Table (History)
     await client.query(`
       CREATE TABLE IF NOT EXISTS login_logs (
         id SERIAL PRIMARY KEY,
         user_id UUID REFERENCES users(id) ON DELETE SET NULL,
         email VARCHAR(150),
         ip_address VARCHAR(45),
+        device_info TEXT,
         status VARCHAR(20), -- 'success', 'failure'
         message TEXT,
         timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP

@@ -7,6 +7,8 @@ import Register from './pages/Register';
 import PendingVerification from './pages/PendingVerification';
 import ForgotPassword from './pages/ForgotPassword';
 import ResetPassword from './pages/ResetPassword';
+import Profile from './pages/Profile';
+import AdminPanel from './pages/AdminPanel';
 
 import { AuthProvider } from './context/AuthContext';
 
@@ -22,6 +24,8 @@ function App() {
             <Route path="/pending-verification" element={<PendingVerification />} />
             <Route path="/forgot-password" element={<ForgotPassword />} />
             <Route path="/reset-password" element={<ResetPassword />} />
+            <Route path="/profile" element={<Profile />} />
+            <Route path="/admin" element={<AdminPanel />} />
           </Routes>
         </Layout>
       </Router>
