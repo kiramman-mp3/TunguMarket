@@ -1,10 +1,17 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, TextInput, Pressable, KeyboardAvoidingView, Platform, SafeAreaView, ActivityIndicator, Alert, ScrollView } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
+import * as WebBrowser from 'expo-web-browser';
+import * as Google from 'expo-auth-session/providers/google';
+import { makeRedirectUri } from 'expo-auth-session';
+import { GoogleAuthProvider, signInWithCredential } from 'firebase/auth';
+import { auth as firebaseAuth } from '@/config/firebase';
 import { useAuth } from '@/context/AuthContext';
-import { loginUser } from '@/api/auth';
+import { loginUser, googleLogin as apiGoogleLogin } from '@/api/auth';
 import { Colors, Rounding, Shadow, Spacing, Fonts } from '@/constants/theme';
+
+WebBrowser.maybeCompleteAuthSession();
 
 export default function LoginScreen() {
   const [email, setEmail] = useState('');
@@ -13,6 +20,49 @@ export default function LoginScreen() {
   const [showPassword, setShowPassword] = useState(false);
   const { login } = useAuth();
   const router = useRouter();
+
+  // --- Google Auth Configuration ---
+  const [request, response, promptAsync] = Google.useAuthRequest({
+    androidClientId: process.env.EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID,
+    iosClientId: process.env.EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID,
+    webClientId: process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID,
+    redirectUri: makeRedirectUri(),
+    responseType: 'id_token',
+  });
+
+  useEffect(() => {
+    if (response?.type === 'success') {
+      const { id_token } = response.params;
+      handleGoogleAuth(id_token);
+    } else if (response?.type === 'error') {
+      Alert.alert('Error', 'No se pudo iniciar sesión con Google');
+    }
+  }, [response]);
+
+  const handleGoogleAuth = async (idToken: string) => {
+    setLoading(true);
+    try {
+      // 1. Exchange Google ID Token for Firebase Credential
+      const credential = GoogleAuthProvider.credential(idToken);
+      
+      // 2. Sign in to Firebase on Mobile to get a Firebase ID Token for our Backend
+      const result = await signInWithCredential(firebaseAuth, credential);
+      const firebaseIdToken = await result.user.getIdToken();
+
+      // 3. Authenticate with our Backend using the Firebase Token
+      const data = await apiGoogleLogin(firebaseIdToken);
+      
+      // 4. Sync session with AuthContext
+      await login(data.user, data.token);
+      
+      router.replace('/(tabs)');
+    } catch (error: any) {
+      console.error('[GoogleLogin] Error:', error);
+      Alert.alert('Error', error.message || 'Error al conectar con Google');
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const handleLogin = async () => {
     if (!email || !password) {
@@ -114,13 +164,19 @@ export default function LoginScreen() {
             <Pressable
               style={({ pressed }) => [
                 styles.googleButton,
-                pressed && styles.buttonPressed
+                (pressed || loading) && styles.buttonPressed
               ]}
-              onPress={() => Alert.alert('Próximamente', 'Inicio con Google disponible pronto.')}
-              disabled={loading}
+              onPress={() => promptAsync()}
+              disabled={!request || loading}
             >
-              <Ionicons name="logo-google" size={20} color={Colors.brand.secondary} style={styles.googleIcon} />
-              <Text style={styles.googleButtonText}>Google</Text>
+              {loading && response?.type === 'success' ? (
+                <ActivityIndicator color={Colors.brand.secondary} />
+              ) : (
+                <>
+                  <Ionicons name="logo-google" size={20} color={Colors.brand.secondary} style={styles.googleIcon} />
+                  <Text style={styles.googleButtonText}>Google</Text>
+                </>
+              )}
             </Pressable>
           </View>
 

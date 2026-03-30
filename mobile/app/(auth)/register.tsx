@@ -1,10 +1,18 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, TextInput, Pressable, KeyboardAvoidingView, Platform, SafeAreaView, ActivityIndicator, Alert, ScrollView, Modal, TouchableOpacity } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
+import * as WebBrowser from 'expo-web-browser';
+import * as Google from 'expo-auth-session/providers/google';
+import { makeRedirectUri } from 'expo-auth-session';
+import { GoogleAuthProvider, signInWithCredential } from 'firebase/auth';
+import { auth as firebaseAuth } from '@/config/firebase';
+import { useAuth } from '@/context/AuthContext';
 import DateTimePicker from '@react-native-community/datetimepicker';
-import { registerUser } from '@/api/auth';
+import { registerUser, googleLogin as apiGoogleLogin } from '@/api/auth';
 import { Colors, Rounding, Shadow, Spacing } from '@/constants/theme';
+
+WebBrowser.maybeCompleteAuthSession();
 
 export default function RegisterScreen() {
   const [name, setName] = useState('');
@@ -16,7 +24,51 @@ export default function RegisterScreen() {
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [acceptTerms, setAcceptTerms] = useState(false);
+  const { login } = useAuth();
   const router = useRouter();
+
+  // --- Google Auth Configuration ---
+  const [request, response, promptAsync] = Google.useAuthRequest({
+    androidClientId: process.env.EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID,
+    iosClientId: process.env.EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID,
+    webClientId: process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID,
+    redirectUri: makeRedirectUri(),
+    responseType: 'id_token',
+  });
+
+  useEffect(() => {
+    if (response?.type === 'success') {
+      const { id_token } = response.params;
+      handleGoogleAuth(id_token);
+    } else if (response?.type === 'error') {
+      Alert.alert('Error', 'No se pudo registrar con Google');
+    }
+  }, [response]);
+
+  const handleGoogleAuth = async (idToken: string) => {
+    setLoading(true);
+    try {
+      // 1. Exchange Google ID Token for Firebase Credential
+      const credential = GoogleAuthProvider.credential(idToken);
+      
+      // 2. Sign in to Firebase on Mobile to get a Firebase ID Token for our Backend
+      const result = await signInWithCredential(firebaseAuth, credential);
+      const firebaseIdToken = await result.user.getIdToken();
+
+      // 3. Authenticate with our Backend using the Firebase Token
+      const data = await apiGoogleLogin(firebaseIdToken);
+      
+      // 4. Sync session with AuthContext
+      await login(data.user, data.token);
+      
+      router.replace('/(tabs)');
+    } catch (error: any) {
+      console.error('[GoogleRegister] Error:', error);
+      Alert.alert('Error', error.message || 'Error al conectar con Google');
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const onDateChange = (event: any, selectedDate?: Date) => {
     // Only auto-close on Android. iOS has the manual 'Aceptar' button in the modal.
@@ -217,13 +269,13 @@ export default function RegisterScreen() {
             <Pressable
               style={({ pressed }) => [
                 styles.actionButton,
-                pressed && styles.buttonPressed,
+                (pressed || loading) && styles.buttonPressed,
                 loading && styles.buttonDisabled
               ]}
               onPress={handleRegister}
               disabled={loading}
             >
-              {loading ? (
+              {loading && !response ? (
                 <ActivityIndicator color={Colors.brand.secondary} />
               ) : (
                 <Text style={styles.actionButtonText}>Crear cuenta</Text>
@@ -239,13 +291,19 @@ export default function RegisterScreen() {
             <Pressable
               style={({ pressed }) => [
                 styles.googleButton,
-                pressed && styles.buttonPressed
+                (pressed || loading) && styles.buttonPressed
               ]}
-              onPress={() => Alert.alert('Próximamente', 'Registro con Google disponible pronto.')}
-              disabled={loading}
+              onPress={() => promptAsync()}
+              disabled={!request || loading}
             >
-              <Ionicons name="logo-google" size={20} color={Colors.brand.secondary} />
-              <Text style={styles.googleButtonText}>Google</Text>
+              {loading && response?.type === 'success' ? (
+                <ActivityIndicator color={Colors.brand.secondary} />
+              ) : (
+                <>
+                  <Ionicons name="logo-google" size={20} color={Colors.brand.secondary} />
+                  <Text style={styles.googleButtonText}>Google</Text>
+                </>
+              )}
             </Pressable>
           </View>
 
