@@ -31,14 +31,7 @@ export const loginUser = async (credentials) => {
   return handleResponse(response);
 };
 
-export const googleLogin = async (idToken) => {
-  const response = await fetch(`${API_URL}/google-login`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ idToken }),
-  });
-  return handleResponse(response);
-};
+
 
 export const logoutUser = async (token) => {
   const response = await fetch(`${API_URL}/logout`, {

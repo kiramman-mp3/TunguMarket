@@ -7,7 +7,6 @@ const router = express.Router();
 // Public routes
 router.post('/register', AuthController.register);
 router.post('/login', AuthController.login);
-router.post('/google-login', AuthController.googleLogin);
 router.post('/verify-email', AuthController.verifyEmail);
 router.post('/resend-verification', AuthController.resendVerification);
 router.post('/forgot-password', AuthController.forgotPassword);

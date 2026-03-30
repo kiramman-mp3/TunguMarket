@@ -2,16 +2,9 @@ import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, TextInput, Pressable, KeyboardAvoidingView, Platform, SafeAreaView, ActivityIndicator, Alert, ScrollView } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
-import * as WebBrowser from 'expo-web-browser';
-import * as Google from 'expo-auth-session/providers/google';
-import { makeRedirectUri } from 'expo-auth-session';
-import { GoogleAuthProvider, signInWithCredential } from 'firebase/auth';
-import { auth as firebaseAuth } from '@/config/firebase';
 import { useAuth } from '@/context/AuthContext';
-import { loginUser, googleLogin as apiGoogleLogin } from '@/api/auth';
+import { loginUser } from '@/api/auth';
 import { Colors, Rounding, Shadow, Spacing, Fonts } from '@/constants/theme';
-
-WebBrowser.maybeCompleteAuthSession();
 
 export default function LoginScreen() {
   const [email, setEmail] = useState('');
@@ -20,49 +13,6 @@ export default function LoginScreen() {
   const [showPassword, setShowPassword] = useState(false);
   const { login } = useAuth();
   const router = useRouter();
-
-  // --- Google Auth Configuration ---
-  const [request, response, promptAsync] = Google.useAuthRequest({
-    androidClientId: process.env.EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID,
-    iosClientId: process.env.EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID,
-    webClientId: process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID,
-    redirectUri: makeRedirectUri(),
-    responseType: 'id_token',
-  });
-
-  useEffect(() => {
-    if (response?.type === 'success') {
-      const { id_token } = response.params;
-      handleGoogleAuth(id_token);
-    } else if (response?.type === 'error') {
-      Alert.alert('Error', 'No se pudo iniciar sesión con Google');
-    }
-  }, [response]);
-
-  const handleGoogleAuth = async (idToken: string) => {
-    setLoading(true);
-    try {
-      // 1. Exchange Google ID Token for Firebase Credential
-      const credential = GoogleAuthProvider.credential(idToken);
-      
-      // 2. Sign in to Firebase on Mobile to get a Firebase ID Token for our Backend
-      const result = await signInWithCredential(firebaseAuth, credential);
-      const firebaseIdToken = await result.user.getIdToken();
-
-      // 3. Authenticate with our Backend using the Firebase Token
-      const data = await apiGoogleLogin(firebaseIdToken);
-      
-      // 4. Sync session with AuthContext
-      await login(data.user, data.token);
-      
-      router.replace('/(tabs)');
-    } catch (error: any) {
-      console.error('[GoogleLogin] Error:', error);
-      Alert.alert('Error', error.message || 'Error al conectar con Google');
-    } finally {
-      setLoading(false);
-    }
-  };
 
   const handleLogin = async () => {
     if (!email || !password) {
@@ -152,30 +102,6 @@ export default function LoginScreen() {
                 <ActivityIndicator color={Colors.brand.secondary} />
               ) : (
                 <Text style={styles.loginButtonText}>Iniciar Sesión</Text>
-              )}
-            </Pressable>
-
-            <View style={styles.dividerContainer}>
-              <View style={styles.divider} />
-              <Text style={styles.dividerText}>O CONTINUAR CON</Text>
-              <View style={styles.divider} />
-            </View>
-
-            <Pressable
-              style={({ pressed }) => [
-                styles.googleButton,
-                (pressed || loading) && styles.buttonPressed
-              ]}
-              onPress={() => promptAsync()}
-              disabled={!request || loading}
-            >
-              {loading && response?.type === 'success' ? (
-                <ActivityIndicator color={Colors.brand.secondary} />
-              ) : (
-                <>
-                  <Ionicons name="logo-google" size={20} color={Colors.brand.secondary} style={styles.googleIcon} />
-                  <Text style={styles.googleButtonText}>Google</Text>
-                </>
               )}
             </Pressable>
           </View>
@@ -283,42 +209,6 @@ const styles = StyleSheet.create({
     color: Colors.brand.secondary,
     fontSize: 18,
     fontWeight: '800',
-  },
-  dividerContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginVertical: 10,
-    gap: 10,
-  },
-  divider: {
-    flex: 1,
-    height: 1,
-    backgroundColor: Colors.brand.border,
-  },
-  dividerText: {
-    fontSize: 11,
-    color: Colors.brand.muted,
-    fontWeight: '700',
-    letterSpacing: 1,
-  },
-  googleButton: {
-    backgroundColor: Colors.brand.surface,
-    height: 58,
-    borderRadius: Rounding.large,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderWidth: 1.5,
-    borderColor: Colors.brand.border,
-    flexDirection: 'row',
-    ...Shadow.light,
-  },
-  googleIcon: {
-    marginRight: 10,
-  },
-  googleButtonText: {
-    color: Colors.brand.secondary,
-    fontSize: 16,
-    fontWeight: '700',
   },
   buttonPressed: {
     opacity: 0.9,

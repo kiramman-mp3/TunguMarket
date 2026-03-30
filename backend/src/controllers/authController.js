@@ -35,30 +35,6 @@ class AuthController {
     }
   }
 
-  static async googleLogin(req, res) {
-    try {
-      const { idToken } = req.body;
-      const ipAddress = req.ip;
-      const deviceInfo = req.headers['user-agent'];
-
-      const { user, token } = await AuthService.googleLogin({ idToken, ipAddress, deviceInfo });
-
-      res.status(200).json({
-        message: 'Google login successful',
-        user: { 
-          id: user.id, 
-          name: user.name, 
-          email: user.email, 
-          role: user.role_name,
-          birthDate: user.birth_date
-        },
-        token,
-      });
-    } catch (error) {
-      res.status(401).json({ error: error.message });
-    }
-  }
-
   static async logout(req, res) {
     try {
       const token = req.headers.authorization?.split(' ')[1];

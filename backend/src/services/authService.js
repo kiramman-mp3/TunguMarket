@@ -4,7 +4,6 @@ import crypto from 'crypto';
 import UserModel from '../models/userModel.js';
 import SessionModel from '../models/sessionModel.js';
 import EmailService from './emailService.js';
-import admin from '../config/firebase.js';
 
 class AuthService {
   static async register({ name, email, password, birthDate, roleId = 2 }) { // 2 = usuario_general
@@ -88,45 +87,6 @@ class AuthService {
     // Create session in DB
     const expiresAt = new Date();
     expiresAt.setHours(expiresAt.getHours() + 24); // 24 hour session
-
-    await SessionModel.createSession({
-      userId: user.id,
-      token,
-      ipAddress,
-      deviceInfo,
-      expiresAt,
-    });
-
-    return { user, token };
-  }
-
-  static async googleLogin({ idToken, ipAddress, deviceInfo }) {
-    const decodedToken = await admin.auth().verifyIdToken(idToken);
-    const { email, name, uid } = decodedToken;
-
-    let user = await UserModel.findByEmail(email);
-
-    if (!user) {
-      // Create user if doesn't exist (assuming role 2)
-      user = await UserModel.createUser({
-        name,
-        email,
-        firebaseUid: uid,
-        roleId: 2,
-      });
-      await UserModel.updateVerification(user.id, true); // Google emails are verified
-    }
-
-    if (user.is_banned) {
-      await UserModel.recordLoginLog({ userId: user.id, email, ipAddress, deviceInfo, status: 'failure', message: 'Usuario baneado (Google)' });
-      throw new Error('Your account is banned.');
-    }
-
-    await UserModel.recordLoginLog({ userId: user.id, email, ipAddress, deviceInfo, status: 'success', message: 'Inicio de sesión exitoso (Google)' });
-
-    const token = this.generateToken(user);
-    const expiresAt = new Date();
-    expiresAt.setHours(expiresAt.getHours() + 24);
 
     await SessionModel.createSession({
       userId: user.id,

@@ -5,7 +5,7 @@ import authRoutes from './src/routes/authRoutes.js';
 import userRoutes from './src/routes/userRoutes.js';
 import notificationRoutes from './src/routes/notificationRoutes.js';
 import { notFound, errorHandler } from './src/middlewares/errorMiddleware.js';
-import './src/config/firebase.js'; // Ensure Firebase is initialized
+
 
 dotenv.config();
 
