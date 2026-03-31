@@ -3,8 +3,8 @@ import AuthService from '../services/authService.js';
 class AuthController {
   static async register(req, res) {
     try {
-      const { name, email, password } = req.body;
-      const user = await AuthService.register({ name, email, password });
+      const { name, email, password, birthDate } = req.body;
+      const user = await AuthService.register({ name, email, password, birthDate });
       res.status(201).json({ message: 'User registered successfully', user });
     } catch (error) {
       res.status(400).json({ error: error.message });
@@ -21,25 +21,13 @@ class AuthController {
 
       res.status(200).json({
         message: 'Login successful',
-        user: { id: user.id, name: user.name, email: user.email, role: user.role_name },
-        token,
-      });
-    } catch (error) {
-      res.status(401).json({ error: error.message });
-    }
-  }
-
-  static async googleLogin(req, res) {
-    try {
-      const { idToken } = req.body;
-      const ipAddress = req.ip;
-      const deviceInfo = req.headers['user-agent'];
-
-      const { user, token } = await AuthService.googleLogin({ idToken, ipAddress, deviceInfo });
-
-      res.status(200).json({
-        message: 'Google login successful',
-        user: { id: user.id, name: user.name, email: user.email, role: user.role_name },
+        user: { 
+          id: user.id, 
+          name: user.name, 
+          email: user.email, 
+          role: user.role_name,
+          birthDate: user.birth_date 
+        },
         token,
       });
     } catch (error) {

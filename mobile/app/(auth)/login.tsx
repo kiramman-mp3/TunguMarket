@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, TextInput, Pressable, KeyboardAvoidingView, Platform, SafeAreaView, ActivityIndicator, Alert, ScrollView } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
@@ -103,24 +103,6 @@ export default function LoginScreen() {
               ) : (
                 <Text style={styles.loginButtonText}>Iniciar Sesión</Text>
               )}
-            </Pressable>
-
-            <View style={styles.dividerContainer}>
-              <View style={styles.divider} />
-              <Text style={styles.dividerText}>O CONTINUAR CON</Text>
-              <View style={styles.divider} />
-            </View>
-
-            <Pressable
-              style={({ pressed }) => [
-                styles.googleButton,
-                pressed && styles.buttonPressed
-              ]}
-              onPress={() => Alert.alert('Próximamente', 'Inicio con Google disponible pronto.')}
-              disabled={loading}
-            >
-              <Ionicons name="logo-google" size={20} color={Colors.brand.secondary} style={styles.googleIcon} />
-              <Text style={styles.googleButtonText}>Google</Text>
             </Pressable>
           </View>
 
@@ -227,42 +209,6 @@ const styles = StyleSheet.create({
     color: Colors.brand.secondary,
     fontSize: 18,
     fontWeight: '800',
-  },
-  dividerContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginVertical: 10,
-    gap: 10,
-  },
-  divider: {
-    flex: 1,
-    height: 1,
-    backgroundColor: Colors.brand.border,
-  },
-  dividerText: {
-    fontSize: 11,
-    color: Colors.brand.muted,
-    fontWeight: '700',
-    letterSpacing: 1,
-  },
-  googleButton: {
-    backgroundColor: Colors.brand.surface,
-    height: 58,
-    borderRadius: Rounding.large,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderWidth: 1.5,
-    borderColor: Colors.brand.border,
-    flexDirection: 'row',
-    ...Shadow.light,
-  },
-  googleIcon: {
-    marginRight: 10,
-  },
-  googleButtonText: {
-    color: Colors.brand.secondary,
-    fontSize: 16,
-    fontWeight: '700',
   },
   buttonPressed: {
     opacity: 0.9,

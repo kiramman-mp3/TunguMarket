@@ -29,9 +29,15 @@ class SessionModel {
   }
 
   static async findActiveSessionsByUser(userId) {
-    const query = 'SELECT * FROM sessions WHERE user_id = $1 AND expires_at > CURRENT_TIMESTAMP';
-    const { rows } = await pool.query(query, [userId]);
-    return rows;
+    try {
+      console.log(`[DB DEBUG] Looking for active sessions for user: ${userId}`);
+      const query = 'SELECT * FROM sessions WHERE user_id = $1::uuid AND expires_at > CURRENT_TIMESTAMP';
+      const { rows } = await pool.query(query, [userId]);
+      return rows;
+    } catch (error) {
+      console.error('[DB ERROR] findActiveSessionsByUser:', error);
+      throw error;
+    }
   }
 }
 

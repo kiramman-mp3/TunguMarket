@@ -4,13 +4,24 @@ import crypto from 'crypto';
 import UserModel from '../models/userModel.js';
 import SessionModel from '../models/sessionModel.js';
 import EmailService from './emailService.js';
-import admin from '../config/firebase.js';
 
 class AuthService {
-  static async register({ name, email, password, roleId = 2 }) { // 2 = usuario_general
+  static async register({ name, email, password, birthDate, roleId = 2 }) { // 2 = usuario_general
     const existingUser = await UserModel.findByEmail(email);
     if (existingUser) {
       throw new Error('User already exists');
+    }
+
+    // Age validation (>= 18)
+    const today = new Date();
+    const birthDateObj = new Date(birthDate);
+    let age = today.getFullYear() - birthDateObj.getFullYear();
+    const m = today.getMonth() - birthDateObj.getMonth();
+    if (m < 0 || (m === 0 && today.getDate() < birthDateObj.getDate())) {
+      age--;
+    }
+    if (age < 18) {
+      throw new Error('Debes tener al menos 18 años para registrarte.');
     }
 
     const passwordHash = await bcrypt.hash(password, 10);
@@ -19,6 +30,7 @@ class AuthService {
       email,
       passwordHash,
       roleId,
+      birthDate
     });
 
     // Generate 6-Digit Verification Token
@@ -36,31 +48,38 @@ class AuthService {
 
   static async login({ email, password, ipAddress, deviceInfo }) {
     const user = await UserModel.findByEmail(email);
+    
     if (!user) {
+      await UserModel.recordLoginLog({ email, ipAddress, deviceInfo, status: 'failure', message: 'Usuario no encontrado' });
       throw new Error('Invalid credentials');
     }
 
     if (user.is_banned) {
+      await UserModel.recordLoginLog({ userId: user.id, email, ipAddress, deviceInfo, status: 'failure', message: 'Usuario baneado' });
       throw new Error('Your account is banned. Please contact support.');
     }
 
     // STRICT VERIFICATION
     if (!user.is_verified) {
+      await UserModel.recordLoginLog({ userId: user.id, email, ipAddress, deviceInfo, status: 'failure', message: 'Email no verificado' });
       throw new Error('EMAIL_NOT_VERIFIED');
     }
 
     // Login attempts limit logic
     if (user.login_attempts >= 5 && (new Date() - new Date(user.last_attempt)) < 15 * 60 * 1000) {
+      await UserModel.recordLoginLog({ userId: user.id, email, ipAddress, deviceInfo, status: 'failure', message: 'Demasiados intentos fallidos' });
       throw new Error('Too many login attempts. Try again in 15 minutes.');
     }
 
     const isValid = await bcrypt.compare(password, user.password_hash);
     if (!isValid) {
       await UserModel.incrementLoginAttempts(email);
+      await UserModel.recordLoginLog({ userId: user.id, email, ipAddress, deviceInfo, status: 'failure', message: 'Contraseña incorrecta' });
       throw new Error('Invalid credentials');
     }
 
     await UserModel.resetLoginAttempts(email);
+    await UserModel.recordLoginLog({ userId: user.id, email, ipAddress, deviceInfo, status: 'success', message: 'Inicio de sesión exitoso' });
 
     // Generate JWT
     const token = this.generateToken(user);
@@ -68,42 +87,6 @@ class AuthService {
     // Create session in DB
     const expiresAt = new Date();
     expiresAt.setHours(expiresAt.getHours() + 24); // 24 hour session
-
-    await SessionModel.createSession({
-      userId: user.id,
-      token,
-      ipAddress,
-      deviceInfo,
-      expiresAt,
-    });
-
-    return { user, token };
-  }
-
-  static async googleLogin({ idToken, ipAddress, deviceInfo }) {
-    const decodedToken = await admin.auth().verifyIdToken(idToken);
-    const { email, name, uid } = decodedToken;
-
-    let user = await UserModel.findByEmail(email);
-
-    if (!user) {
-      // Create user if doesn't exist (assuming role 2)
-      user = await UserModel.createUser({
-        name,
-        email,
-        firebaseUid: uid,
-        roleId: 2,
-      });
-      await UserModel.updateVerification(user.id, true); // Google emails are verified
-    }
-
-    if (user.is_banned) {
-      throw new Error('Your account is banned.');
-    }
-
-    const token = this.generateToken(user);
-    const expiresAt = new Date();
-    expiresAt.setHours(expiresAt.getHours() + 24);
 
     await SessionModel.createSession({
       userId: user.id,
