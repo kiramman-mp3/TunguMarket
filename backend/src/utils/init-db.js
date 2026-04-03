@@ -32,6 +32,7 @@ const initDb = async () => {
     // Clean up existing tables to ensure schema matches
     console.log('Cleaning up existing tables...');
     await client.query(`
+      DROP TABLE IF EXISTS orders CASCADE;
       DROP TABLE IF EXISTS cart_items CASCADE;
       DROP TABLE IF EXISTS carts CASCADE; 
       DROP TABLE IF EXISTS Productos CASCADE;
@@ -163,6 +164,19 @@ const initDb = async () => {
         quantity INTEGER DEFAULT 1 CHECK (quantity > 0),
         price_at_purchase DECIMAL(10, 2) NOT NULL,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      );
+    `);
+
+    // Orders Table
+    // Esta tabla representa los pedidos confirmados de los usuarios
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS orders (
+        id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+        user_id UUID REFERENCES users(id) ON DELETE CASCADE,
+        total_price DECIMAL(10, 2) NOT NULL,
+        status VARCHAR(20) DEFAULT 'pendiente', -- 'pendiente', 'confirmado', 'cancelado'
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       );
     `);
 
