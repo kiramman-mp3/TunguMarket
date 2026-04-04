@@ -32,6 +32,10 @@ const initDb = async () => {
     // Clean up existing tables to ensure schema matches
     console.log('Cleaning up existing tables...');
     await client.query(`
+      DROP TABLE IF EXISTS payments CASCADE;
+      DROP TABLE IF EXISTS orders CASCADE;
+      DROP TABLE IF EXISTS cart_items CASCADE;
+      DROP TABLE IF EXISTS carts CASCADE;
       DROP TABLE IF EXISTS password_resets CASCADE;
       DROP TABLE IF EXISTS login_logs CASCADE;
       DROP TABLE IF EXISTS sessions CASCADE;
@@ -122,17 +126,63 @@ const initDb = async () => {
       );
     `);
 
-    // Products Table (Basic structure for future use as requested)
+    
+
+    // Carts Table
+    //Esta tabla representa el carrito "padre". Un usuario tiene un carrito.
     await client.query(`
-      CREATE TABLE IF NOT EXISTS products (
+      CREATE TABLE IF NOT EXISTS carts (
         id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-        seller_id UUID REFERENCES users(id),
-        name VARCHAR(255) NOT NULL,
-        description TEXT,
-        price DECIMAL(10, 2) NOT NULL,
-        stock INTEGER DEFAULT 0,
-        status VARCHAR(20) DEFAULT 'pendiente', -- 'pendiente', 'activo', 'bloqueado', 'vendido'
+        user_id UUID REFERENCES users(id) ON DELETE CASCADE,
+        total_price DECIMAL(10, 2) DEFAULT 0,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      );
+    `);
+
+    // Cart Items Table
+    //Esta tabla representa los productos dentro del carrito. Un carrito puede tener múltiples productos.
+    //PENDIENTE: Alan debe agregar la FK a la tabla products cuando la cree
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS cart_items (
+        id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+        cart_id UUID REFERENCES carts(id) ON DELETE CASCADE,
+        product_id UUID, -- Pendiente: FK a productos (Alan)
+        quantity INTEGER DEFAULT 1 CHECK (quantity > 0),
+        price_at_purchase DECIMAL(10, 2) NOT NULL,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      );
+    `);
+
+    // Orders Table
+    // Esta tabla representa los pedidos confirmados de los usuarios
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS orders (
+        id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+        user_id UUID REFERENCES users(id) ON DELETE CASCADE,
+        total_price DECIMAL(10, 2) NOT NULL,
+        status VARCHAR(20) DEFAULT 'pendiente', -- 'pendiente', 'confirmado', 'cancelado'
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      );
+    `);
+
+    // Payments Table
+    // Esta tabla guarda los comprobantes de pago de los usuarios
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS payments (
+        id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+        order_id UUID REFERENCES orders(id) ON DELETE CASCADE,
+        user_id UUID REFERENCES users(id) ON DELETE CASCADE,
+        amount DECIMAL(10, 2) NOT NULL,
+        payment_method VARCHAR(50), -- 'transferencia', 'deposito', 'tarjeta', etc
+        receipt_url VARCHAR(500), -- URL del comprobante (imagen)
+        receipt_hash VARCHAR(255), -- Hash para verificar autenticidad
+        status VARCHAR(20) DEFAULT 'pendiente', -- 'pendiente', 'aprobado', 'rechazado'
+        validated_by UUID REFERENCES users(id) ON DELETE SET NULL, -- Admin que validó
+        validation_notes TEXT,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        validated_at TIMESTAMP
       );
     `);
 
