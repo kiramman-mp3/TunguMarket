@@ -32,10 +32,10 @@ const initDb = async () => {
     // Clean up existing tables to ensure schema matches
     console.log('Cleaning up existing tables...');
     await client.query(`
+      DROP TABLE IF EXISTS payments CASCADE;
       DROP TABLE IF EXISTS orders CASCADE;
       DROP TABLE IF EXISTS cart_items CASCADE;
-      DROP TABLE IF EXISTS carts CASCADE; 
-      DROP TABLE IF EXISTS Productos CASCADE;
+      DROP TABLE IF EXISTS carts CASCADE;
       DROP TABLE IF EXISTS password_resets CASCADE;
       DROP TABLE IF EXISTS login_logs CASCADE;
       DROP TABLE IF EXISTS sessions CASCADE;
@@ -126,20 +126,7 @@ const initDb = async () => {
       );
     `);
 
-    // Products Table (Basic structure for future use as requested)
-    // await client.query(`
-    //   CREATE TABLE IF NOT EXISTS products (
-    //     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-    //     seller_id UUID REFERENCES users(id),
-    //     name VARCHAR(255) NOT NULL,
-    //     description TEXT,
-    //     price DECIMAL(10, 2) NOT NULL,
-    //     stock INTEGER DEFAULT 0,
-    //     status VARCHAR(20) DEFAULT 'pendiente', -- 'pendiente', 'activo', 'bloqueado', 'vendido'
-    //     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    //     deleted_at TIMESTAMP
-    //   );
-    // `);
+    
 
     // Carts Table
     //Esta tabla representa el carrito "padre". Un usuario tiene un carrito.
@@ -177,6 +164,25 @@ const initDb = async () => {
         status VARCHAR(20) DEFAULT 'pendiente', -- 'pendiente', 'confirmado', 'cancelado'
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
         updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      );
+    `);
+
+    // Payments Table
+    // Esta tabla guarda los comprobantes de pago de los usuarios
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS payments (
+        id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+        order_id UUID REFERENCES orders(id) ON DELETE CASCADE,
+        user_id UUID REFERENCES users(id) ON DELETE CASCADE,
+        amount DECIMAL(10, 2) NOT NULL,
+        payment_method VARCHAR(50), -- 'transferencia', 'deposito', 'tarjeta', etc
+        receipt_url VARCHAR(500), -- URL del comprobante (imagen)
+        receipt_hash VARCHAR(255), -- Hash para verificar autenticidad
+        status VARCHAR(20) DEFAULT 'pendiente', -- 'pendiente', 'aprobado', 'rechazado'
+        validated_by UUID REFERENCES users(id) ON DELETE SET NULL, -- Admin que validó
+        validation_notes TEXT,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        validated_at TIMESTAMP
       );
     `);
 

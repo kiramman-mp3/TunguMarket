@@ -16,11 +16,14 @@ const router = express.Router();
  * GET    /api/orders/:id          - Ver detalles de una orden
  * PUT    /api/orders/:id/confirm  - Confirmar orden (pago validado)
  * PUT    /api/orders/:id/cancel   - Cancelar orden (si está pendiente)
+ * POST   /api/orders/:id/validate-payment - Enviar comprobante de pago para validación
  * 
  * RUTAS DE ADMIN:
  * PUT    /api/orders/:id/status            - Cambiar estado de cualquier orden
  * GET    /api/orders/filter/status/:status - Listar órdenes por estado
  * DELETE /api/orders/:id                   - Eliminar orden cancelada
+ * PUT    /api/orders/payments/:paymentId/approve - Aprobar pago y confirmar orden
+ * PUT    /api/orders/payments/:paymentId/reject - Rechazar pago (orden permanece pendiente)
  */
 
 // ===== RUTAS DE USUARIO =====
@@ -59,6 +62,23 @@ router.put('/:id/confirm', authMiddleware, OrderController.confirmOrder);
 // { "reason": "Cambié de opinión" }
 router.put('/:id/cancel', authMiddleware, OrderController.cancelOrder);
 
+// POST /api/orders/:id/validate-payment - Enviar comprobante de pago
+// Body: {
+//   amount: 100.50,
+//   paymentMethod: "transferencia" | "deposito" | "tarjeta",
+//   receiptUrl: "https://ejemplo.com/comprobante.jpg",
+//   receiptDate: "2024-04-04T10:30:00Z",
+//   receiptData: {
+//     transferenceNumber: "TRF123456",  // para transferencia
+//     bankName: "Banco Nacional",
+//     accountNumber: "****5678"
+//   }
+// }
+// Ejemplo:
+// POST /api/orders/550e8400-e29b-41d4-a716-446655440000/validate-payment
+// { "amount": 100.50, "paymentMethod": "transferencia", ... }
+router.post('/:id/validate-payment', authMiddleware, OrderController.validatePayment);
+
 // ===== RUTAS DE ADMIN =====
 
 // PUT /api/orders/:id/status - Cambiar estado (SOLO ADMIN)
@@ -71,5 +91,21 @@ router.put('/:id/status', authMiddleware, OrderController.updateStatus);
 // DELETE /api/orders/:id - Eliminar orden (SOLO ADMIN, solo si está cancelada)
 // Ejemplo: DELETE /api/orders/550e8400-e29b-41d4-a716-446655440000
 router.delete('/:id', authMiddleware, OrderController.deleteOrder);
+
+// PUT /api/orders/payments/:paymentId/approve - Aprobar pago (SOLO ADMIN)
+// Body: { validationNotes: "Comprobante verificado correctamente" }
+// Acción: Aprueba el pago, confirma la orden y limpia el carrito
+// Ejemplo:
+// PUT /api/orders/payments/550e8400-e29b-41d4-a716-446655440999/approve
+// { "validationNotes": "OK" }
+router.put('/payments/:paymentId/approve', authMiddleware, OrderController.approvePayment);
+
+// PUT /api/orders/payments/:paymentId/reject - Rechazar pago (SOLO ADMIN)
+// Body: { rejectionReason: "Comprobante no válido o incompleto" }
+// Acción: Rechaza el pago, la orden permanece pendiente para reintentar
+// Ejemplo:
+// PUT /api/orders/payments/550e8400-e29b-41d4-a716-446655440999/reject
+// { "rejectionReason": "El comprobante está recortado" }
+router.put('/payments/:paymentId/reject', authMiddleware, OrderController.rejectPayment);
 
 export default router;
