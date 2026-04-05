@@ -6,6 +6,9 @@ import userRoutes from './src/routes/userRoutes.js';
 import notificationRoutes from './src/routes/notificationRoutes.js';
 import cartRoutes from './src/routes/cartRoutes.js';
 import orderRoutes from './src/routes/orderRoutes.js';
+import categoryRoutes from './src/routes/categoryRoutes.js';
+import productRoutes from './src/routes/productRoutes.js';
+import reviewRoutes from './src/routes/reviewRoutes.js';
 import { notFound, errorHandler } from './src/middlewares/errorMiddleware.js';
 
 
@@ -24,6 +27,9 @@ app.use('/api/users', userRoutes);
 app.use('/api/notifications', notificationRoutes);
 app.use('/api/cart', cartRoutes);
 app.use('/api/orders', orderRoutes);
+app.use('/api/categories', categoryRoutes);
+app.use('/api/products', productRoutes);
+app.use('/api/reviews', reviewRoutes);
 
 // Health check
 app.get('/api/health', (req, res) => {
