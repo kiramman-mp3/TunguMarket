@@ -17,6 +17,7 @@ import EditProduct from './pages/EditProduct';
 import { AuthProvider } from './context/AuthContext';
 import { CartProvider, useCart } from './context/CartContext';
 import Cart from './pages/Cart';
+import Checkout from './pages/Checkout';
 import LoginPromptModal from './components/LoginPromptModal';
 
 function AppContent() {
@@ -39,6 +40,7 @@ function AppContent() {
           <Route path="/sell" element={<Sell />} />
           <Route path="/edit-product/:id" element={<EditProduct />} />
           <Route path="/cart" element={<Cart />} />
+          <Route path="/checkout" element={<Checkout />} />
         </Routes>
       </Layout>
       <LoginPromptModal isOpen={isLoginPromptOpen} onClose={closeLoginPrompt} />

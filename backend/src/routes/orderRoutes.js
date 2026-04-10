@@ -1,6 +1,7 @@
 import express from 'express';
 import OrderController from '../controllers/orderController.js';
 import { authMiddleware } from '../middlewares/authMiddleware.js';
+import paymentUpload from '../middlewares/paymentUploadMiddleware.js';
 
 const router = express.Router();
 
@@ -45,7 +46,7 @@ router.get('/', authMiddleware, OrderController.getOrders);
 // Ejemplo:
 // POST /api/orders/checkout
 // { "payment_method": "tarjeta" }
-router.post('/checkout', authMiddleware, OrderController.checkout);
+router.post('/checkout', authMiddleware, paymentUpload.single('receipt'), OrderController.checkout);
 
 // GET /api/orders/:id - Obtener detalles de una orden específica
 // Ejemplo: GET /api/orders/550e8400-e29b-41d4-a716-446655440000

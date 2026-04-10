@@ -165,9 +165,18 @@ const initDb = async () => {
         id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
         user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
         total_price DECIMAL(10, 2) NOT NULL,
-        status VARCHAR(20) DEFAULT 'pendiente',
+        status VARCHAR(40) DEFAULT 'pendiente',
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
         updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      );
+
+      CREATE TABLE order_items (
+        id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+        order_id UUID NOT NULL REFERENCES orders(id) ON DELETE CASCADE,
+        product_id UUID NOT NULL REFERENCES products(id) ON DELETE RESTRICT,
+        quantity INTEGER NOT NULL,
+        price_at_purchase DECIMAL(10, 2) NOT NULL,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       );
 
       CREATE TABLE payments (
@@ -178,7 +187,7 @@ const initDb = async () => {
         payment_method VARCHAR(50),
         receipt_url VARCHAR(500),
         receipt_hash VARCHAR(64) UNIQUE,
-        status VARCHAR(20) DEFAULT 'pendiente',
+        status VARCHAR(40) DEFAULT 'pendiente',
         validated_by UUID REFERENCES users(id),
         validation_notes TEXT,
         validated_at TIMESTAMP,

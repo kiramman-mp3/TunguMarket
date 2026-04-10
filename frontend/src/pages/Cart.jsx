@@ -168,7 +168,7 @@ const Cart = () => {
               <div className="space-y-3 pt-2">
                 <button 
                   className="btn-primary w-full py-5 rounded-[1.5rem] font-bold text-lg flex items-center justify-center gap-3 shadow-xl hover:shadow-2xl transition-all active:scale-95"
-                  onClick={() => alert('¡Implementaremos el flujo de pago pronto!')}
+                  onClick={() => navigate('/checkout')}
                 >
                   <FontAwesomeIcon icon={faCreditCard} />
                   Proceder al Pago

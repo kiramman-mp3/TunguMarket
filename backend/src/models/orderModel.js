@@ -73,7 +73,14 @@ class OrderModel {
    * @returns {object} Orden actualizada
    */
   static async updateStatus(orderId, newStatus) {
-    const validStatuses = ['pendiente', 'confirmado', 'cancelado'];
+    const validStatuses = [
+      'pendiente', 
+      'confirmado', 
+      'cancelado', 
+      'Pendiente de verificación', 
+      'Pendiente de pago', 
+      'Aceptado'
+    ];
     
     if (!validStatuses.includes(newStatus)) {
       throw new Error(`Estado inválido. Debe ser uno de: ${validStatuses.join(', ')}`);

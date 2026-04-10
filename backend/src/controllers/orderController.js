@@ -80,46 +80,94 @@ class OrderController {
    * Crea una nueva orden desde el carrito del usuario
    */
   static async checkout(req, res) {
+    const client = await pool.connect();
     try {
+      await client.query('BEGIN');
       const userId = req.user.id;
       const { payment_method } = req.body;
 
-      // Validar método de pago
       if (!payment_method) {
         return res.status(400).json({ error: 'Método de pago requerido' });
       }
 
-      // Obtener carrito del usuario
-      const cart = await CartModel.getCart(userId);
+      // 1. Obtener carrito e items
+      const cartResult = await client.query('SELECT * FROM carts WHERE user_id = $1', [userId]);
+      const cart = cartResult.rows[0];
 
-      if (!cart) {
-        return res.status(404).json({ error: 'Carrito no encontrado' });
-      }
-
-      // Verificar que el carrito tenga items
-      if (cart.total_price <= 0) {
+      if (!cart || cart.total_price <= 0) {
+        await client.query('ROLLBACK');
         return res.status(400).json({ error: 'El carrito está vacío' });
       }
 
-      // Crear la orden
-      const order = await OrderModel.createOrder(userId, cart.total_price, 'pendiente');
+      const itemsResult = await client.query('SELECT * FROM cart_items WHERE cart_id = $1', [cart.id]);
+      const cartItems = itemsResult.rows;
 
-      // Guardar detalles del carrito en relación a la orden (opcional, para auditoría)
-      // Por ahora solo movemos el carrito al estado de "checkout"
+      // 2. Definir estado inicial según método de pago
+      let orderStatus = 'pendiente';
+      if (payment_method === 'tarjeta') orderStatus = 'Aceptado';
+      else if (payment_method === 'efectivo') orderStatus = 'Pendiente de pago';
+      else if (payment_method === 'transferencia') orderStatus = 'Pendiente de verificación';
+
+      // 3. Crear la Orden
+      const orderQuery = `
+        INSERT INTO orders (user_id, total_price, status)
+        VALUES ($1, $2, $3)
+        RETURNING *
+      `;
+      const { rows: orderRows } = await client.query(orderQuery, [userId, cart.total_price, orderStatus]);
+      const order = orderRows[0];
+
+      // 4. Mover items a order_items y reducir stock
+      for (const item of cartItems) {
+        // Migrar item
+        await client.query(
+          `INSERT INTO order_items (order_id, product_id, quantity, price_at_purchase) 
+           VALUES ($1, $2, $3, $4)`,
+          [order.id, item.product_id, item.quantity, item.price_at_purchase]
+        );
+
+        // Reducir stock
+        await client.query(
+          'UPDATE products SET stock = stock - $1 WHERE id = $2',
+          [item.quantity, item.product_id]
+        );
+      }
+
+      // 5. Registrar el Pago
+      let paymentStatus = 'pendiente';
+      if (payment_method === 'tarjeta') paymentStatus = 'completado';
+      
+      let receiptUrl = null;
+      if (payment_method === 'transferencia' && req.file) {
+        const baseUrl = process.env.BACKEND_URL || `${req.protocol}://${req.get('host')}`;
+        receiptUrl = `${baseUrl}/uploads/payments/${req.file.filename}`;
+      }
+
+      await client.query(
+        `INSERT INTO payments (order_id, user_id, amount, payment_method, status, receipt_url)
+         VALUES ($1, $2, $3, $4, $5, $6)`,
+        [order.id, userId, cart.total_price, payment_method, paymentStatus, receiptUrl]
+      );
+
+      // 6. Limpiar carrito
+      await client.query('DELETE FROM cart_items WHERE cart_id = $1', [cart.id]);
+      await client.query('UPDATE carts SET total_price = 0 WHERE id = $1', [cart.id]);
+
+      await client.query('COMMIT');
 
       res.status(201).json({
-        message: 'Orden creada exitosamente. Pendiente de confirmación de pago.',
-        order,
-        payment_info: {
-          order_id: order.id,
-          amount: order.total_price,
-          method: payment_method,
-          status: 'pendiente'
-        }
+        message: 'Orden procesada exitosamente',
+        order_id: order.id,
+        status: order.status,
+        total: order.total_price
       });
 
     } catch (error) {
+      await client.query('ROLLBACK');
+      console.error('Checkout error:', error);
       res.status(500).json({ error: error.message });
+    } finally {
+      client.release();
     }
   }
 
