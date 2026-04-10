@@ -24,11 +24,11 @@ const pool = new Pool({
 const initDb = async () => {
   const client = await pool.connect();
   try {
-    console.log('--- Initializing Database Structure ---');
+    console.log('--- RESTORING COMPLETE DATABASE SCHEMA ---');
 
     await client.query('CREATE EXTENSION IF NOT EXISTS "uuid-ossp";');
 
-    console.log('Cleaning up existing tables...');
+    console.log('Dropping existing tables (Full Cleanup)...');
     await client.query(`
       DROP TABLE IF EXISTS reviews CASCADE;
       DROP TABLE IF EXISTS product_images CASCADE;
@@ -46,8 +46,9 @@ const initDb = async () => {
       DROP TABLE IF EXISTS roles CASCADE;
     `);
 
-    console.log('Creating core tables...');
+    console.log('Creating Schema...');
     await client.query(`
+      -- 1. AUTH & USER MANAGEMENT
       CREATE TABLE roles (
         id SERIAL PRIMARY KEY,
         name VARCHAR(50) UNIQUE NOT NULL
@@ -69,6 +70,44 @@ const initDb = async () => {
         updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       );
 
+      CREATE TABLE sessions (
+        id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+        user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        token TEXT UNIQUE NOT NULL,
+        ip_address VARCHAR(45),
+        device_info TEXT,
+        expires_at TIMESTAMP NOT NULL,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      );
+
+      CREATE TABLE login_logs (
+        id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+        user_id UUID REFERENCES users(id) ON DELETE SET NULL,
+        email VARCHAR(150),
+        ip_address VARCHAR(45),
+        device_info TEXT,
+        status VARCHAR(20),
+        message TEXT,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      );
+
+      CREATE TABLE verification_tokens (
+        id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+        user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        token VARCHAR(255) NOT NULL,
+        expires_at TIMESTAMP NOT NULL,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      );
+
+      CREATE TABLE password_resets (
+        id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+        user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        token VARCHAR(255) NOT NULL,
+        expires_at TIMESTAMP NOT NULL,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      );
+
+      -- 2. CATALOG
       CREATE TABLE categories (
         id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
         name VARCHAR(80) NOT NULL UNIQUE,
@@ -88,15 +127,13 @@ const initDb = async () => {
         stock INTEGER NOT NULL DEFAULT 1,
         status VARCHAR(20) NOT NULL DEFAULT 'activo',
         is_flagged BOOLEAN NOT NULL DEFAULT FALSE,
+        blocked_reason TEXT,
         average_rating NUMERIC(3, 2) NOT NULL DEFAULT 0.00,
         review_count INTEGER NOT NULL DEFAULT 0,
         created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
         updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
       );
-    `);
 
-    console.log('Creating transaction tables...');
-    await client.query(`
       CREATE TABLE product_images (
         id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
         product_id UUID NOT NULL REFERENCES products(id) ON DELETE CASCADE,
@@ -106,9 +143,10 @@ const initDb = async () => {
         created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
       );
 
+      -- 3. SALES & CART
       CREATE TABLE carts (
         id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-        user_id UUID REFERENCES users(id) ON DELETE CASCADE,
+        user_id UUID UNIQUE REFERENCES users(id) ON DELETE CASCADE,
         total_price DECIMAL(10, 2) DEFAULT 0,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
         updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
@@ -116,8 +154,8 @@ const initDb = async () => {
 
       CREATE TABLE cart_items (
         id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-        cart_id UUID REFERENCES carts(id) ON DELETE CASCADE,
-        product_id UUID REFERENCES products(id) ON DELETE CASCADE,
+        cart_id UUID NOT NULL REFERENCES carts(id) ON DELETE CASCADE,
+        product_id UUID NOT NULL REFERENCES products(id) ON DELETE CASCADE,
         quantity INTEGER NOT NULL DEFAULT 1,
         price_at_purchase DECIMAL(10, 2) NOT NULL,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
@@ -125,20 +163,37 @@ const initDb = async () => {
 
       CREATE TABLE orders (
         id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-        user_id UUID REFERENCES users(id) ON DELETE CASCADE,
+        user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
         total_price DECIMAL(10, 2) NOT NULL,
         status VARCHAR(20) DEFAULT 'pendiente',
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
         updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       );
 
+      CREATE TABLE payments (
+        id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+        order_id UUID NOT NULL REFERENCES orders(id) ON DELETE CASCADE,
+        user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        amount DECIMAL(10, 2) NOT NULL,
+        payment_method VARCHAR(50),
+        receipt_url VARCHAR(500),
+        receipt_hash VARCHAR(64) UNIQUE,
+        status VARCHAR(20) DEFAULT 'pendiente',
+        validated_by UUID REFERENCES users(id),
+        validation_notes TEXT,
+        validated_at TIMESTAMP,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      );
+
+      -- 4. SOCIAL
       CREATE TABLE reviews (
         id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
         product_id UUID NOT NULL REFERENCES products(id) ON DELETE CASCADE,
         user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-        rating INTEGER NOT NULL,
+        rating INTEGER NOT NULL CHECK (rating BETWEEN 1 AND 5),
         comment TEXT,
         created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
         UNIQUE (product_id, user_id)
       );
     `);
@@ -167,9 +222,9 @@ const initDb = async () => {
       await client.query('INSERT INTO categories (name, description) VALUES ($1, $2)', [name, desc]);
     }
 
-    console.log('--- Database initialized (Baseline Only) ---');
+    console.log('--- PRODUCTION SCHEMA RESTORED SUCCESSFULLY ---');
   } catch (err) {
-    console.error('Error:', err);
+    console.error('❌ CRITICAL INITIALIZATION ERROR:', err);
   } finally {
     client.release();
     await pool.end();
