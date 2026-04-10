@@ -6,7 +6,7 @@ import { Link } from 'react-router-dom';
 
 const ProductCard = ({ product }) => {
   // Manejo de fallback para imágenes y datos
-  const imageUrl = product.main_image || product.image_url || 'https://via.placeholder.com/400x300?text=Sin+Imagen';
+  const imageUrl = product.primary_image || product.main_image || product.image_url || 'https://via.placeholder.com/400x300?text=Sin+Imagen';
   const price = typeof product.price === 'number' ? product.price : parseFloat(product.price);
 
   return (

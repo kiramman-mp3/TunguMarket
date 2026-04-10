@@ -68,7 +68,7 @@ const ProductDetails = () => {
   // Placeholder images logic
   const images = product.images?.length > 0 
     ? product.images.map(img => img.image_url) 
-    : [product.main_image || product.image_url || 'https://via.placeholder.com/800x600?text=Sin+Imagen'];
+    : [product.primary_image || product.main_image || product.image_url || 'https://via.placeholder.com/800x600?text=Sin+Imagen'];
 
   return (
     <div className="min-h-screen bg-brand-light/20 pt-20 pb-20">

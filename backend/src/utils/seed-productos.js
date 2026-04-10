@@ -20,71 +20,61 @@ const pool = new Pool({
   port: parseInt(process.env.POSTGRES_PORT || '5432', 10),
 });
 
-const ADJECTIVES = ['Premium', 'Económico', 'Artesanal', 'Importado', 'Orgánico', 'Tradicional', 'Gourmet', 'Familiar', 'Único', 'Limitado'];
+// URL base del backend para servir las imágenes de producción
+const BACKEND_URL = process.env.BACKEND_URL || 'http://localhost:5000';
+const BASE_IMG_URL = `${BACKEND_URL}/uploads/products`;
+
+const ADJECTIVES = ['Premium', 'Artesanal', 'Orgánico', 'Tradicional', 'Gourmet', 'Familiar', 'Único', 'Limitado', 'De Exportación', 'Especial'];
 const NOUNS = {
-  'Alimentos': ['Pan', 'Miel', 'Vino', 'Queso', 'Chocolate', 'Mermelada', 'Café', 'Frutas'],
-  'Artesanías': ['Vasija', 'Tejido', 'Escultura', 'Cuadro', 'Joyero', 'Máscara'],
-  'Calzado': ['Zapatos', 'Botas', 'Sandalias', 'Mocasines', 'Tacones'],
-  'Ropa': ['Camiseta', 'Chaqueta', 'Pantalón', 'Vestido', 'Sombrero', 'Bufanda'],
-  'Tecnología': ['Audífonos', 'Cargador', 'Mouse', 'Teclado', 'Smartwatch', 'Soporte'],
-  'Hogar': ['Lámpara', 'Cojín', 'Espejo', 'Reloj', 'Planta', 'Alfombra'],
-  'Otros': ['Libro', 'Juguete', 'Herramienta', 'Accesorio', 'Regalo']
+  'Alimentos': ['Pan de Pinllo', 'Miel de Abeja', 'Vino de Frutas', 'Queso de Hoja', 'Chocolate Ambateño', 'Mermelada Natural', 'Café de Altura', 'Cesta de Frutas'],
+  'Artesanías': ['Vasija de Barro', 'Tejido Otavaleño', 'Escultura de Madera', 'Cuadro al Óleo', 'Joyero de Plata', 'Máscara de Tigua'],
+  'Calzado': ['Botas de Cuero', 'Zapatos Casuales', 'Sandalias de Verano', 'Mocasines Elegantes', 'Deportivos Modernos'],
+  'Ropa': ['Poncho de Lana', 'Camiseta de Algodón', 'Chaqueta Impermeable', 'Pantalón de Tela', 'Sombrero de Paja Toquilla'],
+  'Tecnología': ['Audífonos Pro', 'Mouse Gamer', 'Teclado Mecánico', 'Smartwatch Fit', 'Soporte Ergonómico'],
+  'Hogar': ['Lámpara de Madera', 'Cojín Decorativo', 'Espejo Tallado', 'Reloj de Pared', 'Planta de Interior', 'Vajilla de Cerámica'],
+  'Otros': ['Libro de Historias', 'Juguete Tradicional', 'Accesorio de Cuero', 'Kit de Regalo']
 };
 
-const IMAGES = [
-  'https://images.unsplash.com/photo-1542291026-7eec264c27ff',
-  'https://images.unsplash.com/photo-1491553895911-0055eca6402d',
-  'https://images.unsplash.com/photo-1523275335684-37898b6baf30',
-  'https://images.unsplash.com/photo-1505740420928-5e560c06d30e',
-  'https://images.unsplash.com/photo-1527010159945-c4250922b29c',
-  'https://images.unsplash.com/photo-1549488344-cbb6c34ce08b',
-  'https://images.unsplash.com/photo-1606107557195-0e29a4b5b4aa',
-  'https://images.unsplash.com/photo-1620916566398-39f1143ab7be',
-  'https://images.unsplash.com/photo-1551024601-bec78aea704b',
-  'https://images.unsplash.com/photo-1491633582673-491b48b909ad'
-];
+// Mapeo real de categorías a imágenes en el servidor de producción (/uploads/products/)
+const CATEGORY_IMAGES = {
+  'Alimentos': [`${BASE_IMG_URL}/alimentos_1.png`, `${BASE_IMG_URL}/alimentos_2.png`],
+  'Artesanías': [`${BASE_IMG_URL}/artesanias_1.png`, `${BASE_IMG_URL}/artesanias_2.png`],
+  'Calzado': [`${BASE_IMG_URL}/calzado_1.png`, `${BASE_IMG_URL}/calzado_2.png`],
+  'Ropa': [`${BASE_IMG_URL}/ropa_1.png`, `${BASE_IMG_URL}/ropa_2.png`],
+  'Tecnología': [`${BASE_IMG_URL}/tecnologia_1.png`, `${BASE_IMG_URL}/tecnologia_2.png`],
+  'Hogar': [`${BASE_IMG_URL}/hogar_1.png`, `${BASE_IMG_URL}/hogar_2.png`],
+  'Otros': [`${BASE_IMG_URL}/otros_1.png`]
+};
 
 const getRandom = (arr) => arr[Math.floor(Math.random() * arr.length)];
-const getRandomPrice = () => (Math.random() * (500 - 0.5) + 0.5).toFixed(2);
-const getRandomStock = () => Math.floor(Math.random() * 200);
-const getRandomRating = () => (Math.random() * (5 - 3) + 3).toFixed(1);
+const getRandomPrice = () => (Math.random() * (450 - 5) + 5).toFixed(2);
+const getRandomStock = () => Math.floor(Math.random() * 150) + 1;
+const getRandomRating = () => (Math.random() * (5 - 3.8) + 3.8).toFixed(1);
 
 const seedChaos = async () => {
   const client = await pool.connect();
   try {
-    console.log('--- ENTERING CHAOS MODE: SEEDING PRODUCTS ---');
+    console.log(`--- ENTERING PRODUCTION SEED MODE: IMAGES FROM ${BACKEND_URL} ---`);
 
-    // 1. Get Categories
     const categoriesRes = await client.query('SELECT id, name FROM categories');
     const categories = categoriesRes.rows;
-
-    if (categories.length === 0) {
-      throw new Error('No hay categorías en la DB. Corre init-db.js primero.');
-    }
-
-    // 2. Get Admin Seller
     const adminRes = await client.query("SELECT id FROM users WHERE email = 'admin@tungumarket.com'");
-    if (adminRes.rows.length === 0) {
-      throw new Error('No se encontró el admin. Corre init-db.js primero.');
-    }
+    if (adminRes.rows.length === 0) throw new Error('Crea el admin primero.');
     const adminId = adminRes.rows[0].id;
 
-    console.log(`Poblando datos para ${categories.length} categorías...`);
+    console.log('Limpiando catálogo anterior...');
+    await client.query('DELETE FROM products WHERE seller_id = $1', [adminId]);
 
-    // 3. Generate Products
+    console.log(`Poblando datos reales para ${categories.length} categorías...`);
+
     let count = 0;
     for (let i = 0; i < 50; i++) {
       const category = getRandom(categories);
       const adj = getRandom(ADJECTIVES);
       const nounArr = NOUNS[category.name] || NOUNS['Otros'];
       const noun = getRandom(nounArr);
+      const title = `${noun} ${adj}`;
       
-      const title = `${noun} ${adj} # ${Math.floor(Math.random() * 1000)}`;
-      const price = getRandomPrice();
-      const stock = getRandomStock();
-      const rating = getRandomRating();
-      const reviews = Math.floor(Math.random() * 50);
-
       const prodRes = await client.query(`
         INSERT INTO products (seller_id, category_id, title, description, price, stock, average_rating, review_count)
         VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING id
@@ -92,35 +82,28 @@ const seedChaos = async () => {
         adminId, 
         category.id, 
         title, 
-        `Este es un producto caótico de prueba: ${title}. Calidad garantizada en Tungurahua.`, 
-        price, 
-        stock, 
-        rating, 
-        reviews
+        `Producto auténtico de Tungurahua: ${title}. Calificación premium y stock real en nuestro centro de distribución de Ambato.`, 
+        getRandomPrice(), 
+        getRandomStock(), 
+        getRandomRating(), 
+        Math.floor(Math.random() * 80)
       ]);
 
       const productId = prodRes.rows[0].id;
+      const imagesAvailable = CATEGORY_IMAGES[category.name] || CATEGORY_IMAGES['Otros'];
+      const imageUrl = getRandom(imagesAvailable);
 
-      // Primary Image
       await client.query(`
         INSERT INTO product_images (product_id, image_url, is_primary)
         VALUES ($1, $2, true)
-      `, [productId, `${getRandom(IMAGES)}?q=80&w=600&auto=format`]);
-
-      // Secondary Image (randomly)
-      if (Math.random() > 0.5) {
-        await client.query(`
-          INSERT INTO product_images (product_id, image_url, is_primary, display_order)
-          VALUES ($1, $2, false, 1)
-        `, [productId, `${getRandom(IMAGES)}?q=80&w=600&auto=format`]);
-      }
+      `, [productId, imageUrl]);
 
       count++;
     }
 
-    console.log(`✅ ¡CAOS COMPLETADO! Se crearon ${count} productos aleatorios.`);
+    console.log(`✅ ¡ÉXITO TOTAL! ${count} productos con URLs reales de servidor backend.`);
   } catch (err) {
-    console.error('❌ Error en el caos:', err);
+    console.error('❌ Error en el despliegue de producción:', err);
   } finally {
     client.release();
     await pool.end();

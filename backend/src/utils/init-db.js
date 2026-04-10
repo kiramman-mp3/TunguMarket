@@ -24,11 +24,11 @@ const pool = new Pool({
 const initDb = async () => {
   const client = await pool.connect();
   try {
-    console.log('--- RESTORING COMPLETE DATABASE SCHEMA ---');
+    console.log('--- FINAL BACKEND RESTORATION (WITH TRIGGERS) ---');
 
     await client.query('CREATE EXTENSION IF NOT EXISTS "uuid-ossp";');
 
-    console.log('Dropping existing tables (Full Cleanup)...');
+    console.log('Cleaning environment...');
     await client.query(`
       DROP TABLE IF EXISTS reviews CASCADE;
       DROP TABLE IF EXISTS product_images CASCADE;
@@ -196,6 +196,37 @@ const initDb = async () => {
         updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
         UNIQUE (product_id, user_id)
       );
+
+      -- 5. AUTOMATION (TRIGGERS)
+      -- Function to update product rating stats
+      CREATE OR REPLACE FUNCTION update_product_rating_stats()
+      RETURNS TRIGGER AS $$
+      BEGIN
+        IF (TG_OP = 'INSERT' OR TG_OP = 'UPDATE') THEN
+          UPDATE products
+          SET 
+            average_rating = (SELECT COALESCE(AVG(rating), 0) FROM reviews WHERE product_id = NEW.product_id),
+            review_count = (SELECT COUNT(*) FROM reviews WHERE product_id = NEW.product_id),
+            updated_at = CURRENT_TIMESTAMP
+          WHERE id = NEW.product_id;
+          RETURN NEW;
+        ELSIF (TG_OP = 'DELETE') THEN
+          UPDATE products
+          SET 
+            average_rating = (SELECT COALESCE(AVG(rating), 0) FROM reviews WHERE product_id = OLD.product_id),
+            review_count = (SELECT COUNT(*) FROM reviews WHERE product_id = OLD.product_id),
+            updated_at = CURRENT_TIMESTAMP
+          WHERE id = OLD.product_id;
+          RETURN OLD;
+        END IF;
+      END;
+      $$ LANGUAGE plpgsql;
+
+      -- Trigger for reviews
+      CREATE TRIGGER trg_update_rating_stats
+      AFTER INSERT OR UPDATE OR DELETE ON reviews
+      FOR EACH ROW
+      EXECUTE FUNCTION update_product_rating_stats();
     `);
 
     console.log('Seeding baseline info...');
@@ -222,9 +253,9 @@ const initDb = async () => {
       await client.query('INSERT INTO categories (name, description) VALUES ($1, $2)', [name, desc]);
     }
 
-    console.log('--- PRODUCTION SCHEMA RESTORED SUCCESSFULLY ---');
+    console.log('--- SYSTEM RECONSTRUCTED SUCCESSFULLY (TRIGGERS ACTIVE) ---');
   } catch (err) {
-    console.error('❌ CRITICAL INITIALIZATION ERROR:', err);
+    console.error('❌ CRITICAL ERROR:', err);
   } finally {
     client.release();
     await pool.end();
