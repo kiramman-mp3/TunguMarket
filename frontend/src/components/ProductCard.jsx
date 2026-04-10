@@ -22,6 +22,7 @@ const ProductCard = ({ product }) => {
       setTimeout(() => setAdded(false), 2000);
     } catch (err) {
       console.error(err);
+      alert(err.message || 'No se pudo agregar al carrito');
     }
   };
   

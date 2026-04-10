@@ -26,7 +26,7 @@ export const getCart = async () => {
  */
 export const addToCartAPI = async (product_id, quantity, price_at_purchase) => {
   const token = localStorage.getItem('tungu_token');
-  const response = await fetch(`${API_URL}/add`, {
+  const response = await fetch(`${API_URL}/items`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
@@ -42,7 +42,7 @@ export const addToCartAPI = async (product_id, quantity, price_at_purchase) => {
  */
 export const updateCartItemAPI = async (itemId, quantity) => {
   const token = localStorage.getItem('tungu_token');
-  const response = await fetch(`${API_URL}/update/${itemId}`, {
+  const response = await fetch(`${API_URL}/items/${itemId}`, {
     method: 'PUT',
     headers: {
       'Content-Type': 'application/json',
@@ -58,7 +58,7 @@ export const updateCartItemAPI = async (itemId, quantity) => {
  */
 export const removeCartItemAPI = async (itemId) => {
   const token = localStorage.getItem('tungu_token');
-  const response = await fetch(`${API_URL}/remove/${itemId}`, {
+  const response = await fetch(`${API_URL}/items/${itemId}`, {
     method: 'DELETE',
     headers: {
       'Authorization': `Bearer ${token}`
@@ -72,7 +72,7 @@ export const removeCartItemAPI = async (itemId) => {
  */
 export const clearCartAPI = async () => {
   const token = localStorage.getItem('tungu_token');
-  const response = await fetch(`${API_URL}/clear`, {
+  const response = await fetch(`${API_URL}`, {
     method: 'DELETE',
     headers: {
       'Authorization': `Bearer ${token}`

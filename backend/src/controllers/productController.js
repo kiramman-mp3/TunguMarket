@@ -582,6 +582,8 @@ class ProductController {
     } catch (error) {
       res.status(500).json({ error: error.message });
     }
+  }
+
   /**
    * PATCH /api/products/:id/images/:imageId/primary
    * Establece una imagen como principal

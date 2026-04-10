@@ -25,7 +25,12 @@ const ProductDetails = () => {
   const { addToCart } = useCart();
   const [added, setAdded] = useState(false);
   const { id } = useParams();
-// ... (omitted lines)
+  const [product, setProduct] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  const [quantity, setQuantity] = useState(1);
+  const [activeImage, setActiveImage] = useState(0);
+
   const handleAddToCart = async () => {
     try {
       await addToCart(product, quantity);
@@ -33,13 +38,9 @@ const ProductDetails = () => {
       setTimeout(() => setAdded(false), 2000);
     } catch (err) {
       console.error(err);
+      alert(err.message || 'Error al agregar al carrito');
     }
   };
-  const [product, setProduct] = useState(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
-  const [quantity, setQuantity] = useState(1);
-  const [activeImage, setActiveImage] = useState(0);
 
   useEffect(() => {
     const fetchProduct = async () => {

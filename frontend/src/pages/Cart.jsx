@@ -96,7 +96,13 @@ const Cart = () => {
                     {/* Quantity Selector */}
                     <div className="flex items-center bg-gray-50 rounded-xl p-1 border border-gray-100">
                       <button 
-                        onClick={() => updateQuantity(item.id, item.product_id, item.quantity - 1)}
+                        onClick={async () => {
+                          try {
+                            await updateQuantity(item.id, item.quantity - 1);
+                          } catch (err) {
+                            alert(err.message || 'Error al actualizar cantidad');
+                          }
+                        }}
                         className="w-8 h-8 rounded-lg hover:bg-white transition-colors text-brand-secondary disabled:opacity-30"
                         disabled={item.quantity <= 1}
                       >
@@ -104,7 +110,13 @@ const Cart = () => {
                       </button>
                       <span className="w-8 text-center font-bold text-brand-secondary">{item.quantity}</span>
                       <button 
-                        onClick={() => updateQuantity(item.id, item.product_id, item.quantity + 1)}
+                        onClick={async () => {
+                          try {
+                            await updateQuantity(item.id, item.quantity + 1);
+                          } catch (err) {
+                            alert(err.message || 'Error al actualizar cantidad');
+                          }
+                        }}
                         className="w-8 h-8 rounded-lg hover:bg-white transition-colors text-brand-secondary"
                       >
                         <FontAwesomeIcon icon={faPlus} size="xs" />
@@ -119,7 +131,7 @@ const Cart = () => {
                     </div>
 
                     <button 
-                      onClick={() => removeFromCart(item.id, item.product_id)}
+                      onClick={() => removeFromCart(item.id)}
                       className="text-gray-300 hover:text-red-500 transition-colors p-2"
                     >
                       <FontAwesomeIcon icon={faTrashAlt} />

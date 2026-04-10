@@ -75,8 +75,10 @@ export const AuthProvider = ({ children }) => {
     window.location.href = '/login'; // Force redirect to login
   };
 
+  const isAuthenticated = !!user;
+
   return (
-    <AuthContext.Provider value={{ user, loading, login, logout }}>
+    <AuthContext.Provider value={{ user, isAuthenticated, loading, login, logout }}>
       {children}
       <BanModal isOpen={showBanModal} onClose={logout} />
     </AuthContext.Provider>
