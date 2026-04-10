@@ -1,6 +1,13 @@
 import ProductModel from '../models/productModel.js';
 import ProductImageModel from '../models/productImageModel.js';
 import ForbiddenKeywordService from '../services/forbiddenKeywordService.js';
+import pool from '../config/db.js';
+import fs from 'fs';
+import path from 'path';
+import { fileURLToPath } from 'url';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 class ProductController {
   /**
@@ -235,13 +242,17 @@ class ProductController {
 
       const product = await ProductModel.create(productData);
 
-      // ========== CARGA DE IMAGEN REAL ==========
-      if (req.file) {
+      // ========== GESTIÓN DE IMÁGENES MÚLTIPLES ==========
+      if (req.files && req.files.length > 0) {
         const baseUrl = process.env.BACKEND_URL || `${req.protocol}://${req.get('host')}`;
-        const imageUrl = `${baseUrl}/uploads/products/${req.file.filename}`;
         
-        await ProductImageModel.create(product.id, imageUrl, true, 0);
-        product.primary_image = imageUrl;
+        for (let i = 0; i < req.files.length; i++) {
+          const file = req.files[i];
+          const imageUrl = `${baseUrl}/uploads/products/${file.filename}`;
+          const isPrimary = i === 0; // La primera es la principal
+          
+          await ProductImageModel.create(product.id, imageUrl, isPrimary, i);
+        }
       }
 
       res.status(201).json({
@@ -266,7 +277,7 @@ class ProductController {
   static async updateProduct(req, res) {
     try {
       const { id } = req.params;
-      const { title, description, price, stock, status } = req.body;
+      let { title, description, price, stock, status, category_id } = req.body;
       const userId = req.user.id;
 
       if (!id) {
@@ -302,12 +313,26 @@ class ProductController {
         updates.description = description.trim();
       }
 
-      if (price !== undefined && typeof price === 'number' && price >= 0) {
-        updates.price = price;
+      // Convertir y validar precio si se proporciona
+      if (price !== undefined) {
+        const numPrice = parseFloat(price);
+        if (isNaN(numPrice) || numPrice < 0) {
+          return res.status(400).json({ error: 'Precio inválido' });
+        }
+        updates.price = numPrice;
       }
 
-      if (stock !== undefined && Number.isInteger(stock) && stock >= 0) {
-        updates.stock = stock;
+      // Convertir y validar stock si se proporciona
+      if (stock !== undefined) {
+        const numStock = parseInt(stock, 10);
+        if (isNaN(numStock) || numStock < 0) {
+          return res.status(400).json({ error: 'Stock inválido' });
+        }
+        updates.stock = numStock;
+      }
+
+      if (category_id !== undefined) {
+        updates.category_id = category_id;
       }
 
       // Solo admin puede cambiar estado
@@ -315,7 +340,29 @@ class ProductController {
         updates.status = status;
       }
 
-      const updated = await ProductModel.update(id, updates);
+      // ========== ACTUALIZACIÓN DE IMÁGENES MÚLTIPLES ==========
+      if (req.files && req.files.length > 0) {
+        const baseUrl = process.env.BACKEND_URL || `${req.protocol}://${req.get('host')}`;
+        
+        // Obtener el orden actual para continuar
+        const currentCount = await ProductImageModel.countByProductId(id);
+        
+        for (let i = 0; i < req.files.length; i++) {
+          const file = req.files[i];
+          const imageUrl = `${baseUrl}/uploads/products/${file.filename}`;
+          
+          // Si es la primera vez que se suben imágenes o si se quiere reemplazar el primary (lógica simple: añadir)
+          await ProductImageModel.create(id, imageUrl, false, currentCount + i);
+        }
+      }
+
+      // Solo proceder si hay algo que actualizar
+      let updated;
+      if (Object.keys(updates).length > 0) {
+        updated = await ProductModel.update(id, updates);
+      } else {
+        updated = product;
+      }
 
       res.status(200).json({
         message: 'Producto actualizado exitosamente',
@@ -350,8 +397,23 @@ class ProductController {
         return res.status(403).json({ error: 'No tienes permiso para eliminar este producto' });
       }
 
+      // Obtener todas las imágenes para borrarlas del disco
+      const images = await ProductImageModel.findByProductId(id);
+      for (const img of images) {
+        try {
+          const urlParts = img.image_url.split('/');
+          const filename = urlParts[urlParts.length - 1];
+          const filePath = path.join(__dirname, '../../uploads/products', filename);
+          if (fs.existsSync(filePath)) {
+            fs.unlinkSync(filePath);
+          }
+        } catch (err) {
+          console.error(`Error eliminando archivo físico: ${img.image_url}`, err);
+        }
+      }
+
       await ProductModel.delete(id);
-      await ProductImageModel.deleteByProductId(id); // Eliminar imágenes también
+      await ProductImageModel.deleteByProductId(id);
 
       res.status(200).json({
         message: 'Producto eliminado exitosamente'
@@ -464,11 +526,26 @@ class ProductController {
         return res.status(403).json({ error: 'No tienes permiso para eliminar imágenes de este producto' });
       }
 
-      const deleted = await ProductImageModel.delete(imageId);
-
-      if (!deleted) {
+      // Obtener detalles de la imagen antes de borrar
+      const image = await ProductImageModel.findById(imageId);
+      if (!image) {
         return res.status(404).json({ error: 'Imagen no encontrada' });
       }
+
+      // Eliminar archivo físico
+      try {
+        const urlParts = image.image_url.split('/');
+        const filename = urlParts[urlParts.length - 1];
+        const filePath = path.join(__dirname, '../../uploads/products', filename);
+        
+        if (fs.existsSync(filePath)) {
+          fs.unlinkSync(filePath);
+        }
+      } catch (err) {
+        console.error('Error al borrar archivo físico:', err);
+      }
+
+      await ProductImageModel.delete(imageId);
 
       res.status(200).json({
         message: 'Imagen eliminada exitosamente'
@@ -501,6 +578,33 @@ class ProductController {
       res.status(200).json({
         message: 'Imágenes obtenidas exitosamente',
         data: images
+      });
+    } catch (error) {
+      res.status(500).json({ error: error.message });
+    }
+  /**
+   * PATCH /api/products/:id/images/:imageId/primary
+   * Establece una imagen como principal
+   */
+  static async setPrimaryImage(req, res) {
+    try {
+      const { id, imageId } = req.params;
+      const userId = req.user.id;
+
+      const product = await ProductModel.findById(id);
+      if (!product) {
+        return res.status(404).json({ error: 'Producto no encontrado' });
+      }
+
+      // Verificar permisos
+      if (product.seller_id !== userId && req.user.role !== 'admin') {
+        return res.status(403).json({ error: 'No tienes permiso para modificar este producto' });
+      }
+
+      await ProductImageModel.update(imageId, { is_primary: true });
+
+      res.status(200).json({
+        message: 'Imagen principal actualizada exitosamente'
       });
     } catch (error) {
       res.status(500).json({ error: error.message });

@@ -12,29 +12,36 @@ import AdminPanel from './pages/AdminPanel';
 import Shop from './pages/Shop';
 import ProductDetails from './pages/ProductDetails';
 import Sell from './pages/Sell';
+import EditProduct from './pages/EditProduct';
 
 import { AuthProvider } from './context/AuthContext';
+import { CartProvider } from './context/CartContext';
+import Cart from './pages/Cart';
 
 function App() {
   return (
     <AuthProvider>
-      <Router>
-        <Layout>
-          <Routes>
-            <Route path="/" element={<Home />} />
-            <Route path="/login" element={<Login />} />
-            <Route path="/register" element={<Register />} />
-            <Route path="/pending-verification" element={<PendingVerification />} />
-            <Route path="/forgot-password" element={<ForgotPassword />} />
-            <Route path="/reset-password" element={<ResetPassword />} />
-            <Route path="/profile" element={<Profile />} />
-            <Route path="/admin" element={<AdminPanel />} />
-            <Route path="/shop" element={<Shop />} />
-            <Route path="/product/:id" element={<ProductDetails />} />
-            <Route path="/sell" element={<Sell />} />
-          </Routes>
-        </Layout>
-      </Router>
+      <CartProvider>
+        <Router>
+          <Layout>
+            <Routes>
+              <Route path="/" element={<Home />} />
+              <Route path="/login" element={<Login />} />
+              <Route path="/register" element={<Register />} />
+              <Route path="/pending-verification" element={<PendingVerification />} />
+              <Route path="/forgot-password" element={<ForgotPassword />} />
+              <Route path="/reset-password" element={<ResetPassword />} />
+              <Route path="/profile" element={<Profile />} />
+              <Route path="/admin" element={<AdminPanel />} />
+              <Route path="/shop" element={<Shop />} />
+              <Route path="/product/:id" element={<ProductDetails />} />
+              <Route path="/sell" element={<Sell />} />
+              <Route path="/edit-product/:id" element={<EditProduct />} />
+              <Route path="/cart" element={<Cart />} />
+            </Routes>
+          </Layout>
+        </Router>
+      </CartProvider>
     </AuthProvider>
   );
 }

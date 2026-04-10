@@ -28,10 +28,10 @@ router.get('/:id', ProductController.getProductById);
 router.get('/:id/images', ProductController.getProductImages);
 
 // POST crear nuevo producto (DEBE ESTAR AUTH)
-router.post('/', authMiddleware, upload.single('image'), ProductController.createProduct);
+router.post('/', authMiddleware, upload.array('images', 5), ProductController.createProduct);
 
 // PUT actualizar producto (vendedor o admin)
-router.put('/:id', authMiddleware, ProductController.updateProduct);
+router.put('/:id', authMiddleware, upload.array('images', 5), ProductController.updateProduct);
 
 // DELETE eliminar producto (vendedor o admin)
 router.delete('/:id', authMiddleware, ProductController.deleteProduct);
@@ -41,5 +41,8 @@ router.post('/:id/images', authMiddleware, ProductController.addProductImage);
 
 // DELETE eliminar imagen de producto (vendedor o admin)
 router.delete('/:id/images/:imageId', authMiddleware, ProductController.deleteProductImage);
+
+// PATCH establecer imagen como principal (vendedor o admin)
+router.patch('/:id/images/:imageId/primary', authMiddleware, ProductController.setPrimaryImage);
 
 export default router;

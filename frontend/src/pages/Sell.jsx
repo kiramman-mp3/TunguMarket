@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { 
   faCloudUploadAlt, 
@@ -12,7 +12,9 @@ import {
   faCheckCircle, 
   faTimesCircle,
   faArrowLeft,
-  faStore
+  faStore,
+  faTrashAlt,
+  faPlus
 } from '@fortawesome/free-solid-svg-icons';
 import { createProduct } from '../api/product';
 import { getCategories } from '../api/category';
@@ -32,8 +34,9 @@ const Sell = () => {
     stock: '1',
     category_id: ''
   });
-  const [image, setImage] = useState(null);
-  const [imagePreview, setImagePreview] = useState(null);
+  
+  const [images, setImages] = useState([]); // Array of File objects
+  const [previews, setPreviews] = useState([]); // Array of base64 strings
 
   useEffect(() => {
     const fetchCategories = async () => {
@@ -53,28 +56,49 @@ const Sell = () => {
   };
 
   const handleImageChange = (e) => {
-    const file = e.target.files[0];
-    if (file) {
-      if (file.size > 5 * 1024 * 1024) {
-        setError('La imagen es demasiado grande (Máximo 5MB)');
-        return;
-      }
-      setImage(file);
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        setImagePreview(reader.result);
-      };
-      reader.readAsDataURL(file);
-      setError(null);
+    const files = Array.from(e.target.files);
+    
+    if (images.length + files.length > 5) {
+      setError('Máximo 5 imágenes permitidas.');
+      return;
     }
+
+    const newImages = [...images];
+    const newPreviews = [...previews];
+
+    files.forEach(file => {
+      if (file.size > 5 * 1024 * 1024) {
+        setError(`"${file.name}" es demasiado grande (Máximo 5MB)`);
+      } else {
+        newImages.push(file);
+        const reader = new FileReader();
+        reader.onloadend = () => {
+          newPreviews.push(reader.result);
+          setPreviews([...newPreviews]);
+        };
+        reader.readAsDataURL(file);
+      }
+    });
+
+    setImages(newImages);
+    setError(null);
+  };
+
+  const removeImage = (index) => {
+    const newImages = [...images];
+    const newPreviews = [...previews];
+    newImages.splice(index, 1);
+    newPreviews.splice(index, 1);
+    setImages(newImages);
+    setPreviews(newPreviews);
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError(null);
     
-    if (!image) {
-      setError('Por favor selecciona una imagen para tu producto.');
+    if (images.length === 0) {
+      setError('Por favor selecciona al menos una imagen para tu producto.');
       return;
     }
 
@@ -87,7 +111,11 @@ const Sell = () => {
       data.append('price', Number(formData.price));
       data.append('stock', parseInt(formData.stock, 10));
       data.append('category_id', formData.category_id);
-      data.append('image', image);
+      
+      // Append all images
+      images.forEach(img => {
+        data.append('images', img);
+      });
 
       await createProduct(data);
       
@@ -261,42 +289,71 @@ const Sell = () => {
             </motion.form>
           </div>
 
-          {/* Right Side: Image Preview & Help */}
+          {/* Right Side: Image Gallery & Help */}
           <div className="lg:col-span-5 space-y-8">
             <motion.div 
               initial={{ opacity: 0, x: 20 }}
               animate={{ opacity: 1, x: 0 }}
-              className="glass-card p-4 h-fit"
+              className="glass-card p-6 h-fit"
             >
-              <h3 className="text-xs font-bold uppercase tracking-widest text-brand-primary p-4 mb-2">Imagen Principal</h3>
-              <div 
-                onClick={() => document.getElementById('image-upload').click()}
-                className={`aspect-square rounded-[1.5rem] border-4 border-dashed transition-all cursor-pointer flex flex-col items-center justify-center relative overflow-hidden group ${
-                  imagePreview ? 'border-brand-primary/20' : 'border-gray-100 hover:border-brand-primary/30 bg-gray-50/50'
-                }`}
-              >
-                {imagePreview ? (
-                  <>
-                    <img src={imagePreview} alt="Preview" className="w-full h-full object-cover" />
-                    <div className="absolute inset-0 bg-brand-secondary/40 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity text-white font-bold gap-2">
-                       <FontAwesomeIcon icon={faCloudUploadAlt} /> Cambiar Foto
-                    </div>
-                  </>
-                ) : (
-                  <div className="text-center p-8">
-                    <FontAwesomeIcon icon={faCloudUploadAlt} className="text-5xl text-gray-200 mb-4 group-hover:text-brand-primary/40 transition-colors" />
-                    <p className="text-sm font-bold text-gray-400 group-hover:text-brand-secondary transition-colors">Arrastra o haz clic para subir</p>
-                    <p className="text-[10px] text-gray-400 mt-1 uppercase font-black tracking-tighter">JPG, PNG, WEBP (MÁX 5MB)</p>
-                  </div>
-                )}
-                <input 
-                  id="image-upload"
-                  type="file" 
-                  accept="image/*"
-                  onChange={handleImageChange}
-                  className="hidden"
-                />
+              <div className="flex items-center justify-between mb-4 px-2">
+                <h3 className="text-xs font-bold uppercase tracking-widest text-brand-primary">Galería de Imágenes</h3>
+                <span className="text-[10px] font-black text-brand-secondary bg-brand-light px-2 py-1 rounded-full">{images.length}/5</span>
               </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                {previews.map((preview, index) => (
+                  <motion.div 
+                    layout
+                    initial={{ opacity: 0, scale: 0.8 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    key={index} 
+                    className="relative aspect-square rounded-2xl overflow-hidden group border-2 border-brand-primary/10 shadow-sm"
+                  >
+                    <img src={preview} alt="" className="w-full h-full object-cover" />
+                    <button 
+                      onClick={(e) => { e.preventDefault(); removeImage(index); }}
+                      className="absolute top-2 right-2 w-8 h-8 bg-red-500 text-white rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity shadow-lg"
+                    >
+                      <FontAwesomeIcon icon={faTrashAlt} size="xs" />
+                    </button>
+                    {index === 0 && (
+                      <div className="absolute bottom-0 inset-x-0 bg-brand-primary/90 text-brand-secondary text-[10px] font-black py-1 text-center uppercase">
+                        Principal
+                      </div>
+                    )}
+                  </motion.div>
+                ))}
+
+                {images.length < 5 && (
+                  <button 
+                    onClick={(e) => { e.preventDefault(); document.getElementById('image-upload').click(); }}
+                    className="aspect-square rounded-2xl border-4 border-dashed border-gray-100 hover:border-brand-primary/30 hover:bg-brand-light/20 transition-all flex flex-col items-center justify-center gap-2 text-gray-400 hover:text-brand-secondary group"
+                  >
+                    <FontAwesomeIcon icon={faPlus} className="text-2xl group-hover:scale-110 transition-transform" />
+                    <span className="text-[10px] font-black uppercase tracking-widest">Añadir</span>
+                  </button>
+                )}
+              </div>
+
+              {images.length === 0 && (
+                <div 
+                  onClick={() => document.getElementById('image-upload').click()}
+                  className="mt-4 aspect-[4/3] rounded-2xl border-4 border-dashed border-gray-100 flex flex-col items-center justify-center p-8 text-center cursor-pointer hover:border-brand-primary/30 transition-all"
+                >
+                  <FontAwesomeIcon icon={faCloudUploadAlt} className="text-4xl text-gray-200 mb-2" />
+                  <p className="text-xs font-bold text-gray-400">Sube fotos de alta calidad para vender más rápido</p>
+                </div>
+              )}
+
+              <input 
+                id="image-upload"
+                type="file" 
+                multiple
+                accept="image/*"
+                onChange={handleImageChange}
+                className="hidden"
+              />
             </motion.div>
 
             {/* Seller Tips */}
@@ -313,7 +370,7 @@ const Sell = () => {
                     <span className="text-brand-primary">•</span> Un buen título atrae 3 veces más clientes.
                   </li>
                   <li className="flex gap-3">
-                    <span className="text-brand-primary">•</span> Fotos con luz natural venden más rápido.
+                    <span className="text-brand-primary">•</span> Todas las fotos del mismo tamaño lucen mejor.
                   </li>
                   <li className="flex gap-3">
                     <span className="text-brand-primary">•</span> Describe qué hace especial a tu producto.

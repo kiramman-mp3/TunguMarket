@@ -12,12 +12,29 @@ import {
   faArrowLeft,
   faMinus,
   faPlus,
-  faShareAlt
+  faShareAlt,
+  faAlignLeft,
+  faCheck
 } from '@fortawesome/free-solid-svg-icons';
 import { getProductById } from '../api/product';
+import { useAuth } from '../context/AuthContext';
+import { useCart } from '../context/CartContext';
 
 const ProductDetails = () => {
+  const { user } = useAuth();
+  const { addToCart } = useCart();
+  const [added, setAdded] = useState(false);
   const { id } = useParams();
+// ... (omitted lines)
+  const handleAddToCart = async () => {
+    try {
+      await addToCart(product, quantity);
+      setAdded(true);
+      setTimeout(() => setAdded(false), 2000);
+    } catch (err) {
+      console.error(err);
+    }
+  };
   const [product, setProduct] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -152,6 +169,27 @@ const ProductDetails = () => {
             </div>
 
             <div className="bg-white p-8 rounded-[2rem] shadow-premium border border-gray-50 space-y-6">
+              {user && product.seller_id === user.id && (
+                <div className="bg-brand-primary/10 border-2 border-brand-primary/20 rounded-2xl p-6 mb-6">
+                  <div className="flex items-center gap-4 mb-4">
+                    <div className="w-12 h-12 rounded-full bg-brand-primary text-brand-secondary flex items-center justify-center text-xl">
+                      <FontAwesomeIcon icon={faStore} />
+                    </div>
+                    <div>
+                      <h4 className="font-black text-brand-secondary">Este es tu producto</h4>
+                      <p className="text-xs font-bold text-brand-secondary/60 uppercase tracking-wider">Modo Administrador</p>
+                    </div>
+                  </div>
+                  <Link 
+                    to={`/edit-product/${product.id}`}
+                    className="btn-primary w-full py-4 flex items-center justify-center gap-3 font-black transition-transform active:scale-95"
+                  >
+                    <FontAwesomeIcon icon={faAlignLeft} />
+                    Editar detalles y stock
+                  </Link>
+                </div>
+              )}
+
               <div>
                 <h3 className="text-sm font-bold uppercase tracking-widest text-brand-primary mb-3">Descripción</h3>
                 <p className="text-gray-600 leading-relaxed font-medium">
@@ -175,50 +213,57 @@ const ProductDetails = () => {
               </div>
             </div>
 
-            <div className="space-y-6">
-              <div className="flex items-center gap-8">
-                <div className="space-y-2">
-                  <h3 className="text-xs font-bold uppercase text-gray-400 tracking-wider">Cantidad</h3>
-                  <div className="flex items-center bg-white rounded-2xl border-2 border-gray-100 p-1">
-                    <button 
-                      onClick={() => handleQuantityChange(-1)}
-                      className="w-10 h-10 rounded-xl hover:bg-brand-light transition-colors text-brand-secondary"
-                    >
-                      <FontAwesomeIcon icon={faMinus} size="xs" />
-                    </button>
-                    <span className="w-12 text-center font-bold text-brand-secondary">{quantity}</span>
-                    <button 
-                      onClick={() => handleQuantityChange(1)}
-                      className="w-10 h-10 rounded-xl hover:bg-brand-light transition-colors text-brand-secondary"
-                    >
-                      <FontAwesomeIcon icon={faPlus} size="xs" />
-                    </button>
+            {(!user || product.seller_id !== user.id) && (
+              <div className="space-y-6">
+                <div className="flex items-center gap-8">
+                  <div className="space-y-2">
+                    <h3 className="text-xs font-bold uppercase text-gray-400 tracking-wider">Cantidad</h3>
+                    <div className="flex items-center bg-white rounded-2xl border-2 border-gray-100 p-1">
+                      <button 
+                        onClick={() => handleQuantityChange(-1)}
+                        className="w-10 h-10 rounded-xl hover:bg-brand-light transition-colors text-brand-secondary"
+                      >
+                        <FontAwesomeIcon icon={faMinus} size="xs" />
+                      </button>
+                      <span className="w-12 text-center font-bold text-brand-secondary">{quantity}</span>
+                      <button 
+                        onClick={() => handleQuantityChange(1)}
+                        className="w-10 h-10 rounded-xl hover:bg-brand-light transition-colors text-brand-secondary"
+                      >
+                        <FontAwesomeIcon icon={faPlus} size="xs" />
+                      </button>
+                    </div>
+                  </div>
+                  <div className="flex-grow space-y-2">
+                    <h3 className="text-xs font-bold uppercase text-gray-400 tracking-wider">Precio Total</h3>
+                    <p className="text-3xl font-black text-brand-accent">
+                      ${(parseFloat(product.price) * quantity).toFixed(2)}
+                    </p>
                   </div>
                 </div>
-                <div className="flex-grow space-y-2">
-                  <h3 className="text-xs font-bold uppercase text-gray-400 tracking-wider">Precio Total</h3>
-                  <p className="text-3xl font-black text-brand-accent">
-                    ${(parseFloat(product.price) * quantity).toFixed(2)}
-                  </p>
-                </div>
-              </div>
 
-              <div className="flex gap-4">
-                <button className="btn-primary flex-grow py-4 text-lg flex items-center justify-center gap-3 group">
-                  <FontAwesomeIcon icon={faShoppingBag} className="group-hover:scale-110 transition-transform" />
-                  Agregar al Carrito
-                </button>
-                <button className="btn-outline w-16 h-16 rounded-[1.25rem] flex items-center justify-center hover:bg-red-50 hover:text-red-500 hover:border-red-200 transition-all">
-                  <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
-                  </svg>
-                </button>
+                <div className="flex gap-4">
+                  <button 
+                    onClick={handleAddToCart}
+                    className={`flex-grow py-4 text-lg flex items-center justify-center gap-3 group transition-all font-bold rounded-2xl ${
+                      added ? 'bg-green-500 text-white shadow-lg' : 'btn-primary'
+                    }`}
+                  >
+                    <FontAwesomeIcon icon={added ? faCheck : faShoppingBag} className="group-hover:scale-110 transition-transform" />
+                    {added ? '¡Producto Añadido!' : 'Agregar al Carrito'}
+                  </button>
+                  <button className="btn-outline w-16 h-16 rounded-[1.25rem] flex items-center justify-center hover:bg-red-50 hover:text-red-500 hover:border-red-200 transition-all">
+                    <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
+                    </svg>
+                  </button>
+                </div>
+                
+                <p className="text-xs text-center text-gray-400 font-medium">
+                  {product.stock > 0 ? `Stock disponible: ${product.stock} unidades` : 'Agotado temporalmente'}
+                </p>
               </div>
-              
-              <p className="text-xs text-center text-gray-400 font-medium">
-                {product.stock > 0 ? `Stock disponible: ${product.stock} unidades` : 'Agotado temporalmente'}
-              </p>
-            </div>
+            )}
 
           </div>
         </div>

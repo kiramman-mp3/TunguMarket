@@ -1,13 +1,35 @@
 import React from 'react';
 import { motion } from 'framer-motion';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { faStar, faShoppingBag, faMapMarkerAlt, faStore } from '@fortawesome/free-solid-svg-icons';
+import { faStar, faShoppingBag, faMapMarkerAlt, faStore, faCheck } from '@fortawesome/free-solid-svg-icons';
 import { Link } from 'react-router-dom';
+import { useState } from 'react';
+
+import { useAuth } from '../context/AuthContext';
+import { useCart } from '../context/CartContext';
 
 const ProductCard = ({ product }) => {
+  const { user } = useAuth();
+  const { addToCart } = useCart();
+  const [added, setAdded] = useState(false);
+  
+  const handleAddToCart = async (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    try {
+      await addToCart(product, 1);
+      setAdded(true);
+      setTimeout(() => setAdded(false), 2000);
+    } catch (err) {
+      console.error(err);
+    }
+  };
+  
   // Manejo de fallback para imágenes y datos
   const imageUrl = product.primary_image || product.main_image || product.image_url || 'https://via.placeholder.com/400x300?text=Sin+Imagen';
   const price = typeof product.price === 'number' ? product.price : parseFloat(product.price);
+
+  const isOwner = user && user.id === product.seller_id;
 
   return (
     <motion.div
@@ -17,7 +39,9 @@ const ProductCard = ({ product }) => {
       animate={{ opacity: 1, scale: 1 }}
       exit={{ opacity: 0, scale: 0.9 }}
       transition={{ duration: 0.3 }}
-      className="glass-card overflow-hidden group border border-gray-100 hover:border-brand-primary/30 transition-all duration-300 flex flex-col h-full"
+      className={`glass-card overflow-hidden group border transition-all duration-300 flex flex-col h-full ${
+        isOwner ? 'border-brand-primary/40 bg-brand-light/5' : 'border-gray-100 hover:border-brand-primary/30'
+      }`}
     >
       <Link to={`/product/${product.id}`} className="relative aspect-[4/3] overflow-hidden block">
         <img 
@@ -30,6 +54,11 @@ const ProductCard = ({ product }) => {
             {product.category_name || product.category || 'General'}
           </span>
         </div>
+        {isOwner && (
+          <div className="absolute top-4 right-4 bg-brand-primary text-brand-secondary px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-tighter shadow-sm animate-pulse">
+            Tu Producto
+          </div>
+        )}
         <div className="absolute bottom-4 right-4 bg-brand-secondary text-white px-3 py-1 rounded-full font-bold shadow-lg">
           ${price.toFixed(2)}
         </div>
@@ -57,10 +86,27 @@ const ProductCard = ({ product }) => {
         </div>
 
         <div className="mt-auto">
-          <button className="btn-primary w-full py-3 flex items-center justify-center gap-2 group shadow-sm">
-            <FontAwesomeIcon icon={faShoppingBag} className="group-hover:scale-110 transition-transform" />
-            Agregar al Carrito
-          </button>
+          {isOwner ? (
+            <Link 
+              to={`/product/${product.id}`}
+              className="w-full py-3 rounded-xl border-2 border-brand-primary text-brand-secondary font-bold text-sm flex items-center justify-center gap-2 hover:bg-brand-primary transition-all group"
+            >
+              <FontAwesomeIcon icon={faStore} className="group-hover:rotate-12 transition-transform" />
+              Ver y Gestionar
+            </Link>
+          ) : (
+            <button 
+              onClick={handleAddToCart}
+              className={`w-full py-3 rounded-xl flex items-center justify-center gap-2 group shadow-sm transition-all font-bold text-sm ${
+                added 
+                ? 'bg-green-500 text-white border-green-500' 
+                : 'btn-primary'
+              }`}
+            >
+              <FontAwesomeIcon icon={added ? faCheck : faShoppingBag} className="group-hover:scale-110 transition-transform" />
+              {added ? '¡Añadido!' : 'Agregar al Carrito'}
+            </button>
+          )}
         </div>
       </div>
     </motion.div>

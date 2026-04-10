@@ -65,3 +65,72 @@ export const createProduct = async (productFormData) => {
   });
   return handleResponse(response);
 };
+/**
+ * Actualiza un producto existente (requiere ser dueño o admin)
+ * @param {string} id - ID del producto
+ * @param {FormData|object} productData - Nuevos datos (FormData si hay imagen, objeto si no)
+ */
+export const updateProduct = async (id, productData) => {
+  const token = localStorage.getItem('tungu_token');
+  const isFormData = productData instanceof FormData;
+  
+  const response = await fetch(`${API_URL}/${id}`, {
+    method: 'PUT',
+    headers: {
+      'Authorization': `Bearer ${token}`,
+      ...(isFormData ? {} : { 'Content-Type': 'application/json' })
+    },
+    body: isFormData ? productData : JSON.stringify(productData)
+  });
+  return handleResponse(response);
+};
+
+/**
+ * Elimina un producto (requiere ser dueño o admin)
+ * @param {string} id - ID del producto
+ */
+export const deleteProduct = async (id) => {
+  const token = localStorage.getItem('tungu_token');
+  const response = await fetch(`${API_URL}/${id}`, {
+    method: 'DELETE',
+    headers: {
+      'Authorization': `Bearer ${token}`
+    }
+  });
+  return handleResponse(response);
+};
+/**
+ * Obtiene todas las imágenes de un producto
+ */
+export const getProductImages = async (productId) => {
+  const response = await fetch(`${API_URL}/${productId}/images`);
+  return handleResponse(response);
+};
+
+/**
+ * Elimina una imagen específica de un producto
+ */
+export const deleteProductImage = async (productId, imageId) => {
+  const token = localStorage.getItem('tungu_token');
+  const response = await fetch(`${API_URL}/${productId}/images/${imageId}`, {
+    method: 'DELETE',
+    headers: {
+      'Authorization': `Bearer ${token}`
+    }
+  });
+  return handleResponse(response);
+};
+
+/**
+ * Establece una imagen como principal
+ */
+export const setProductPrimaryImage = async (productId, imageId) => {
+  const token = localStorage.getItem('tungu_token');
+  const response = await fetch(`${API_URL}/${productId}/images/${imageId}/primary`, {
+    method: 'PATCH',
+    headers: {
+      'Authorization': `Bearer ${token}`
+    }
+  });
+  return handleResponse(response);
+};

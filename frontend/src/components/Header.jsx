@@ -1,14 +1,16 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { faBars, faTimes, faShoppingBag, faUserCircle, faSignOutAlt, faShieldAlt, faStore, faHistory, faUser, faChevronDown } from '@fortawesome/free-solid-svg-icons';
+import { faBars, faTimes, faShoppingBag, faUserCircle, faSignOutAlt, faShieldAlt, faStore, faHistory, faUser, faChevronDown, faShoppingCart } from '@fortawesome/free-solid-svg-icons';
 import { useAuth } from '../context/AuthContext';
+import { useCart } from '../context/CartContext';
 import { motion, AnimatePresence } from 'framer-motion';
 
 const Header = () => {
   const [isOpen, setIsOpen] = useState(false);
   const [showProfileMenu, setShowProfileMenu] = useState(false);
   const { user, logout } = useAuth();
+  const { totalItems } = useCart();
   const navigate = useNavigate();
   const dropdownRef = useRef(null);
 
@@ -51,6 +53,23 @@ const Header = () => {
             <Link to="/" className="text-gray-600 hover:text-brand-primary font-medium transition-colors">Inicio</Link>
             <Link to="/shop" className="text-gray-600 hover:text-brand-primary font-medium transition-colors">Explorar</Link>
             
+            {/* Cart Icon */}
+            <Link to="/cart" className="relative p-2 text-gray-600 hover:text-brand-primary transition-colors group">
+              <FontAwesomeIcon icon={faShoppingCart} className="text-xl" />
+              <AnimatePresence>
+                {totalItems > 0 && (
+                  <motion.span 
+                    initial={{ scale: 0 }}
+                    animate={{ scale: 1 }}
+                    exit={{ scale: 0 }}
+                    className="absolute -top-1 -right-1 bg-brand-accent text-white text-[10px] font-black w-5 h-5 rounded-full flex items-center justify-center shadow-lg border-2 border-white"
+                  >
+                    {totalItems > 9 ? '9+' : totalItems}
+                  </motion.span>
+                )}
+              </AnimatePresence>
+            </Link>
+
             {user ? (
               <>
                 {!isAdmin && (
@@ -155,6 +174,14 @@ const Header = () => {
           <div className="px-4 pt-2 pb-6 space-y-1 sm:px-3">
             <Link to="/" onClick={() => setIsOpen(false)} className="block px-3 py-3 rounded-md text-base font-medium text-gray-700 hover:text-brand-primary hover:bg-brand-light/50 transition-colors">Inicio</Link>
             <Link to="/shop" onClick={() => setIsOpen(false)} className="block px-3 py-3 rounded-md text-base font-medium text-gray-700 hover:text-brand-primary hover:bg-brand-light/50 transition-colors">Explorar Marketplace</Link>
+            <Link to="/cart" onClick={() => setIsOpen(false)} className="block px-3 py-3 rounded-md text-base font-medium text-gray-700 hover:text-brand-primary hover:bg-brand-light/50 transition-colors flex items-center justify-between">
+              <span>Mi Carrito</span>
+              {totalItems > 0 && (
+                <span className="bg-brand-accent text-white text-[10px] font-black w-5 h-5 rounded-full flex items-center justify-center">
+                  {totalItems}
+                </span>
+              )}
+            </Link>
             
             {user ? (
               <>
