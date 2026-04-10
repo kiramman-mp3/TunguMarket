@@ -9,6 +9,8 @@ import ForgotPassword from './pages/ForgotPassword';
 import ResetPassword from './pages/ResetPassword';
 import Profile from './pages/Profile';
 import AdminPanel from './pages/AdminPanel';
+import Shop from './pages/Shop';
+import ProductDetails from './pages/ProductDetails';
 
 import { AuthProvider } from './context/AuthContext';
 
@@ -26,6 +28,8 @@ function App() {
             <Route path="/reset-password" element={<ResetPassword />} />
             <Route path="/profile" element={<Profile />} />
             <Route path="/admin" element={<AdminPanel />} />
+            <Route path="/shop" element={<Shop />} />
+            <Route path="/product/:id" element={<ProductDetails />} />
           </Routes>
         </Layout>
       </Router>

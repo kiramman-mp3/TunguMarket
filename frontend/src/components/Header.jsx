@@ -49,6 +49,7 @@ const Header = () => {
           {/* Desktop Nav */}
           <nav className="hidden md:flex space-x-8 items-center">
             <Link to="/" className="text-gray-600 hover:text-brand-primary font-medium transition-colors">Inicio</Link>
+            <Link to="/shop" className="text-gray-600 hover:text-brand-primary font-medium transition-colors">Explorar</Link>
             
             {user ? (
               <>
@@ -153,6 +154,7 @@ const Header = () => {
         <div className="md:hidden bg-white border-t border-gray-100 shadow-xl absolute w-full rounded-b-2xl">
           <div className="px-4 pt-2 pb-6 space-y-1 sm:px-3">
             <Link to="/" onClick={() => setIsOpen(false)} className="block px-3 py-3 rounded-md text-base font-medium text-gray-700 hover:text-brand-primary hover:bg-brand-light/50 transition-colors">Inicio</Link>
+            <Link to="/shop" onClick={() => setIsOpen(false)} className="block px-3 py-3 rounded-md text-base font-medium text-gray-700 hover:text-brand-primary hover:bg-brand-light/50 transition-colors">Explorar Marketplace</Link>
             
             {user ? (
               <>
