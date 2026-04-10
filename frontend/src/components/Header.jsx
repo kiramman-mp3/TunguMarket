@@ -54,7 +54,7 @@ const Header = () => {
             {user ? (
               <>
                 {!isAdmin && (
-                  <Link to="/#vender" className="text-gray-600 hover:text-brand-primary font-medium flex items-center gap-2 transition-colors">
+                  <Link to="/sell" className="text-gray-600 hover:text-brand-primary font-medium flex items-center gap-2 transition-colors">
                     <FontAwesomeIcon icon={faStore} className="text-sm" />
                     Vender
                   </Link>
@@ -163,7 +163,7 @@ const Header = () => {
                   <Link to="/admin" onClick={() => setIsOpen(false)} className="block px-3 py-3 rounded-md text-base font-medium text-brand-primary font-bold bg-brand-light/20 transition-colors">Panel Administrativo</Link>
                 )}
                 {!isAdmin && (
-                  <Link to="/#vender" onClick={() => setIsOpen(false)} className="block px-3 py-3 rounded-md text-base font-medium text-gray-700 hover:text-brand-primary hover:bg-brand-light/50 transition-colors">Vender Productos</Link>
+                  <Link to="/sell" onClick={() => setIsOpen(false)} className="block px-3 py-3 rounded-md text-base font-medium text-gray-700 hover:text-brand-primary hover:bg-brand-light/50 transition-colors">Vender Productos</Link>
                 )}
                 <button 
                   onClick={handleLogout}

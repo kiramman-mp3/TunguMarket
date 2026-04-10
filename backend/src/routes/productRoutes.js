@@ -2,6 +2,8 @@ import express from 'express';
 import ProductController from '../controllers/productController.js';
 import { authMiddleware } from '../middlewares/authMiddleware.js';
 
+import upload from '../middlewares/uploadMiddleware.js';
+
 const router = express.Router();
 
 // GET catálogo principal (público) - Paginado
@@ -26,7 +28,7 @@ router.get('/:id', ProductController.getProductById);
 router.get('/:id/images', ProductController.getProductImages);
 
 // POST crear nuevo producto (DEBE ESTAR AUTH)
-router.post('/', authMiddleware, ProductController.createProduct);
+router.post('/', authMiddleware, upload.single('image'), ProductController.createProduct);
 
 // PUT actualizar producto (vendedor o admin)
 router.put('/:id', authMiddleware, ProductController.updateProduct);

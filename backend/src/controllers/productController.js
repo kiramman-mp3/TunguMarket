@@ -191,26 +191,27 @@ class ProductController {
   static async createProduct(req, res) {
     try {
       const userId = req.user.id;
-      const { category_id, title, description, price, stock = 1 } = req.body;
+      let { category_id, title, description, price, stock = 1 } = req.body;
 
-      // Validar campos obligatorios
-      if (!category_id || !title || !description || price === undefined) {
-        return res.status(400).json({
-          error: 'category_id, title, description, price requeridos'
-        });
+      // Convertir a números (Multer recibe todo como string en FormData)
+      price = parseFloat(price);
+      stock = parseInt(stock, 10);
+
+      // Validar campos obligatorios uno por uno para diagnóstico preciso
+      if (!title || title.trim().length === 0) {
+        return res.status(400).json({ error: 'El título es obligatorio' });
       }
-
-      // Validar tipos
-      if (typeof title !== 'string' || title.trim().length === 0) {
-        return res.status(400).json({ error: 'Título inválido' });
+      if (!description || description.trim().length === 0) {
+        return res.status(400).json({ error: 'La descripción es obligatoria' });
       }
-
-      if (typeof description !== 'string' || description.trim().length === 0) {
-        return res.status(400).json({ error: 'Descripción inválida' });
+      if (isNaN(price)) {
+        return res.status(400).json({ error: 'El precio debe ser un número válido' });
       }
-
-      if (typeof price !== 'number' || price < 0) {
-        return res.status(400).json({ error: 'Precio inválido' });
+      if (price < 0) {
+        return res.status(400).json({ error: 'El precio debe ser un valor positivo' });
+      }
+      if (!category_id) {
+        return res.status(400).json({ error: 'Debes seleccionar una categoría' });
       }
 
       // ========== DETECCIÓN DE PALABRAS PROHIBIDAS ==========
@@ -233,6 +234,15 @@ class ProductController {
       }
 
       const product = await ProductModel.create(productData);
+
+      // ========== CARGA DE IMAGEN REAL ==========
+      if (req.file) {
+        const baseUrl = process.env.BACKEND_URL || `${req.protocol}://${req.get('host')}`;
+        const imageUrl = `${baseUrl}/uploads/products/${req.file.filename}`;
+        
+        await ProductImageModel.create(product.id, imageUrl, true, 0);
+        product.primary_image = imageUrl;
+      }
 
       res.status(201).json({
         message: detection.isProhibited 

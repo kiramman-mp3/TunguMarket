@@ -11,6 +11,7 @@ import Profile from './pages/Profile';
 import AdminPanel from './pages/AdminPanel';
 import Shop from './pages/Shop';
 import ProductDetails from './pages/ProductDetails';
+import Sell from './pages/Sell';
 
 import { AuthProvider } from './context/AuthContext';
 
@@ -30,6 +31,7 @@ function App() {
             <Route path="/admin" element={<AdminPanel />} />
             <Route path="/shop" element={<Shop />} />
             <Route path="/product/:id" element={<ProductDetails />} />
+            <Route path="/sell" element={<Sell />} />
           </Routes>
         </Layout>
       </Router>

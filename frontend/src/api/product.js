@@ -50,3 +50,18 @@ export const getProductsByCategory = async (categoryId, page = 1) => {
   const response = await fetch(`${API_URL}/category/${categoryId}?page=${page}`);
   return handleResponse(response);
 };
+/**
+ * Crea un nuevo producto (requiere autenticación)
+ * @param {FormData} productFormData - Datos del producto y archivo de imagen
+ */
+export const createProduct = async (productFormData) => {
+  const token = localStorage.getItem('tungu_token');
+  const response = await fetch(API_URL, {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${token}`
+    },
+    body: productFormData
+  });
+  return handleResponse(response);
+};
