@@ -20,10 +20,40 @@ class OrderModel {
   }
 
   /**
-   * Obtiene una orden por su ID
+   * Obtiene una orden por su ID con todos sus detalles (items, productos, vendedor)
    * @param {string} orderId - ID de la orden
-   * @returns {object} Datos de la orden
+   * @returns {object} Datos detallados de la orden
    */
+  static async getOrderWithDetails(orderId) {
+    const orderQuery = `
+      SELECT o.*, u.name as buyer_name, u.email as buyer_email
+      FROM orders o
+      JOIN users u ON o.user_id = u.id
+      WHERE o.id = $1
+    `;
+    const itemsQuery = `
+      SELECT oi.*, p.title as product_title, p.price as current_price,
+             (SELECT image_url FROM product_images WHERE product_id = p.id AND is_primary = true LIMIT 1) as image_url,
+             s.name as seller_name, s.email as seller_email
+      FROM order_items oi
+      JOIN products p ON oi.product_id = p.id
+      JOIN users s ON p.seller_id = s.id
+      WHERE oi.order_id = $1
+    `;
+    
+    const [orderRes, itemsRes] = await Promise.all([
+      pool.query(orderQuery, [orderId]),
+      pool.query(itemsQuery, [orderId])
+    ]);
+
+    if (orderRes.rows.length === 0) return null;
+
+    return {
+      ...orderRes.rows[0],
+      items: itemsRes.rows
+    };
+  }
+
   static async findById(orderId) {
     const query = `
       SELECT * FROM orders
@@ -79,7 +109,8 @@ class OrderModel {
       'cancelado', 
       'Pendiente de verificación', 
       'Pendiente de pago', 
-      'Aceptado'
+      'Aceptado',
+      'Envío completado'
     ];
     
     if (!validStatuses.includes(newStatus)) {
@@ -212,13 +243,16 @@ class OrderModel {
         oi.*, 
         o.status as order_status, 
         o.created_at,
-        p.title, 
+        o.shipping_info,
+        p.title as product_title, 
         u.name as buyer_name,
-        u.email as buyer_email
+        u.email as buyer_email,
+        pm.payment_method
       FROM order_items oi
       JOIN orders o ON oi.order_id = o.id
       JOIN products p ON oi.product_id = p.id
       JOIN users u ON o.user_id = u.id
+      LEFT JOIN payments pm ON o.id = pm.order_id
       WHERE p.seller_id = $1
       ORDER BY o.created_at DESC
     `;

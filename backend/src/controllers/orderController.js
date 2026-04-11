@@ -4,6 +4,7 @@ import NotificationModel from '../models/notificationModel.js';
 import SSEService from '../services/sseService.js';
 import EmailService from '../services/emailService.js';
 import paymentValidator from '../services/paymentValidator.js';
+import AddressModel from '../models/addressModel.js';
 import pool from '../config/db.js';
 
 class OrderController {
@@ -57,14 +58,16 @@ class OrderController {
         return res.status(400).json({ error: 'ID de orden requerido' });
       }
 
-      const order = await OrderModel.findById(id);
+      const order = await OrderModel.getOrderWithDetails(id);
 
       if (!order) {
         return res.status(404).json({ error: 'Orden no encontrada' });
       }
 
-      // Verificar que la orden pertenece al usuario
-      if (order.user_id !== userId && req.user.role !== 'admin') {
+      // Verificar que la orden pertenece al usuario O el usuario es vendedor de algún item
+      const isSeller = order.items.some(item => item.seller_id === userId);
+      
+      if (order.user_id !== userId && req.user.role !== 'admin' && !isSeller) {
         return res.status(403).json({ error: 'No tienes permiso para ver esta orden' });
       }
 
@@ -87,11 +90,30 @@ class OrderController {
     try {
       await client.query('BEGIN');
       const userId = req.user.id;
-      const { payment_method } = req.body;
+      const { payment_method, address_id } = req.body;
 
       if (!payment_method) {
         return res.status(400).json({ error: 'Método de pago requerido' });
       }
+
+      if (!address_id) {
+        return res.status(400).json({ error: 'Dirección de envío requerida' });
+      }
+
+      // 0. Obtener info de la dirección
+      const address = await AddressModel.findById(address_id);
+      if (!address || address.user_id !== userId) {
+        return res.status(404).json({ error: 'Dirección de envío no válida' });
+      }
+
+      const shippingInfo = {
+        city: address.city,
+        main_street: address.main_street,
+        secondary_street: address.secondary_street,
+        neighborhood: address.neighborhood,
+        house_number: address.house_number,
+        postal_code: address.postal_code
+      };
 
       // 1. Obtener carrito e items
       const cartResult = await client.query('SELECT * FROM carts WHERE user_id = $1', [userId]);
@@ -108,16 +130,16 @@ class OrderController {
       // 2. Definir estado inicial según método de pago
       let orderStatus = 'pendiente';
       if (payment_method === 'tarjeta') orderStatus = 'Aceptado';
-      else if (payment_method === 'efectivo') orderStatus = 'Pendiente de pago';
+      else if (payment_method === 'efectivo') orderStatus = 'Aceptado';
       else if (payment_method === 'transferencia') orderStatus = 'Pendiente de verificación';
 
-      // 3. Crear la Orden
+      // 3. Crear la Orden con información de envío
       const orderQuery = `
-        INSERT INTO orders (user_id, total_price, status)
-        VALUES ($1, $2, $3)
+        INSERT INTO orders (user_id, total_price, status, shipping_info)
+        VALUES ($1, $2, $3, $4)
         RETURNING *
       `;
-      const { rows: orderRows } = await client.query(orderQuery, [userId, cart.total_price, orderStatus]);
+      const { rows: orderRows } = await client.query(orderQuery, [userId, cart.total_price, orderStatus, JSON.stringify(shippingInfo)]);
       const order = orderRows[0];
 
       // 4. Mover items a order_items y reducir stock
@@ -726,9 +748,9 @@ class OrderController {
     try {
       const sellerId = req.user.id;
       const { itemId } = req.params;
-      const { status } = req.body; // Solo 'Enviado' o similar
+      const { status } = req.body; // 'Envío completado'
 
-      if (status !== 'Enviado') {
+      if (status !== 'Envío completado') {
         return res.status(400).json({ error: 'Estado no permitido para vendedores' });
       }
 
@@ -760,14 +782,14 @@ class OrderController {
       const buyerResult = await pool.query('SELECT name, email FROM users WHERE id = $1', [item.buyer_id]);
       const buyer = buyerResult.rows[0];
 
-      const title = '¡Tu pedido ha sido enviado!';
-      const message = `El vendedor ha marcado tu producto "${item.product_title}" como enviado.`;
+      const title = '¡Tu pedido ha sido entregado!';
+      const message = `El vendedor ha marcado tu producto "${item.product_title}" como "Envío completado". ¡Ya puedes calificar tu compra!`;
       
       await NotificationModel.create({ userId: item.buyer_id, title, message, type: 'shipping' });
       SSEService.sendToUser(item.buyer_id, { type: 'NOTIFICATION', title, message });
       EmailService.sendOrderShippedEmail(buyer.email, buyer.name, item.order_id).catch(console.error);
 
-      res.status(200).json({ message: 'Item marcado como enviado y comprador notificado' });
+      res.status(200).json({ message: 'Item marcado como completado y comprador notificado' });
 
     } catch (error) {
       res.status(500).json({ error: error.message });

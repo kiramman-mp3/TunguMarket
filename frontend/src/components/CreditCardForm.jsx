@@ -14,7 +14,7 @@ const CreditCardForm = ({ onSubmit, total }) => {
     const checkCardType = (number) => {
       const firstDigit = number.charAt(0);
       const firstTwo = number.substring(0, 2);
-      
+
       if (firstDigit === '4') return 'visa';
       if (['51', '52', '53', '54', '55'].includes(firstTwo)) return 'mastercard';
       if (['34', '37'].includes(firstTwo)) return 'amex';
@@ -63,14 +63,13 @@ const CreditCardForm = ({ onSubmit, total }) => {
   return (
     <div className="space-y-8">
       {/* Card Preview */}
-      <motion.div 
+      <motion.div
         layout
-        className={`relative h-48 w-full max-w-sm mx-auto rounded-2xl p-6 text-white shadow-2xl overflow-hidden transition-colors duration-500 ${
-          cardType === 'visa' ? 'bg-gradient-to-br from-blue-600 to-blue-800' :
-          cardType === 'mastercard' ? 'bg-gradient-to-br from-red-500 to-orange-600' :
-          cardType === 'amex' ? 'bg-gradient-to-br from-emerald-500 to-emerald-700' :
-          'bg-gradient-to-br from-gray-700 to-gray-900'
-        }`}
+        className={`relative h-48 w-full max-w-sm mx-auto rounded-2xl p-6 text-white shadow-2xl overflow-hidden transition-colors duration-500 ${cardType === 'visa' ? 'bg-gradient-to-br from-blue-600 to-blue-800' :
+            cardType === 'mastercard' ? 'bg-gradient-to-br from-red-500 to-orange-600' :
+              cardType === 'amex' ? 'bg-gradient-to-br from-emerald-500 to-emerald-700' :
+                'bg-gradient-to-br from-gray-700 to-gray-900'
+          }`}
       >
         <div className="flex justify-between items-start">
           <div className="w-12 h-10 bg-yellow-200/20 rounded-lg backdrop-blur-sm border border-white/20" />
@@ -102,9 +101,9 @@ const CreditCardForm = ({ onSubmit, total }) => {
         <div className="space-y-2">
           <label className="text-xs font-bold text-gray-400 uppercase tracking-widest ml-1">Número de Tarjeta</label>
           <div className="relative">
-            <input 
+            <input
               required
-              type="text" 
+              type="text"
               placeholder="0000 0000 0000 0000"
               value={cardNumber}
               onChange={handleCardNumberChange}
@@ -116,10 +115,10 @@ const CreditCardForm = ({ onSubmit, total }) => {
 
         <div className="space-y-2">
           <label className="text-xs font-bold text-gray-400 uppercase tracking-widest ml-1">Nombre en la Tarjeta</label>
-          <input 
+          <input
             required
-            type="text" 
-            placeholder="JOHAN RODRIGUEZ"
+            type="text"
+            placeholder="TU NOMBRE"
             value={cardHolder}
             onChange={(e) => setCardHolder(e.target.value)}
             className="w-full bg-white border-2 border-gray-100 rounded-2xl px-6 py-4 font-bold text-brand-secondary focus:border-brand-primary outline-none transition-all uppercase"
@@ -129,9 +128,9 @@ const CreditCardForm = ({ onSubmit, total }) => {
         <div className="grid grid-cols-2 gap-4">
           <div className="space-y-2">
             <label className="text-xs font-bold text-gray-400 uppercase tracking-widest ml-1">Expira</label>
-            <input 
+            <input
               required
-              type="text" 
+              type="text"
               placeholder="MM/YY"
               value={expiry}
               onChange={handleExpiryChange}
@@ -141,9 +140,9 @@ const CreditCardForm = ({ onSubmit, total }) => {
           <div className="space-y-2">
             <label className="text-xs font-bold text-gray-400 uppercase tracking-widest ml-1">CVC</label>
             <div className="relative">
-              <input 
+              <input
                 required
-                type="password" 
+                type="password"
                 placeholder="•••"
                 value={cvc}
                 onChange={handleCvcChange}
@@ -154,7 +153,7 @@ const CreditCardForm = ({ onSubmit, total }) => {
           </div>
         </div>
 
-        <button 
+        <button
           type="submit"
           className="btn-primary w-full py-5 rounded-2xl font-black text-lg shadow-xl hover:shadow-2xl transition-all active:scale-95 flex items-center justify-center gap-3"
         >

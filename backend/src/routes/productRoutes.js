@@ -21,6 +21,9 @@ router.get('/search', ProductController.searchProducts);
 // GET productos de un vendedor (público) - Paginado
 router.get('/seller/:sellerId', ProductController.getSellerProducts);
 
+// GET estadísticas reales del vendedor logueado (auth)
+router.get('/stats/me', authMiddleware, ProductController.getSellerStats);
+
 // GET detalles completos de un producto (público)
 router.get('/:id', ProductController.getProductById);
 

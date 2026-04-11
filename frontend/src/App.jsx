@@ -13,6 +13,8 @@ import Shop from './pages/Shop';
 import ProductDetails from './pages/ProductDetails';
 import Sell from './pages/Sell';
 import EditProduct from './pages/EditProduct';
+import SellerProfile from './pages/SellerProfile';
+import MyProducts from './pages/MyProducts';
 
 import { AuthProvider } from './context/AuthContext';
 import { CartProvider, useCart } from './context/CartContext';
@@ -41,6 +43,8 @@ function AppContent() {
           <Route path="/edit-product/:id" element={<EditProduct />} />
           <Route path="/cart" element={<Cart />} />
           <Route path="/checkout" element={<Checkout />} />
+          <Route path="/seller/:id" element={<SellerProfile />} />
+          <Route path="/my-products" element={<MyProducts />} />
         </Routes>
       </Layout>
       <LoginPromptModal isOpen={isLoginPromptOpen} onClose={closeLoginPrompt} />

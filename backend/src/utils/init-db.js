@@ -135,6 +135,7 @@ const initDb = async () => {
         blocked_reason TEXT,
         average_rating NUMERIC(3, 2) NOT NULL DEFAULT 0.00,
         review_count INTEGER NOT NULL DEFAULT 0,
+        views INTEGER NOT NULL DEFAULT 0,
         created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
         updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
       );
@@ -170,6 +171,7 @@ const initDb = async () => {
         id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
         user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
         total_price DECIMAL(10, 2) NOT NULL,
+        shipping_info JSONB, -- Copia de la dirección en el momento de la compra
         status VARCHAR(40) DEFAULT 'pendiente',
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
         updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
@@ -236,6 +238,19 @@ const initDb = async () => {
           amount DECIMAL(12,2) NOT NULL,
           status VARCHAR(20) DEFAULT 'pendiente',
           bank_info JSONB NOT NULL,
+          created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      );
+
+      CREATE TABLE user_addresses (
+          id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
+          user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+          city VARCHAR(100) NOT NULL, -- Cantón de Tungurahua
+          main_street VARCHAR(255) NOT NULL,
+          secondary_street VARCHAR(255) NOT NULL,
+          neighborhood VARCHAR(255),
+          house_number VARCHAR(50),
+          postal_code VARCHAR(10),
+          is_default BOOLEAN DEFAULT FALSE,
           created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       );
 

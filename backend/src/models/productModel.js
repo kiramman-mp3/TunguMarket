@@ -148,6 +148,12 @@ class ProductModel {
     `;
 
     const { rows } = await pool.query(query, [id]);
+    
+    // Increment views asynchronously
+    if (rows[0]) {
+      pool.query('UPDATE products SET views = views + 1 WHERE id = $1', [id]).catch(console.error);
+    }
+
     return rows[0] || null;
   }
 
@@ -279,6 +285,33 @@ class ProductModel {
 
     const { rows } = await pool.query(query, [limit]);
     return rows;
+  }
+
+  /**
+   * Obtiene estadísticas agregadas para un vendedor
+   */
+  static async getSellerStats(sellerId) {
+    const query = `
+      SELECT 
+        COUNT(*) as total_products,
+        COALESCE(SUM(views), 0) as total_views,
+        COALESCE(AVG(average_rating), 0) as avg_rating,
+        (
+          SELECT COALESCE(SUM(oi.quantity), 0)
+          FROM order_items oi
+          JOIN products p2 ON oi.product_id = p2.id
+          WHERE p2.seller_id = $1
+        ) as total_sales
+      FROM products
+      WHERE seller_id = $1
+    `;
+    const { rows } = await pool.query(query, [sellerId]);
+    return {
+      activeProducts: parseInt(rows[0].total_products || 0, 10),
+      totalSales: parseInt(rows[0].total_sales || 0, 10),
+      totalViews: parseInt(rows[0].total_views || 0, 10),
+      avgRating: parseFloat(rows[0].avg_rating || 0).toFixed(1)
+    };
   }
 }
 

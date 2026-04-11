@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { 
   faStar, 
@@ -14,9 +14,11 @@ import {
   faPlus,
   faShareAlt,
   faAlignLeft,
-  faCheck
+  faCheck,
+  faSpinner
 } from '@fortawesome/free-solid-svg-icons';
 import { getProductById } from '../api/product';
+import { getProductReviews, createReview } from '../api/review';
 import { useAuth } from '../context/AuthContext';
 import { useCart } from '../context/CartContext';
 
@@ -30,6 +32,11 @@ const ProductDetails = () => {
   const [error, setError] = useState(null);
   const [quantity, setQuantity] = useState(1);
   const [activeImage, setActiveImage] = useState(0);
+  const [reviews, setReviews] = useState([]);
+  const [reviewsLoading, setReviewsLoading] = useState(true);
+  const [showReviewForm, setShowReviewForm] = useState(false);
+  const [reviewData, setReviewData] = useState({ rating: 5, comment: '' });
+  const [submittingReview, setSubmittingReview] = useState(false);
 
   const handleAddToCart = async () => {
     try {
@@ -43,24 +50,49 @@ const ProductDetails = () => {
   };
 
   useEffect(() => {
-    const fetchProduct = async () => {
+    const fetchData = async () => {
       try {
         setLoading(true);
-        const response = await getProductById(id);
-        setProduct(response.data);
+        const [prodRes, revRes] = await Promise.all([
+          getProductById(id),
+          getProductReviews(id)
+        ]);
+        setProduct(prodRes.data);
+        setReviews(revRes.data.reviews);
       } catch (err) {
         setError('No pudimos encontrar el producto solicitado.');
       } finally {
         setLoading(false);
+        setReviewsLoading(false);
       }
     };
-    fetchProduct();
+    fetchData();
   }, [id]);
 
   const handleQuantityChange = (val) => {
     const newQty = quantity + val;
     if (newQty >= 1 && newQty <= (product?.stock || 1)) {
       setQuantity(newQty);
+    }
+  };
+
+  const handleSubmitReview = async (e) => {
+    e.preventDefault();
+    if (!user) return alert('Debes iniciar sesión para reseñar');
+    setSubmittingReview(true);
+    try {
+      await createReview({ product_id: id, ...reviewData });
+      const revRes = await getProductReviews(id);
+      setReviews(revRes.data.reviews);
+      const prodRes = await getProductById(id);
+      setProduct(prodRes.data);
+      setShowReviewForm(false);
+      setReviewData({ rating: 5, comment: '' });
+      alert('¡Reseña publicada con éxito!');
+    } catch (err) {
+      alert(err.response?.data?.error || 'No puedes reseñar este producto aún. Asegúrate de haberlo recibido primero.');
+    } finally {
+      setSubmittingReview(false);
     }
   };
 
@@ -160,7 +192,7 @@ const ProductDetails = () => {
               <div className="flex items-center gap-6 text-sm">
                 <div className="flex items-center gap-2 text-gray-500 font-medium">
                   <FontAwesomeIcon icon={faStore} className="text-brand-primary" />
-                  Vendido por: <span className="text-brand-secondary font-bold hover:underline cursor-pointer">{product.seller_name}</span>
+                  Vendido por: <Link to={`/seller/${product.seller_id}`} className="text-brand-secondary font-black hover:text-brand-primary transition-colors cursor-pointer decoration-2 underline-offset-4 hover:underline">{product.seller_name}</Link>
                 </div>
                 <div className="flex items-center gap-2 text-gray-500 font-medium">
                   <FontAwesomeIcon icon={faMapMarkerAlt} className="text-brand-primary" />
@@ -266,6 +298,126 @@ const ProductDetails = () => {
               </div>
             )}
 
+          </div>
+        </div>
+
+        {/* Reviews Section */}
+        <div className="mt-20 space-y-12">
+          <div className="flex items-center justify-between border-b border-gray-100 pb-8">
+            <div>
+              <h2 className="text-3xl font-black text-brand-secondary">Opiniones de compradores</h2>
+              <p className="text-gray-400 font-bold text-sm uppercase tracking-widest mt-1">Calificación promedio: {product.average_rating || '5.0'}</p>
+            </div>
+            {user && product.seller_id !== user.id && !showReviewForm && (
+              <button 
+                onClick={() => setShowReviewForm(true)}
+                className="btn-primary py-3 px-8 text-sm font-black shadow-lg"
+              >
+                Escribir una reseña
+              </button>
+            )}
+          </div>
+
+          <AnimatePresence>
+            {showReviewForm && (
+              <motion.div 
+                initial={{ opacity: 0, height: 0 }}
+                animate={{ opacity: 1, height: 'auto' }}
+                exit={{ opacity: 0, height: 0 }}
+                className="overflow-hidden"
+              >
+                <form onSubmit={handleSubmitReview} className="glass-card p-8 border-2 border-brand-primary/20 space-y-6">
+                  <div className="flex justify-between items-center">
+                    <h3 className="text-xl font-bold text-brand-secondary">¿Qué te pareció el producto?</h3>
+                    <button type="button" onClick={() => setShowReviewForm(false)} className="text-gray-400 hover:text-brand-primary transition-colors">
+                      Cancelar
+                    </button>
+                  </div>
+                  
+                  <div className="space-y-4">
+                    <p className="text-xs font-black uppercase text-gray-400 tracking-wider">Tu Calificación</p>
+                    <div className="flex gap-2">
+                      {[1, 2, 3, 4, 5].map((star) => (
+                        <button
+                          key={star}
+                          type="button"
+                          onClick={() => setReviewData({ ...reviewData, rating: star })}
+                          onMouseEnter={() => setReviewData({ ...reviewData, rating: star })}
+                          className={`text-3xl transition-transform active:scale-90 ${
+                            star <= reviewData.rating ? 'text-amber-500' : 'text-gray-200'
+                          }`}
+                        >
+                          <FontAwesomeIcon icon={faStar} />
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div className="space-y-2">
+                    <p className="text-xs font-black uppercase text-gray-400 tracking-wider">Tu Comentario</p>
+                    <textarea 
+                      required
+                      placeholder="Cuéntanos tu experiencia con el producto..."
+                      value={reviewData.comment}
+                      onChange={(e) => setReviewData({ ...reviewData, comment: e.target.value })}
+                      className="w-full bg-brand-light/20 border-2 border-transparent focus:border-brand-primary/30 rounded-2xl p-4 min-h-[120px] outline-none transition-all font-medium text-brand-secondary"
+                    />
+                  </div>
+
+                  <button 
+                    type="submit" 
+                    disabled={submittingReview}
+                    className="btn-primary w-full py-4 text-sm font-black disabled:opacity-50"
+                  >
+                    {submittingReview ? <FontAwesomeIcon icon={faSpinner} className="animate-spin" /> : 'Publicar Reseña'}
+                  </button>
+                </form>
+              </motion.div>
+            )}
+          </AnimatePresence>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+            {reviewsLoading ? (
+               <div className="col-span-full py-20 text-center font-bold text-gray-400">Cargando reseñas...</div>
+            ) : reviews.length === 0 ? (
+              <div className="col-span-full py-20 text-center bg-gray-50/50 rounded-[2.5rem] border-2 border-dashed border-gray-100 italic text-gray-400">
+                Este producto aún no tiene reseñas. ¡Sé el primero en calificarlo!
+              </div>
+            ) : (
+              reviews.map((review, idx) => (
+                <motion.div 
+                  key={review.id}
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: idx * 0.1 }}
+                  className="glass-card p-8 space-y-4 border border-gray-50 hover:border-brand-primary/20 transition-all group"
+                >
+                  <div className="flex justify-between items-start">
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 rounded-full bg-brand-primary/20 flex items-center justify-center font-black text-brand-secondary text-sm">
+                        {review.user_name?.[0]?.toUpperCase()}
+                      </div>
+                      <div>
+                        <p className="font-bold text-brand-secondary text-sm">{review.user_name}</p>
+                        <p className="text-[10px] text-gray-400 font-bold uppercase">{new Date(review.created_at).toLocaleDateString()}</p>
+                      </div>
+                    </div>
+                    <div className="flex gap-0.5 text-amber-500 text-xs translate-y-1">
+                      {[...Array(5)].map((_, i) => (
+                        <FontAwesomeIcon 
+                          key={i} 
+                          icon={faStar} 
+                          className={i < review.rating ? 'opacity-100' : 'opacity-20'} 
+                        />
+                      ))}
+                    </div>
+                  </div>
+                  <p className="text-gray-600 font-medium text-sm leading-relaxed italic">
+                    "{review.comment}"
+                  </p>
+                </motion.div>
+              ))
+            )}
           </div>
         </div>
       </div>

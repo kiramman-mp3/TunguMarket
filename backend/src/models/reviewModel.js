@@ -244,10 +244,20 @@ class ReviewModel {
    * @param {string} userId - ID del usuario
    * @returns {boolean}
    */
-  static async canReview(productId, userId) {
-    // Un usuario solo puede dejar 1 reseña por producto (UNIQUE constraint)
-    const existing = await this.findByProductAndUser(productId, userId);
-    return !existing;
+  /**
+   * Verifica si el usuario tiene una compra completada del producto
+   */
+  static async hasCompletedPurchase(productId, userId) {
+    const query = `
+      SELECT COUNT(*) as count
+      FROM order_items oi
+      JOIN orders o ON oi.order_id = o.id
+      WHERE oi.product_id = $1 
+        AND o.user_id = $2
+        AND oi.status = 'Envío completado'
+    `;
+    const { rows } = await pool.query(query, [productId, userId]);
+    return parseInt(rows[0].count, 10) > 0;
   }
 }
 

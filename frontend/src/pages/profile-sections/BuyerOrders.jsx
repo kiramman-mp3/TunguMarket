@@ -1,12 +1,16 @@
 import React, { useState, useEffect } from 'react';
+import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { getMyOrders } from '../../api/orders';
+import { getMyOrders, getOrderDetails } from '../../api/orders';
+import OrderDetailModal from '../../components/OrderDetailModal';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faBox, faClock, faCheckCircle, faTimesCircle } from '@fortawesome/free-solid-svg-icons';
 
 const BuyerOrders = () => {
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [selectedOrder, setSelectedOrder] = useState(null);
+  const [showModal, setShowModal] = useState(false);
 
   useEffect(() => {
     getMyOrders().then(res => {
@@ -20,12 +24,22 @@ const BuyerOrders = () => {
       case 'confirmado': return 'bg-green-100 text-green-700';
       case 'pendiente': return 'bg-amber-100 text-amber-700';
       case 'aceptado': return 'bg-blue-100 text-blue-700';
-      case 'enviado': return 'bg-indigo-100 text-indigo-700';
+      case 'envío completado': return 'bg-green-100 text-green-700';
       default: return 'bg-gray-100 text-gray-700';
     }
   };
 
-  if (loading) return <div className="p-8 text-center text-gray-500">Cargando tus compras...</div>;
+  const handleViewDetails = async (id) => {
+    try {
+      const data = await getOrderDetails(id);
+      setSelectedOrder(data.order);
+      setShowModal(true);
+    } catch (err) {
+      alert('Error cargando detalles');
+    }
+  };
+
+  if (loading) return <div className="p-8 text-center text-gray-500 font-bold">Cargando tus compras...</div>;
 
   return (
     <div className="space-y-6">
@@ -56,12 +70,31 @@ const BuyerOrders = () => {
                 <span className={`px-4 py-1.5 rounded-full text-xs font-bold uppercase ${getStatusColor(order.status)}`}>
                   {order.status}
                 </span>
-                <button className="text-xs font-bold text-brand-primary hover:underline">Ver detalles</button>
+                <button 
+                  onClick={() => handleViewDetails(order.id)}
+                  className="text-xs font-bold text-brand-primary hover:underline"
+                >
+                  Ver detalles
+                </button>
+                {order.status === 'Envío completado' && (
+                  <Link 
+                    to={`/product/${order.items?.[0]?.product_id || ''}`} 
+                    className="mt-1 bg-amber-500 text-white px-3 py-1 rounded-lg text-[10px] font-black uppercase hover:bg-amber-600 transition-colors"
+                  >
+                    Dejar Reseña
+                  </Link>
+                )}
               </div>
             </motion.div>
           ))}
         </div>
       )}
+
+      <OrderDetailModal 
+        isOpen={showModal} 
+        onClose={() => setShowModal(false)} 
+        order={selectedOrder} 
+      />
     </div>
   );
 };

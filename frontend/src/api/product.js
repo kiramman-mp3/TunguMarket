@@ -134,3 +134,24 @@ export const setProductPrimaryImage = async (productId, imageId) => {
   });
   return handleResponse(response);
 };
+
+/**
+ * Obtiene los productos de un vendedor específico
+ */
+export const getSellerProducts = async (sellerId, page = 1, limit = 10) => {
+  const response = await fetch(`${API_URL}/seller/${sellerId}?page=${page}&limit=${limit}`);
+  return handleResponse(response);
+};
+
+/**
+ * Obtiene estadísticas reales del vendedor actual
+ */
+export const getSellerStats = async () => {
+  const token = localStorage.getItem('tungu_token');
+  const response = await fetch(`${API_URL}/stats/me`, {
+    headers: {
+      'Authorization': `Bearer ${token}`
+    }
+  });
+  return handleResponse(response);
+};

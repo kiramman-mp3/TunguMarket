@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { getMySales, updateSaleStatus } from '../../api/orders';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { faStore, faTruck, faCheckCircle, faUser } from '@fortawesome/free-solid-svg-icons';
+import { faStore, faTruck, faCheckCircle, faUser, faMapMarkerAlt } from '@fortawesome/free-solid-svg-icons';
 
 const SellerSales = () => {
   const [sales, setSales] = useState([]);
@@ -20,9 +20,9 @@ const SellerSales = () => {
     setLoading(false);
   };
 
-  const handleMarkAsShipped = async (itemId) => {
+  const handleMarkAsCompleted = async (itemId) => {
     try {
-      await updateSaleStatus(itemId, 'Enviado');
+      await updateSaleStatus(itemId, 'Envío completado');
       fetchSales(); // Recargar
     } catch (e) { alert('Error al actualizar estado'); }
   };
@@ -51,7 +51,7 @@ const SellerSales = () => {
             >
               <div className="flex flex-col md:flex-row justify-between gap-4">
                 <div className="flex-1">
-                  <h4 className="text-lg font-bold text-brand-secondary mb-2">{sale.title}</h4>
+                  <h4 className="text-lg font-black text-brand-secondary mb-2 uppercase tracking-tight">{sale.product_title}</h4>
                   <div className="flex items-center gap-4 text-sm text-gray-500 mb-4">
                     <span className="flex items-center gap-1.5 font-medium">
                       <FontAwesomeIcon icon={faUser} className="text-brand-primary" />
@@ -60,28 +60,60 @@ const SellerSales = () => {
                     <span>• Cantidad: {sale.quantity}</span>
                     <span className="font-bold text-brand-secondary">Subtotal: ${sale.price_at_purchase * sale.quantity}</span>
                   </div>
-                  <div className="flex items-center gap-2">
-                    <span className={`px-3 py-1 rounded-lg text-[10px] font-bold uppercase ${sale.status === 'Enviado' ? 'bg-indigo-100 text-indigo-700' : 'bg-amber-100 text-amber-700'}`}>
-                      {sale.status || 'Pendiente de envío'}
+
+                  {/* Shipping Address for Seller */}
+                  {sale.shipping_info && (
+                    <div className="mb-4 p-4 bg-brand-light/30 rounded-2xl border border-brand-primary/10">
+                      <p className="text-[10px] font-black uppercase text-brand-secondary/60 mb-2 flex items-center gap-2">
+                        <FontAwesomeIcon icon={faMapMarkerAlt} className="text-brand-primary" />
+                        Dirección de Envío
+                      </p>
+                      <p className="text-xs font-bold text-brand-secondary leading-tight">
+                        {sale.shipping_info.city}: {sale.shipping_info.main_street} y {sale.shipping_info.secondary_street}
+                      </p>
+                      {sale.shipping_info.neighborhood && (
+                        <p className="text-[10px] text-gray-400 mt-1 italic">Barrio: {sale.shipping_info.neighborhood}</p>
+                      )}
+                      {(sale.shipping_info.house_number || sale.shipping_info.postal_code) && (
+                        <p className="text-[10px] text-brand-secondary/60 font-bold uppercase tracking-tighter mt-1">
+                          {sale.shipping_info.house_number && `Casa: ${sale.shipping_info.house_number}`} 
+                          {sale.shipping_info.postal_code && ` | CP: ${sale.shipping_info.postal_code}`}
+                        </p>
+                      )}
+                    </div>
+                  )}
+                  <div className="flex flex-wrap items-center gap-2">
+                    <span className={`px-3 py-1 rounded-lg text-[10px] font-bold uppercase ${sale.status === 'Envío completado' ? 'bg-green-100 text-green-700' : 'bg-amber-100 text-amber-700'}`}>
+                      {sale.status || 'Pendiente de entrega'}
                     </span>
+                    {sale.payment_method === 'efectivo' && (
+                      <span className="px-3 py-1 rounded-lg text-[10px] font-bold uppercase bg-brand-primary/20 text-brand-secondary border border-brand-primary/30">
+                        Pago en Persona
+                      </span>
+                    )}
                     <span className="text-xs text-gray-400 italic">Orden #{sale.order_id.slice(0,8)}</span>
                   </div>
+                  {sale.payment_method === 'efectivo' && sale.status !== 'Envío completado' && (
+                    <p className="mt-2 text-xs font-black text-brand-primary bg-brand-primary/5 p-2 rounded-xl inline-block">
+                      ⚠️ Esta persona te va a pagar en persona al recibir el producto.
+                    </p>
+                  )}
                 </div>
 
                 <div className="flex items-center gap-3">
-                  {sale.status !== 'Enviado' && (
+                  {sale.status !== 'Envío completado' && (
                     <button 
-                      onClick={() => handleMarkAsShipped(sale.id)}
+                      onClick={() => handleMarkAsCompleted(sale.id)}
                       className="px-6 py-2 bg-brand-secondary text-white rounded-xl text-sm font-bold hover:bg-brand-primary transition-all flex items-center gap-2"
                     >
-                      <FontAwesomeIcon icon={faTruck} />
-                      Marcar como Enviado
+                      <FontAwesomeIcon icon={faCheckCircle} />
+                      Marcar como Entregado
                     </button>
                   )}
-                  {sale.status === 'Enviado' && (
+                  {sale.status === 'Envío completado' && (
                     <div className="text-green-600 flex items-center gap-2 font-bold text-sm">
                       <FontAwesomeIcon icon={faCheckCircle} />
-                      Ya enviado
+                      Venta completada
                     </div>
                   )}
                 </div>

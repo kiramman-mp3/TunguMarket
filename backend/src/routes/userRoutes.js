@@ -7,6 +7,25 @@ import SSEService from '../services/sseService.js';
 
 const router = express.Router();
 
+// --- PUBLIC ROUTES ---
+
+// Get public info of a seller
+router.get('/seller/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const query = 'SELECT id, name, created_at, role_id FROM users WHERE id = $1';
+    const { rows } = await pool.query(query, [id]);
+    
+    if (rows.length === 0) {
+      return res.status(404).json({ error: 'Usuario no encontrado' });
+    }
+    
+    res.json(rows[0]);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
 // --- USER SECURE ROUTES ---
 
 // Get active sessions for the current user

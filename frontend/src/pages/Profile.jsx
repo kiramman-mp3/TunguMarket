@@ -13,7 +13,8 @@ import {
   faUserCircle,
   faSignOutAlt,
   faLaptop,
-  faHistory
+  faHistory,
+  faMapMarkerAlt
 } from '@fortawesome/free-solid-svg-icons';
 import { useAuth } from '../context/AuthContext';
 import { getSessions, getLogs, deleteSession } from '../api/user';
@@ -24,6 +25,7 @@ import SellerSales from './profile-sections/SellerSales';
 import Wishlist from './profile-sections/Wishlist';
 import NotificationPanel from './profile-sections/NotificationPanel';
 import WalletView from './profile-sections/WalletView';
+import AddressManager from './profile-sections/AddressManager';
 
 const Profile = () => {
   const { user, logout } = useAuth();
@@ -40,6 +42,7 @@ const Profile = () => {
     { id: 'wishlist', label: 'Favoritos', icon: faHeart },
     { id: 'notifications', label: 'Notificaciones', icon: faBell },
     { id: 'wallet', label: 'Billetera', icon: faWallet },
+    { id: 'addresses', label: 'Direcciones', icon: faMapMarkerAlt },
   ];
 
   useEffect(() => {
@@ -68,6 +71,7 @@ const Profile = () => {
       case 'wishlist': return <Wishlist />;
       case 'notifications': return <NotificationPanel />;
       case 'wallet': return <WalletView />;
+      case 'addresses': return <AddressManager />;
       default: return renderOverview();
     }
   };

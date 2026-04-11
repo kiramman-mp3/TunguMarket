@@ -17,6 +17,7 @@ import {
 import { useCart } from '../context/CartContext';
 import CreditCardForm from '../components/CreditCardForm';
 import { useAuth } from '../context/AuthContext';
+import { getAddresses, createAddress } from '../api/address';
 
 const Checkout = () => {
   const navigate = useNavigate();
@@ -27,6 +28,38 @@ const Checkout = () => {
   const [receipt, setReceipt] = useState(null);
   const [success, setSuccess] = useState(false);
   const [orderId, setOrderId] = useState(null);
+  const [addresses, setAddresses] = useState([]);
+  const [selectedAddressId, setSelectedAddressId] = useState(null);
+  const [showAddressForm, setShowAddressForm] = useState(false);
+  const [newAddress, setNewAddress] = useState({ city: 'Ambato', main_street: '', secondary_street: '', neighborhood: '', house_number: '', postal_code: '' });
+
+  React.useEffect(() => {
+    fetchAddresses();
+  }, []);
+
+  const fetchAddresses = async () => {
+    try {
+      const data = await getAddresses();
+      setAddresses(data.data);
+      const defaultAddr = data.data.find(a => a.is_default);
+      if (defaultAddr) setSelectedAddressId(defaultAddr.id);
+      else if (data.data.length > 0) setSelectedAddressId(data.data[0].id);
+    } catch (err) {
+      console.error('Error fetching addresses:', err);
+    }
+  };
+
+  const handleAddAddress = async (e) => {
+    e.preventDefault();
+    try {
+      const data = await createAddress(newAddress);
+      setAddresses([...addresses, data.data]);
+      setSelectedAddressId(data.data.id);
+      setShowAddressForm(false);
+    } catch (err) {
+      alert(err.message);
+    }
+  };
 
   if (cartItems.length === 0 && !success) {
     return (
@@ -45,6 +78,7 @@ const Checkout = () => {
       const token = localStorage.getItem('tungu_token');
       const formData = new FormData();
       formData.append('payment_method', method);
+      formData.append('address_id', selectedAddressId);
       
       if (method === 'transferencia' && receipt) {
         formData.append('receipt', receipt);
@@ -125,10 +159,10 @@ const Checkout = () => {
             )}
             {paymentMethod === 'efectivo' && (
               <div className="space-y-3">
-                <p className="text-sm text-gray-600 font-medium">Se ha generado una **Orden de Pago**. Por favor acércate a nuestra oficina física para completar el pago:</p>
+                <p className="text-sm text-gray-600 font-medium font-bold">Paga a esta persona cuando recibas el producto.</p>
                 <div className="flex items-start gap-2 text-brand-secondary font-bold text-sm bg-white p-3 rounded-xl">
-                  <FontAwesomeIcon icon={faMapMarkerAlt} className="mt-1 text-red-500" />
-                  <span>Quero, Tungurahua, Ecuador</span>
+                  <FontAwesomeIcon icon={faMoneyBillWave} className="mt-1 text-green-500" />
+                  <span>Pago físico al momento de la entrega</span>
                 </div>
               </div>
             )}
@@ -162,7 +196,106 @@ const Checkout = () => {
             </button>
         </div>
 
-        <div className="lg:col-span-7 space-y-8">
+        <div className="lg:col-span-7 space-y-12">
+          {/* SECCION DIRECCION */}
+          <section className="space-y-6">
+            <div className="flex justify-between items-center">
+              <h2 className="text-3xl font-display font-black text-brand-secondary">Dirección de Envío</h2>
+              {!showAddressForm && addresses.length < 4 && (
+                <button 
+                  onClick={() => setShowAddressForm(true)}
+                  className="text-brand-primary font-black text-sm uppercase tracking-widest hover:underline"
+                >
+                  + Agregar Nueva
+                </button>
+              )}
+            </div>
+
+            {showAddressForm ? (
+              <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="glass-card p-8 space-y-6">
+                 <div className="space-y-4">
+                    <div className="space-y-2">
+                      <label className="text-xs font-black uppercase text-gray-400">Cantón (Tungurahua)</label>
+                      <select 
+                        className="w-full bg-gray-50 border-0 rounded-2xl p-4 font-bold text-brand-secondary focus:ring-2 ring-brand-primary"
+                        value={newAddress.city}
+                        onChange={e => setNewAddress({...newAddress, city: e.target.value})}
+                      >
+                        {['Ambato', 'Baños de Agua Santa', 'Cevallos', 'Mocha', 'Patate', 'Quero', 'Pelileo', 'Píllaro', 'Tisaleo'].map(c => <option key={c} value={c}>{c}</option>)}
+                      </select>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="space-y-2">
+                        <label className="text-xs font-black uppercase text-gray-400">Calle Principal</label>
+                        <input type="text" required className="w-full bg-gray-50 border-0 rounded-2xl p-4 font-bold" value={newAddress.main_street} onChange={e => setNewAddress({...newAddress, main_street: e.target.value})} />
+                      </div>
+                      <div className="space-y-2">
+                        <label className="text-xs font-black uppercase text-gray-400">Calle Secundaria</label>
+                        <input type="text" required className="w-full bg-gray-50 border-0 rounded-2xl p-4 font-bold" value={newAddress.secondary_street} onChange={e => setNewAddress({...newAddress, secondary_street: e.target.value})} />
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="space-y-2">
+                        <label className="text-xs font-black uppercase text-gray-400">Barrio (Opcional)</label>
+                        <input type="text" className="w-full bg-gray-50 border-0 rounded-2xl p-4 font-bold" value={newAddress.neighborhood} onChange={e => setNewAddress({...newAddress, neighborhood: e.target.value})} />
+                      </div>
+                      <div className="space-y-2">
+                        <label className="text-xs font-black uppercase text-gray-400">Nº Casa (Opcional)</label>
+                        <input type="text" className="w-full bg-gray-50 border-0 rounded-2xl p-4 font-bold" value={newAddress.house_number} onChange={e => setNewAddress({...newAddress, house_number: e.target.value})} />
+                      </div>
+                    </div>
+
+                    <div className="space-y-2">
+                      <label className="text-xs font-black uppercase text-gray-400">Código Postal</label>
+                      <input type="text" required className="w-full bg-gray-50 border-0 rounded-2xl p-4 font-bold" value={newAddress.postal_code} onChange={e => setNewAddress({...newAddress, postal_code: e.target.value})} />
+                    </div>
+                 </div>
+                 <div className="flex gap-4 pt-4">
+                   <button onClick={handleAddAddress} className="btn-primary flex-1 py-5 rounded-2xl font-black text-lg">Guardar y Usar</button>
+                   <button onClick={() => setShowAddressForm(false)} className="bg-gray-100 text-gray-500 px-8 rounded-2xl font-bold">Cancelar</button>
+                 </div>
+              </motion.div>
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {addresses.length === 0 ? (
+                  <button 
+                    onClick={() => setShowAddressForm(true)}
+                    className="col-span-2 h-32 border-4 border-dashed border-gray-100 rounded-[2rem] flex flex-col items-center justify-center gap-2 text-gray-400 hover:border-brand-primary hover:text-brand-primary transition-all"
+                  >
+                    <FontAwesomeIcon icon={faMapMarkerAlt} className="text-2xl" />
+                    <span className="font-black uppercase tracking-widest text-xs">Añadir dirección de envío</span>
+                  </button>
+                ) : (
+                  addresses.map(addr => (
+                    <button 
+                      key={addr.id}
+                      onClick={() => setSelectedAddressId(addr.id)}
+                      className={`p-6 rounded-[2rem] border-2 text-left transition-all ${
+                        selectedAddressId === addr.id ? 'border-brand-primary bg-white shadow-xl' : 'border-transparent bg-white/50'
+                      }`}
+                    >
+                      <div className="flex justify-between items-start mb-2">
+                        <span className="text-[10px] font-black uppercase tracking-widest text-brand-primary">
+                          {addr.is_default ? 'Principal' : 'Dirección'}
+                        </span>
+                        {selectedAddressId === addr.id && <FontAwesomeIcon icon={faCheckCircle} className="text-brand-primary" />}
+                      </div>
+                      <p className="font-black text-brand-secondary text-sm truncate">{addr.city}</p>
+                      <p className="text-xs text-gray-400 font-bold truncate leading-tight">{addr.main_street} y {addr.secondary_street}</p>
+                      {(addr.neighborhood || addr.house_number) && (
+                        <p className="text-[10px] text-gray-300 italic truncate mt-1">
+                          {addr.neighborhood && `${addr.neighborhood}`}{addr.house_number && ` | Casa: ${addr.house_number}`}
+                        </p>
+                      )}
+                    </button>
+                  ))
+                )}
+              </div>
+            )}
+          </section>
+
           <section className="space-y-6">
             <h2 className="text-3xl font-display font-black text-brand-secondary">Método de Pago</h2>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -243,7 +376,7 @@ const Checkout = () => {
 
                 <button 
                   onClick={() => handleCheckout('transferencia')}
-                  disabled={!receipt || loading}
+                  disabled={!receipt || !selectedAddressId || loading}
                   className="btn-primary w-full py-5 rounded-2xl font-black text-lg disabled:opacity-50 disabled:grayscale transition-all"
                 >
                   {loading ? <FontAwesomeIcon icon={faSpinner} className="animate-spin" /> : 'Finalizar y Enviar Comprobante'}
@@ -263,10 +396,13 @@ const Checkout = () => {
                   <h3 className="text-xl font-black text-brand-secondary">Pago con Tarjeta</h3>
                   <p className="text-sm text-gray-500 font-medium">Simulación de pasarela segura. Aceptamos todas las marcas.</p>
                 </div>
-                <CreditCardForm 
-                  total={totalPrice.toFixed(2)} 
-                  onSubmit={() => handleCheckout('tarjeta')} 
-                />
+                <div className={!selectedAddressId ? 'opacity-50 pointer-events-none' : ''}>
+                  <CreditCardForm 
+                    total={totalPrice.toFixed(2)} 
+                    onSubmit={() => handleCheckout('tarjeta')} 
+                  />
+                  {!selectedAddressId && <p className="text-center text-xs text-red-500 font-bold mt-4 uppercase">Selecciona una dirección primero</p>}
+                </div>
               </motion.div>
             )}
 
@@ -300,8 +436,8 @@ const Checkout = () => {
 
                  <button 
                   onClick={() => handleCheckout('efectivo')}
-                  disabled={loading}
-                  className="btn-primary w-full py-5 rounded-2xl font-black text-lg shadow-xl hover:shadow-2xl transition-all"
+                  disabled={loading || !selectedAddressId}
+                  className="btn-primary w-full py-5 rounded-2xl font-black text-lg shadow-xl hover:shadow-2xl transition-all disabled:opacity-50"
                 >
                   {loading ? <FontAwesomeIcon icon={faSpinner} className="animate-spin" /> : 'Generar Orden de Pago'}
                 </button>

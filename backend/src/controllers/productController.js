@@ -612,6 +612,23 @@ class ProductController {
       res.status(500).json({ error: error.message });
     }
   }
+
+  /**
+   * GET /api/products/seller/me/stats
+   * Obtiene estadísticas reales del vendedor logueado
+   */
+  static async getSellerStats(req, res) {
+    try {
+      const userId = req.user.id;
+      const stats = await ProductModel.getSellerStats(userId);
+      res.status(200).json({
+        message: 'Estadísticas obtenidas exitosamente',
+        data: stats
+      });
+    } catch (error) {
+      res.status(500).json({ error: error.message });
+    }
+  }
 }
 
 export default ProductController;
