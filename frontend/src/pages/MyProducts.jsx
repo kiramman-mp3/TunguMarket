@@ -413,6 +413,19 @@ const MyProducts = () => {
                           <FontAwesomeIcon icon={faExclamationCircle} />
                           Acciones no disponibles
                         </div>
+                      ) : product.status === 'bloqueado' || product.status === 'pendiente' ? (
+                        /* Producto bloqueado o pendiente: solo ver */
+                        <Link 
+                          to={`/product/${product.id}`}
+                          className={`w-full py-3 rounded-xl flex items-center justify-center gap-2 text-[10px] font-black uppercase tracking-tight transition-all ${
+                            product.status === 'bloqueado' 
+                              ? 'bg-red-50 text-red-500 hover:bg-red-100' 
+                              : 'bg-amber-50 text-amber-600 hover:bg-amber-100'
+                          }`}
+                        >
+                          <FontAwesomeIcon icon={faEye} />
+                          Ver producto
+                        </Link>
                       ) : (
                         /* Producto normal: acciones completas */
                         <>
@@ -431,7 +444,7 @@ const MyProducts = () => {
                              <FontAwesomeIcon icon={faEdit} />
                           </Link>
                           
-                          {(Number(product.sales_count) > 0 || product.status === 'oculto' || product.status === 'bloqueado') ? (
+                          {(Number(product.sales_count) > 0 || product.status === 'oculto') ? (
                             <button 
                               onClick={() => handleToggleVisibility(product.id, product.status)}
                               className={`flex-1 py-3 rounded-xl flex items-center justify-center transition-all ${
@@ -440,7 +453,6 @@ const MyProducts = () => {
                                 : 'bg-green-50 text-green-500 hover:bg-green-500 hover:text-white'
                               }`}
                               title={product.status === 'activo' ? 'Ocultar (tiene ventas)' : 'Volver a mostrar'}
-                              disabled={product.status === 'bloqueado'}
                             >
                               <FontAwesomeIcon icon={product.status === 'activo' ? faEyeSlash : faEye} />
                             </button>

@@ -96,7 +96,10 @@ class ProductController {
       if (maxPrice !== undefined && maxPrice !== '') filters.maxPrice = parseFloat(maxPrice);
       if (minRating !== undefined && minRating !== '') filters.minRating = parseFloat(minRating);
 
-      const { products, total } = await ProductModel.search(q.trim(), limitNum, offset, filters);
+      // Si es admin, mostrar todos los productos (incluyendo bloqueados y pendientes)
+      const isAdmin = req.user && req.user.role === 'admin';
+
+      const { products, total } = await ProductModel.search(q.trim(), limitNum, offset, filters, isAdmin);
 
       res.status(200).json({
         message: 'Búsqueda completada exitosamente',

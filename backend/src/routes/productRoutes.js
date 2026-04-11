@@ -14,8 +14,8 @@ router.get('/featured', ProductController.getFeaturedProducts);
 // GET productos por categoría (público) - Paginado
 router.get('/category/:categoryId', ProductController.getProductsByCategory);
 
-// GET buscar productos (público) - Paginado
-router.get('/search', ProductController.searchProducts);
+// GET buscar productos (público con auth opcional para admin) - Paginado
+router.get('/search', optionalAuthMiddleware, ProductController.searchProducts);
 
 // GET productos de un vendedor (público) - Paginado
 router.get('/seller/:sellerId', ProductController.getSellerProducts);

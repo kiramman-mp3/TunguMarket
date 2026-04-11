@@ -113,22 +113,24 @@ const Header = () => {
               </Link>
             )}
 
-            {/* Cart Icon */}
-            <Link to="/cart" className="relative p-2.5 text-brand-secondary hover:bg-gray-100 rounded-xl transition-all group">
-              <FontAwesomeIcon icon={faShoppingCart} className="text-xl group-hover:scale-110 transition-transform" />
-              <AnimatePresence>
-                {totalItems > 0 && (
-                  <motion.span 
-                    initial={{ scale: 0 }}
-                    animate={{ scale: 1 }}
-                    exit={{ scale: 0 }}
-                    className="absolute top-1 right-1 bg-brand-accent text-white text-[10px] font-black min-w-[20px] h-[20px] px-1 rounded-full flex items-center justify-center shadow-md border-2 border-white"
-                  >
-                    {totalItems > 99 ? '99+' : totalItems}
-                  </motion.span>
-                )}
-              </AnimatePresence>
-            </Link>
+            {/* Cart Icon - Solo para usuarios comunes */}
+            {!isAdmin && (
+              <Link to="/cart" className="relative p-2.5 text-brand-secondary hover:bg-gray-100 rounded-xl transition-all group">
+                <FontAwesomeIcon icon={faShoppingCart} className="text-xl group-hover:scale-110 transition-transform" />
+                <AnimatePresence>
+                  {totalItems > 0 && (
+                    <motion.span 
+                      initial={{ scale: 0 }}
+                      animate={{ scale: 1 }}
+                      exit={{ scale: 0 }}
+                      className="absolute top-1 right-1 bg-brand-accent text-white text-[10px] font-black min-w-[20px] h-[20px] px-1 rounded-full flex items-center justify-center shadow-md border-2 border-white"
+                    >
+                      {totalItems > 99 ? '99+' : totalItems}
+                    </motion.span>
+                  )}
+                </AnimatePresence>
+              </Link>
+            )}
 
             {!user ? (
                <div className="flex items-center gap-2 ml-2">
@@ -184,16 +186,18 @@ const Header = () => {
                         </div>
                       </div>
 
-                      <Link 
-                        to="/profile" 
-                        onClick={() => setShowProfileMenu(false)}
-                        className="flex items-center gap-3 px-4 py-3 rounded-xl hover:bg-brand-primary/10 transition-all text-sm font-bold text-gray-700 hover:text-brand-secondary"
-                      >
-                        <div className="w-8 h-8 rounded-lg bg-gray-100 flex items-center justify-center group-hover:bg-brand-primary/20">
-                          <FontAwesomeIcon icon={faUser} className="text-gray-400" />
-                        </div>
-                        Panel de Control
-                      </Link>
+                      {!isAdmin && (
+                        <Link 
+                          to="/profile" 
+                          onClick={() => setShowProfileMenu(false)}
+                          className="flex items-center gap-3 px-4 py-3 rounded-xl hover:bg-brand-primary/10 transition-all text-sm font-bold text-gray-700 hover:text-brand-secondary"
+                        >
+                          <div className="w-8 h-8 rounded-lg bg-gray-100 flex items-center justify-center group-hover:bg-brand-primary/20">
+                            <FontAwesomeIcon icon={faUser} className="text-gray-400" />
+                          </div>
+                          Panel de Control
+                        </Link>
+                      )}
 
                       {isAdmin && (
                         <Link 

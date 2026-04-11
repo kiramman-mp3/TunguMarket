@@ -16,9 +16,14 @@ import {
   faAlignLeft,
   faCheck,
   faSpinner,
-  faHeart
+  faHeart,
+  faLock,
+  faLockOpen,
+  faBan,
+  faExclamationTriangle
 } from '@fortawesome/free-solid-svg-icons';
 import { getProductById } from '../api/product';
+import { adminUpdateProductStatus } from '../api/product';
 import { getProductReviews, createReview } from '../api/review';
 import { toggleWishlist, getWishlist } from '../api/wishlist';
 import { useAuth } from '../context/AuthContext';
@@ -28,6 +33,7 @@ import LoadingScreen from '../components/LoadingScreen';
 const ProductDetails = () => {
   const { user } = useAuth();
   const { addToCart } = useCart();
+  const isAdmin = user?.role === 'admin';
   const [added, setAdded] = useState(false);
   const { id } = useParams();
   const [product, setProduct] = useState(null);
@@ -140,6 +146,23 @@ const ProductDetails = () => {
     }
   };
 
+  const handleAdminBlock = async () => {
+    if (!product) return;
+    const newStatus = product.status === 'bloqueado' ? 'activo' : 'bloqueado';
+    const reason = newStatus === 'bloqueado' ? 'Bloqueado manualmente por el administrador' : null;
+    try {
+      await adminUpdateProductStatus(product.id, newStatus, reason);
+      setProduct({ ...product, status: newStatus });
+      setToast({ 
+        show: true, 
+        message: newStatus === 'bloqueado' ? 'Producto bloqueado exitosamente' : 'Producto desbloqueado exitosamente', 
+        type: 'success' 
+      });
+    } catch (err) {
+      setToast({ show: true, message: err.message || 'Error al actualizar estado', type: 'error' });
+    }
+  };
+
   if (loading) {
     return <LoadingScreen message="Cargando detalles del producto..." />;
   }
@@ -248,25 +271,54 @@ const ProductDetails = () => {
             </div>
 
             <div className="bg-white p-8 rounded-[2rem] shadow-premium border border-gray-50 space-y-6">
-              {user && product.seller_id === user.id && (
-                <div className="bg-brand-primary/10 border-2 border-brand-primary/20 rounded-2xl p-6 mb-6">
-                  <div className="flex items-center gap-4 mb-4">
-                    <div className="w-12 h-12 rounded-full bg-brand-primary text-brand-secondary flex items-center justify-center text-xl">
-                      <FontAwesomeIcon icon={faStore} />
+              {user && !isAdmin && product.seller_id === user.id && (
+                product.status === 'bloqueado' || product.status === 'pendiente' ? (
+                  <div className={`border-2 rounded-2xl p-6 mb-6 ${
+                    product.status === 'bloqueado' ? 'bg-red-50/50 border-red-200' : 'bg-amber-50/50 border-amber-200'
+                  }`}>
+                    <div className="flex items-center gap-4 mb-3">
+                      <div className={`w-12 h-12 rounded-full flex items-center justify-center text-xl ${
+                        product.status === 'bloqueado' ? 'bg-red-100 text-red-500' : 'bg-amber-100 text-amber-500'
+                      }`}>
+                        <FontAwesomeIcon icon={product.status === 'bloqueado' ? faLock : faSpinner} />
+                      </div>
+                      <div>
+                        <h4 className={`font-black ${product.status === 'bloqueado' ? 'text-red-700' : 'text-amber-700'}`}>
+                          {product.status === 'bloqueado' ? 'Producto bloqueado' : 'Pendiente de aprobación'}
+                        </h4>
+                        <p className="text-xs font-bold text-gray-500">
+                          {product.status === 'bloqueado' 
+                            ? 'Este producto ha sido bloqueado por un administrador. No puedes editarlo ni eliminarlo.'
+                            : 'Tu producto está siendo revisado por un administrador.'}
+                        </p>
+                      </div>
                     </div>
-                    <div>
-                      <h4 className="font-black text-brand-secondary">Este es tu producto</h4>
-                      <p className="text-xs font-bold text-brand-secondary/60 uppercase tracking-wider">Modo Administrador</p>
-                    </div>
+                    {product.blocked_reason && (
+                      <p className="text-[11px] text-red-600 font-bold bg-red-100/50 px-4 py-2 rounded-xl border border-red-200">
+                        ⚠️ Motivo: {product.blocked_reason}
+                      </p>
+                    )}
                   </div>
-                  <Link 
-                    to={`/edit-product/${product.id}`}
-                    className="btn-primary w-full py-4 flex items-center justify-center gap-3 font-black transition-transform active:scale-95"
-                  >
-                    <FontAwesomeIcon icon={faAlignLeft} />
-                    Editar detalles y stock
-                  </Link>
-                </div>
+                ) : (
+                  <div className="bg-brand-primary/10 border-2 border-brand-primary/20 rounded-2xl p-6 mb-6">
+                    <div className="flex items-center gap-4 mb-4">
+                      <div className="w-12 h-12 rounded-full bg-brand-primary text-brand-secondary flex items-center justify-center text-xl">
+                        <FontAwesomeIcon icon={faStore} />
+                      </div>
+                      <div>
+                        <h4 className="font-black text-brand-secondary">Este es tu producto</h4>
+                        <p className="text-xs font-bold text-brand-secondary/60 uppercase tracking-wider">Modo Vendedor</p>
+                      </div>
+                    </div>
+                    <Link 
+                      to={`/edit-product/${product.id}`}
+                      className="btn-primary w-full py-4 flex items-center justify-center gap-3 font-black transition-transform active:scale-95"
+                    >
+                      <FontAwesomeIcon icon={faAlignLeft} />
+                      Editar detalles y stock
+                    </Link>
+                  </div>
+                )
               )}
 
               <div>
@@ -292,7 +344,47 @@ const ProductDetails = () => {
               </div>
             </div>
 
-            {(!user || product.seller_id !== user.id) && (
+            {/* Admin-only: Bloquear/Desbloquear producto */}
+            {isAdmin && (
+              <div className="bg-white p-8 rounded-[2rem] shadow-premium border-2 border-brand-secondary/20 space-y-4">
+                <div className="flex items-center gap-3 mb-2">
+                  <div className="w-10 h-10 rounded-full bg-brand-secondary/10 text-brand-secondary flex items-center justify-center">
+                    <FontAwesomeIcon icon={faShieldAlt} />
+                  </div>
+                  <div>
+                    <h4 className="font-black text-brand-secondary text-sm">Modo Administrador</h4>
+                    <p className="text-[10px] text-gray-400 font-bold uppercase tracking-widest">Control de producto</p>
+                  </div>
+                </div>
+                <div className={`text-center py-3 rounded-xl text-xs font-black uppercase tracking-widest ${
+                  product.status === 'activo' ? 'bg-green-50 text-green-600' :
+                  product.status === 'pendiente' ? 'bg-amber-50 text-amber-600' :
+                  'bg-red-50 text-red-600'
+                }`}>
+                  Estado actual: {product.status}
+                </div>
+                {product.status !== 'bloqueado' ? (
+                  <button
+                    onClick={handleAdminBlock}
+                    className="w-full py-4 bg-red-600 text-white rounded-2xl font-black flex items-center justify-center gap-3 hover:bg-red-700 transition-all active:scale-95"
+                  >
+                    <FontAwesomeIcon icon={faLock} />
+                    Bloquear Producto
+                  </button>
+                ) : (
+                  <button
+                    onClick={handleAdminBlock}
+                    className="w-full py-4 bg-green-600 text-white rounded-2xl font-black flex items-center justify-center gap-3 hover:bg-green-700 transition-all active:scale-95"
+                  >
+                    <FontAwesomeIcon icon={faLockOpen} />
+                    Desbloquear Producto
+                  </button>
+                )}
+              </div>
+            )}
+
+            {/* Buyer section: only for non-admin, non-owner */}
+            {!isAdmin && (!user || product.seller_id !== user.id) && (
               <div className="space-y-6">
                 <div className="flex items-center gap-8">
                   <div className="space-y-2">
@@ -368,7 +460,7 @@ const ProductDetails = () => {
               <h2 className="text-3xl font-black text-brand-secondary">Opiniones de compradores</h2>
               <p className="text-gray-400 font-bold text-sm uppercase tracking-widest mt-1">Calificación promedio: {product.average_rating || '5.0'}</p>
             </div>
-            {user && product.seller_id !== user.id && !showReviewForm && (
+            {user && !isAdmin && product.seller_id !== user.id && !showReviewForm && (
               <button 
                 onClick={() => setShowReviewForm(true)}
                 className="btn-primary py-3 px-8 text-sm font-black shadow-lg"

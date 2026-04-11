@@ -31,7 +31,10 @@ export const getFeaturedProducts = async () => {
  * Obtiene los detalles completos de un producto por su ID
  */
 export const getProductById = async (id) => {
-  const response = await fetch(`${API_URL}/${id}`);
+  const token = localStorage.getItem('tungu_token');
+  const headers = token ? { 'Authorization': `Bearer ${token}` } : {};
+
+  const response = await fetch(`${API_URL}/${id}`, { headers });
   return handleResponse(response);
 };
 
@@ -47,7 +50,10 @@ export const searchProducts = async (filtersObj, page = 1) => {
   if (filtersObj.maxPrice) params.append('maxPrice', filtersObj.maxPrice);
   if (filtersObj.minRating) params.append('minRating', filtersObj.minRating);
 
-  const response = await fetch(`${API_URL}/search?${params.toString()}`);
+  const token = localStorage.getItem('tungu_token');
+  const headers = token ? { 'Authorization': `Bearer ${token}` } : {};
+
+  const response = await fetch(`${API_URL}/search?${params.toString()}`, { headers });
   return handleResponse(response);
 };
 

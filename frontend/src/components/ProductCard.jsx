@@ -48,13 +48,24 @@ const ProductCard = ({ product }) => {
         <img 
           src={imageUrl} 
           alt={product.title || product.name} 
-          className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110"
+          className={`w-full h-full object-cover transition-transform duration-700 group-hover:scale-110 ${
+            product.status && product.status !== 'activo' && user?.role === 'admin' ? 'opacity-60' : ''
+          }`}
         />
         <div className="absolute top-4 left-4 bg-white/90 backdrop-blur px-3 py-1 rounded-full shadow-sm">
           <span className="text-[10px] font-black uppercase text-brand-secondary tracking-wider">
             {product.category_name || product.category || 'General'}
           </span>
         </div>
+        {product.status && product.status !== 'activo' && user?.role === 'admin' && (
+          <div className={`absolute top-4 right-4 px-3 py-1 rounded-full text-[10px] font-black uppercase shadow-lg ${
+            product.status === 'pendiente' ? 'bg-amber-500 text-white' :
+            product.status === 'bloqueado' ? 'bg-red-500 text-white' :
+            'bg-orange-500 text-white'
+          }`}>
+            {product.status}
+          </div>
+        )}
         <div className="absolute bottom-4 right-4 bg-brand-secondary/90 backdrop-blur text-white px-3 py-1 rounded-lg font-black shadow-lg border border-white/10">
           ${price.toFixed(2)}
         </div>
@@ -99,6 +110,13 @@ const ProductCard = ({ product }) => {
             >
               <FontAwesomeIcon icon={faStore} />
               Gestionar Producto
+            </Link>
+          ) : user?.role === 'admin' ? (
+            <Link 
+              to={`/product/${product.id}`}
+              className="w-full py-3.5 rounded-xl bg-brand-secondary text-white font-black text-xs uppercase tracking-widest flex items-center justify-center gap-2 hover:bg-brand-primary transition-all shadow-md"
+            >
+              Ver Producto
             </Link>
           ) : (
             <>

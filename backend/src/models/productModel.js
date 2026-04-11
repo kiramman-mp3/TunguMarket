@@ -251,14 +251,17 @@ class ProductModel {
    * @param {object} filters - Filtros extras
    * @returns {object} {products, total}
    */
-  static async search(searchTerm, limit = 20, offset = 0, filters = {}) {
+  static async search(searchTerm, limit = 20, offset = 0, filters = {}, isAdmin = false) {
     const { category_id, minPrice, maxPrice, minRating } = filters;
     const searchPattern = `%${searchTerm}%`;
+
+    // Admin ve todos los productos, usuarios normales solo los activos
+    const statusFilter = isAdmin ? '' : "p.status = 'activo' AND";
 
     let countQuery = `
       SELECT COUNT(*)::integer as count FROM products p
       JOIN users u ON p.seller_id = u.id
-      WHERE p.status = 'activo' AND u.blocked_for_debt = false
+      WHERE ${statusFilter} u.blocked_for_debt = false
     `;
     let dataQuery = `
       SELECT
@@ -270,7 +273,7 @@ class ProductModel {
       FROM products p
       LEFT JOIN categories c ON p.category_id = c.id
       JOIN users u ON p.seller_id = u.id
-      WHERE p.status = 'activo' AND u.blocked_for_debt = false
+      WHERE ${statusFilter} u.blocked_for_debt = false
     `;
 
     const queryParams = [];
