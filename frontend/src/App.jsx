@@ -18,9 +18,11 @@ import MyProducts from './pages/MyProducts';
 
 import { AuthProvider } from './context/AuthContext';
 import { CartProvider, useCart } from './context/CartContext';
+import { ThemeProvider } from './context/ThemeContext';
 import Cart from './pages/Cart';
 import Checkout from './pages/Checkout';
 import LoginPromptModal from './components/LoginPromptModal';
+import AccessibilityWidget from './components/AccessibilityWidget';
 
 function AppContent() {
   const { isLoginPromptOpen, closeLoginPrompt } = useCart();
@@ -47,6 +49,7 @@ function AppContent() {
           <Route path="/my-products" element={<MyProducts />} />
         </Routes>
       </Layout>
+      <AccessibilityWidget />
       <LoginPromptModal isOpen={isLoginPromptOpen} onClose={closeLoginPrompt} />
     </Router>
   );
@@ -54,11 +57,13 @@ function AppContent() {
 
 function App() {
   return (
-    <AuthProvider>
-      <CartProvider>
-        <AppContent />
-      </CartProvider>
-    </AuthProvider>
+    <ThemeProvider>
+      <AuthProvider>
+        <CartProvider>
+          <AppContent />
+        </CartProvider>
+      </AuthProvider>
+    </ThemeProvider>
   );
 }
 
