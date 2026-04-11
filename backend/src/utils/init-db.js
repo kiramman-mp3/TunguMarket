@@ -67,6 +67,8 @@ const initDb = async () => {
         email VARCHAR(150) UNIQUE NOT NULL,
         password_hash VARCHAR(255),
         birth_date DATE,
+        seller_name VARCHAR(100),
+        seller_bio TEXT,
         role_id INTEGER REFERENCES roles(id),
         balance DECIMAL(12,2) DEFAULT 0,
         is_verified BOOLEAN DEFAULT FALSE,

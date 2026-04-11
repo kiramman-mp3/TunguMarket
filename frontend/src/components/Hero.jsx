@@ -1,6 +1,7 @@
 import React from 'react';
 import { motion } from 'framer-motion';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
+import { Link } from 'react-router-dom';
 import { faArrowRight, faShieldAlt, faStore } from '@fortawesome/free-solid-svg-icons';
 
 const Hero = () => {
@@ -41,14 +42,14 @@ const Hero = () => {
             </p>
 
             <div className="flex flex-col sm:flex-row gap-4 mb-10">
-              <button className="btn-primary flex items-center justify-center gap-2 group text-lg">
+              <Link to="/shop" className="btn-primary flex items-center justify-center gap-2 group text-lg">
                 Explorar Productos
                 <FontAwesomeIcon icon={faArrowRight} className="group-hover:translate-x-1 transition-transform" />
-              </button>
-              <button className="btn-outline flex items-center justify-center gap-2 group text-lg bg-white">
+              </Link>
+              <Link to="/my-products" className="btn-outline flex items-center justify-center gap-2 group text-lg bg-white">
                 <FontAwesomeIcon icon={faStore} />
                 Vender mi producto
-              </button>
+              </Link>
             </div>
 
             <div className="flex items-center gap-6 text-sm font-medium text-gray-500">

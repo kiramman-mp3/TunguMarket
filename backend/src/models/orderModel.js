@@ -259,6 +259,17 @@ class OrderModel {
     const { rows } = await pool.query(query, [sellerId]);
     return rows;
   }
+
+  /**
+   * Cuenta cuántas veces se ha vendido un producto específico
+   * @param {string} productId - ID del producto
+   * @returns {number} Cantidad de ventas
+   */
+  static async countSalesByProductId(productId) {
+    const query = 'SELECT COUNT(*)::integer as count FROM order_items WHERE product_id = $1';
+    const { rows } = await pool.query(query, [productId]);
+    return rows[0].count;
+  }
 }
 
 export default OrderModel;

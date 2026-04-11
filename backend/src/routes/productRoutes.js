@@ -1,7 +1,6 @@
 import express from 'express';
 import ProductController from '../controllers/productController.js';
-import { authMiddleware } from '../middlewares/authMiddleware.js';
-
+import { authMiddleware, optionalAuthMiddleware } from '../middlewares/authMiddleware.js';
 import upload from '../middlewares/uploadMiddleware.js';
 
 const router = express.Router();
@@ -24,8 +23,11 @@ router.get('/seller/:sellerId', ProductController.getSellerProducts);
 // GET estadísticas reales del vendedor logueado (auth)
 router.get('/stats/me', authMiddleware, ProductController.getSellerStats);
 
-// GET detalles completos de un producto (público)
-router.get('/:id', ProductController.getProductById);
+// GET detalles completos de un producto (público con auth opcional para ver ocultos)
+router.get('/:id', optionalAuthMiddleware, ProductController.getProductById);
+
+// PATCH actualizar estado del producto (vendedor o admin) - DEDICADO SIN MULTER
+router.patch('/:id/status', authMiddleware, ProductController.updateStatus);
 
 // GET imágenes de un producto (público)
 router.get('/:id/images', ProductController.getProductImages);

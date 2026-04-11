@@ -163,3 +163,20 @@ export const getSellerStats = async () => {
   });
   return handleResponse(response);
 };
+
+/**
+ * Actualiza el estado de visibilidad de un producto (activo/oculto)
+ * Utiliza un endpoint dedicado para evitar conflictos con Multer
+ */
+export const updateProductStatus = async (id, status) => {
+  const token = localStorage.getItem('tungu_token');
+  const response = await fetch(`${API_URL}/${id}/status`, {
+    method: 'PATCH',
+    headers: {
+      'Authorization': `Bearer ${token}`,
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify({ status })
+  });
+  return handleResponse(response);
+};

@@ -13,7 +13,7 @@ const router = express.Router();
 router.get('/seller/:id', async (req, res) => {
   try {
     const { id } = req.params;
-    const query = 'SELECT id, name, created_at, role_id FROM users WHERE id = $1';
+    const query = 'SELECT id, name, seller_name, seller_bio, created_at, role_id FROM users WHERE id = $1';
     const { rows } = await pool.query(query, [id]);
     
     if (rows.length === 0) {
@@ -21,6 +21,23 @@ router.get('/seller/:id', async (req, res) => {
     }
     
     res.json(rows[0]);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Update seller profile (name and bio)
+router.put('/profile', authMiddleware, async (req, res) => {
+  try {
+    const { seller_name, seller_bio } = req.body;
+    const userId = req.user.id;
+
+    if (!seller_name) {
+      return res.status(400).json({ error: 'El nombre de vendedor es requerido' });
+    }
+
+    const updatedUser = await UserModel.updateSellerProfile(userId, { seller_name, seller_bio });
+    res.json({ message: 'Perfil de vendedor actualizado con éxito', user: updatedUser });
   } catch (error) {
     res.status(500).json({ error: error.message });
   }

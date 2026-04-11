@@ -43,7 +43,7 @@ class ProductModel {
       SELECT
         p.*,
         c.name as category_name,
-        u.name as seller_name
+        COALESCE(u.seller_name, u.name) as seller_name
       FROM products p
       LEFT JOIN categories c ON p.category_id = c.id
       JOIN users u ON p.seller_id = u.id
@@ -80,7 +80,7 @@ class ProductModel {
       SELECT
         p.*,
         c.name as category_name,
-        u.name as seller_name
+        COALESCE(u.seller_name, u.name) as seller_name
       FROM products p
       LEFT JOIN categories c ON p.category_id = c.id
       JOIN users u ON p.seller_id = u.id
@@ -115,10 +115,15 @@ class ProductModel {
     const dataQuery = `
       SELECT
         p.*,
-        c.name as category_name
+        c.name as category_name,
+        COALESCE(u.seller_name, u.name) as seller_name,
+        COUNT(oi.id)::integer as sales_count
       FROM products p
       LEFT JOIN categories c ON p.category_id = c.id
+      JOIN users u ON p.seller_id = u.id
+      LEFT JOIN order_items oi ON p.id = oi.product_id
       WHERE p.seller_id = $1
+      GROUP BY p.id, c.name, u.seller_name, u.name
       ORDER BY p.created_at DESC
       LIMIT $2 OFFSET $3
     `;
@@ -144,7 +149,7 @@ class ProductModel {
       SELECT
         p.*,
         c.name as category_name,
-        u.name as seller_name,
+        COALESCE(u.seller_name, u.name) as seller_name,
         u.email as seller_email
       FROM products p
       LEFT JOIN categories c ON p.category_id = c.id
@@ -169,7 +174,7 @@ class ProductModel {
    * @returns {object} Producto actualizado
    */
   static async update(id, updates = {}) {
-    const allowedFields = ['title', 'description', 'price', 'stock', 'status', 'is_flagged', 'blocked_reason'];
+    const allowedFields = ['title', 'description', 'price', 'stock', 'status', 'is_flagged', 'blocked_reason', 'category_id'];
     const fields = [];
     const values = [];
     let paramCount = 1;
@@ -249,7 +254,7 @@ class ProductModel {
       SELECT
         p.*,
         c.name as category_name,
-        u.name as seller_name
+        COALESCE(u.seller_name, u.name) as seller_name
       FROM products p
       LEFT JOIN categories c ON p.category_id = c.id
       JOIN users u ON p.seller_id = u.id
@@ -320,7 +325,7 @@ class ProductModel {
       SELECT
         p.*,
         c.name as category_name,
-        u.name as seller_name
+        COALESCE(u.seller_name, u.name) as seller_name
       FROM products p
       LEFT JOIN categories c ON p.category_id = c.id
       LEFT JOIN users u ON p.seller_id = u.id
@@ -349,7 +354,7 @@ class ProductModel {
           WHERE p2.seller_id = $1
         ) as total_sales
       FROM products
-      WHERE seller_id = $1
+      WHERE seller_id = $1 AND status = 'activo'
     `;
     const { rows } = await pool.query(query, [sellerId]);
     return {

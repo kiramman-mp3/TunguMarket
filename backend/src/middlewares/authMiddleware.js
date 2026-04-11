@@ -34,14 +34,41 @@ const authMiddleware = async (req, res, next) => {
   }
 };
 
-const authenticateToken = authMiddleware;
+const optionalAuthMiddleware = async (req, res, next) => {
+  const authHeader = req.headers.authorization;
+  const token = authHeader && authHeader.split(' ')[1];
 
-const isAdmin = (req, res, next) => {
-  if (req.user && req.user.role === 'admin') {
+  if (!token) {
+    return next();
+  }
+
+  try {
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    const session = await SessionModel.findByToken(token);
+    
+    if (session) {
+      const user = await UserModel.findById(decoded.id);
+      if (user && !user.is_banned) {
+        req.user = decoded;
+      }
+    }
     next();
-  } else {
-    res.status(403).json({ error: 'Access denied. Admin role required.' });
+  } catch (err) {
+    // Si el token es inválido o expiró, simplemente ignoramos y seguimos como guest
+    next();
   }
 };
 
-export { authMiddleware, authenticateToken, isAdmin };
+// Alias para compatibilidad con rutas existentes
+const authenticateToken = authMiddleware;
+
+// Middleware para verificar si el usuario es administrador
+const isAdmin = async (req, res, next) => {
+  if (req.user && req.user.role === 'admin') {
+    next();
+  } else {
+    res.status(403).json({ error: 'Require Admin Role' });
+  }
+};
+
+export { authMiddleware, authenticateToken, isAdmin, optionalAuthMiddleware };

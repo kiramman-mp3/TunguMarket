@@ -114,6 +114,17 @@ class UserModel {
     const { rows } = await pool.query(query, values);
     return rows[0];
   }
+
+  static async updateSellerProfile(id, { seller_name, seller_bio }) {
+    const query = `
+      UPDATE users 
+      SET seller_name = $1, seller_bio = $2, updated_at = CURRENT_TIMESTAMP 
+      WHERE id = $3 
+      RETURNING id, name, email, seller_name, seller_bio
+    `;
+    const { rows } = await pool.query(query, [seller_name, seller_bio, id]);
+    return rows[0];
+  }
 }
 
 export default UserModel;

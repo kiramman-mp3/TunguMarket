@@ -1,5 +1,6 @@
 import ProductModel from '../models/productModel.js';
 import ProductImageModel from '../models/productImageModel.js';
+import OrderModel from '../models/orderModel.js';
 import ForbiddenKeywordService from '../services/forbiddenKeywordService.js';
 import pool from '../config/db.js';
 import fs from 'fs';
@@ -178,6 +179,16 @@ class ProductController {
         return res.status(404).json({ error: 'Producto no encontrado' });
       }
 
+      // Lógica de visibilidad personalizada
+      // Si el producto está oculto, solo el vendedor o un admin pueden verlo
+      if (product.status !== 'activo') {
+        const canView = req.user && (req.user.id === product.seller_id || req.user.role === 'admin');
+        if (!canView) {
+          // Si es un comprador/guest intentando ver algo oculto
+          return res.status(404).json({ error: 'Este producto no está disponible actualmente' });
+        }
+      }
+
       // Obtener imágenes
       const images = await ProductImageModel.findByProductId(id);
 
@@ -283,18 +294,16 @@ class ProductController {
       let { title, description, price, stock, status, category_id } = req.body;
       const userId = req.user.id;
 
-      if (!id) {
-        return res.status(400).json({ error: 'ID de producto requerido' });
-      }
-
-      const product = await ProductModel.findById(id);
+      const productId = String(id).trim().toLowerCase();
+      const product = await ProductModel.findById(productId);
 
       if (!product) {
         return res.status(404).json({ error: 'Producto no encontrado' });
       }
 
-      // Verificar permisos (vendedor o admin)
-      if (product.seller_id !== userId && req.user.role !== 'admin') {
+      // Verificar permisos (vendedor o admin) - Comparación robusta de UUIDs
+      const isOwner = String(product.seller_id).toLowerCase() === String(userId).toLowerCase();
+      if (!isOwner && req.user.role !== 'admin') {
         return res.status(403).json({ error: 'No tienes permiso para actualizar este producto' });
       }
 
@@ -338,9 +347,15 @@ class ProductController {
         updates.category_id = category_id;
       }
 
-      // Solo admin puede cambiar estado
-      if (status !== undefined && req.user.role === 'admin') {
-        updates.status = status;
+      // Normalización y validación de cambio de estado
+      if (status !== undefined) {
+        const normalizedStatus = String(status).trim().toLowerCase();
+        
+        if (req.user.role === 'admin') {
+          updates.status = normalizedStatus;
+        } else if (normalizedStatus === 'activo' || normalizedStatus === 'oculto') {
+          updates.status = normalizedStatus;
+        }
       }
 
       // ========== ACTUALIZACIÓN DE IMÁGENES MÚLTIPLES ==========
@@ -400,6 +415,19 @@ class ProductController {
         return res.status(403).json({ error: 'No tienes permiso para eliminar este producto' });
       }
 
+      // Verificar si el producto tiene ventas antes de borrar
+      const salesCount = await OrderModel.countSalesByProductId(id);
+      
+      if (salesCount > 0) {
+        // En vez de borrar, lo ocultamos para preservar el historial de órdenes del comprador
+        await ProductModel.update(id, { status: 'oculto' });
+        return res.status(200).json({
+          message: 'El producto ahora está oculto. No se pudo eliminar físicamente porque tiene ventas registradas.',
+          hidden: true
+        });
+      }
+
+      // Si no hay ventas, procedemos con el borrado físico completo
       // Obtener todas las imágenes para borrarlas del disco
       const images = await ProductImageModel.findByProductId(id);
       for (const img of images) {
@@ -612,6 +640,56 @@ class ProductController {
         message: 'Imagen principal actualizada exitosamente'
       });
     } catch (error) {
+      res.status(500).json({ error: error.message });
+    }
+  }
+
+  /**
+   * PATCH /api/products/:id/status
+   * Punto de acceso dedicado para alternar la visibilidad (activo/oculto)
+   * Evita conflictos con Multer/Subida de imágenes del PUT principal
+   */
+  static async updateStatus(req, res) {
+    try {
+      const { id } = req.params;
+      const { status } = req.body;
+      const userId = req.user.id;
+
+      if (!id || !status) {
+        return res.status(400).json({ error: 'ID y estado son requeridos' });
+      }
+
+      // Normalización de ID y Estado
+      const productId = String(id).trim().toLowerCase();
+      const normalizedStatus = String(status).trim().toLowerCase();
+      
+      if (normalizedStatus !== 'activo' && normalizedStatus !== 'oculto') {
+        return res.status(400).json({ error: 'Estado inválido. Solo se permite activo u oculto.' });
+      }
+
+      const product = await ProductModel.findById(productId);
+      if (!product) {
+        return res.status(404).json({ error: 'Producto no encontrado' });
+      }
+
+      // Verificar permiso (dueño o admin)
+      const isOwner = String(product.seller_id).toLowerCase() === String(userId).toLowerCase();
+      if (!isOwner && req.user.role !== 'admin') {
+        return res.status(403).json({ error: 'No tienes permiso para cambiar el estado de este producto' });
+      }
+
+      const updated = await ProductModel.update(productId, { status: normalizedStatus });
+
+      if (!updated) {
+        return res.status(500).json({ error: 'Error al actualizar el estado en la base de datos' });
+      }
+
+      res.status(200).json({
+        message: `Estado actualizado a ${normalizedStatus}`,
+        data: updated
+      });
+    } catch (error) {
+      console.error('Error en updateStatus:', error);
       res.status(500).json({ error: error.message });
     }
   }

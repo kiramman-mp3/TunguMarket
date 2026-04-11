@@ -74,16 +74,21 @@ const SellerProfile = () => {
               <div className="space-y-1">
                 <div className="flex items-center justify-center md:justify-start gap-3">
                   <h1 className="text-4xl md:text-5xl font-display font-black text-brand-secondary">
-                    {seller.name}
+                    {seller.seller_name || seller.name}
                   </h1>
                   <FontAwesomeIcon icon={faCheckCircle} className="text-blue-500 text-2xl" />
                 </div>
-                <p className="text-brand-primary font-black uppercase tracking-[0.2em] text-sm">
+                {seller.seller_bio && (
+                  <p className="text-gray-600 font-medium max-w-2xl line-clamp-3">
+                    {seller.seller_bio}
+                  </p>
+                )}
+                <p className="text-brand-primary font-black uppercase tracking-[0.2em] text-[10px] mt-2">
                   Vendedor Verificado
                 </p>
               </div>
 
-              <div className="flex flex-wrap items-center justify-center md:justify-start gap-6 text-gray-500 font-bold">
+              <div className="flex flex-wrap items-center justify-center md:justify-start gap-6 text-gray-500 font-bold text-xs">
                 <span className="flex items-center gap-2">
                   <FontAwesomeIcon icon={faCalendarAlt} className="text-brand-primary" />
                   Desde {new Date(seller.created_at).toLocaleDateString(undefined, { year: 'numeric', month: 'long' })}
@@ -100,7 +105,7 @@ const SellerProfile = () => {
             </div>
 
             <div className="flex flex-col gap-3 w-full md:w-auto">
-               <button className="btn-primary py-4 px-10 rounded-2xl font-black shadow-xl">
+               <button className="btn-primary py-4 px-10 rounded-2xl font-black shadow-xl text-sm">
                   Seguir Vendedor
                </button>
                <button className="bg-white/60 border border-gray-100 py-3 px-10 rounded-2xl font-bold text-gray-500 hover:bg-white transition-all text-sm">
@@ -113,7 +118,7 @@ const SellerProfile = () => {
         {/* Catalog Section */}
         <div className="space-y-8">
            <div className="flex justify-between items-center">
-              <h2 className="text-3xl font-display font-black text-brand-secondary">Catálogo de {seller.name}</h2>
+              <h2 className="text-3xl font-display font-black text-brand-secondary">Catálogo de {seller.seller_name || seller.name}</h2>
               <div className="h-1 flex-1 mx-8 bg-gray-100 rounded-full hidden md:block"></div>
            </div>
 

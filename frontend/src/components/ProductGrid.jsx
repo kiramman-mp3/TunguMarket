@@ -5,8 +5,8 @@ import { motion, AnimatePresence } from 'framer-motion';
 const ProductGrid = ({ products, loading }) => {
   if (loading) {
     return (
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8">
-        {[...Array(8)].map((_, i) => (
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-2 xl:grid-cols-3 gap-8">
+        {[...Array(6)].map((_, i) => (
           <div key={i} className="glass-card h-[400px] animate-pulse bg-gray-50 border border-gray-100 rounded-2xl">
             <div className="aspect-[4/3] bg-gray-200 rounded-t-2xl"></div>
             <div className="p-6 space-y-4">
@@ -31,7 +31,7 @@ const ProductGrid = ({ products, loading }) => {
   }
 
   return (
-    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8">
+    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-2 xl:grid-cols-3 gap-8">
       <AnimatePresence>
         {products.map((product) => (
           <ProductCard key={product.id} product={product} />

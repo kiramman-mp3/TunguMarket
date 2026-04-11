@@ -44,69 +44,83 @@ const ProductCard = ({ product }) => {
         isOwner ? 'border-brand-primary/40 bg-brand-light/5' : 'border-gray-100 hover:border-brand-primary/30'
       }`}
     >
-      <Link to={`/product/${product.id}`} className="relative aspect-[4/3] overflow-hidden block">
+      <Link to={`/product/${product.id}`} className="relative aspect-video overflow-hidden block">
         <img 
           src={imageUrl} 
           alt={product.title || product.name} 
           className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110"
         />
         <div className="absolute top-4 left-4 bg-white/90 backdrop-blur px-3 py-1 rounded-full shadow-sm">
-          <span className="text-xs font-bold text-brand-secondary">
+          <span className="text-[10px] font-black uppercase text-brand-secondary tracking-wider">
             {product.category_name || product.category || 'General'}
           </span>
         </div>
-        {isOwner && (
-          <div className="absolute top-4 right-4 bg-brand-primary text-brand-secondary px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-tighter shadow-sm animate-pulse">
-            Tu Producto
-          </div>
-        )}
-        <div className="absolute bottom-4 right-4 bg-brand-secondary text-white px-3 py-1 rounded-full font-bold shadow-lg">
+        <div className="absolute bottom-4 right-4 bg-brand-secondary/90 backdrop-blur text-white px-3 py-1 rounded-lg font-black shadow-lg border border-white/10">
           ${price.toFixed(2)}
         </div>
       </Link>
       
-      <div className="p-6 flex flex-col flex-grow">
-        <div className="flex justify-between items-start mb-2">
-          <Link to={`/product/${product.id}`}>
-            <h3 className="text-lg font-bold text-brand-secondary group-hover:text-brand-primary transition-colors line-clamp-1">
-              {product.title || product.name}
-            </h3>
-          </Link>
-          <div className="flex items-center gap-1 text-amber-500 flex-shrink-0 ml-2">
-            <FontAwesomeIcon icon={faStar} className="text-xs" />
-            <span className="text-sm font-bold">{product.average_rating || product.rating || '0.0'}</span>
+      <div className="p-5 flex flex-col flex-grow">
+        {/* Título arriba */}
+        <Link to={`/product/${product.id}`} className="mb-2">
+          <h3 className="text-xl font-bold text-brand-secondary group-hover:text-brand-primary transition-colors line-clamp-2 min-h-[3.5rem] flex items-center leading-snug">
+            {product.title || product.name}
+          </h3>
+        </Link>
+
+        {/* Reseñas abajo a la izquierda del título */}
+        <div className="flex items-center gap-2 mb-4">
+          <div className="flex items-center gap-1 text-amber-500 font-black text-sm">
+            <span>{product.average_rating || '5.0'}</span>
+            <FontAwesomeIcon icon={faStar} className="text-[10px]" />
           </div>
+          <span className="text-[11px] text-gray-400 font-bold uppercase tracking-tighter">
+            ({product.review_count || 0}) reseñas
+          </span>
         </div>
         
-        <div className="flex items-center gap-2 text-gray-400 text-xs mb-6 font-medium">
-          <FontAwesomeIcon icon={faMapMarkerAlt} />
-          <span className="truncate">{product.location || 'Ambato'}</span>
-          <span className="mx-1">•</span>
-          <FontAwesomeIcon icon={faStore} />
-          <span className="text-brand-secondary/70 truncate">{product.seller_name || product.vendor || 'Vendedor Local'}</span>
+        {/* Vendedor (Clicable) */}
+        <div className="flex items-center gap-2 text-gray-400 text-[11px] mb-6 font-bold uppercase tracking-tight">
+          <FontAwesomeIcon icon={faStore} className="text-brand-primary/60" />
+          <Link 
+            to={`/seller/${product.seller_id}`} 
+            className="text-brand-secondary/80 hover:text-brand-primary transition-colors decoration-brand-primary/30 underline-offset-2 hover:underline"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {product.seller_name || product.vendor || 'Vendedor Local'}
+          </Link>
         </div>
 
-        <div className="mt-auto">
+        <div className="mt-auto flex gap-2">
           {isOwner ? (
             <Link 
               to={`/product/${product.id}`}
-              className="w-full py-3 rounded-xl border-2 border-brand-primary text-brand-secondary font-bold text-sm flex items-center justify-center gap-2 hover:bg-brand-primary transition-all group"
+              className="w-full py-3.5 rounded-xl bg-brand-light text-brand-secondary font-black text-xs uppercase tracking-widest flex items-center justify-center gap-2 hover:bg-brand-primary transition-all border border-brand-primary/20 shadow-sm"
             >
-              <FontAwesomeIcon icon={faStore} className="group-hover:rotate-12 transition-transform" />
-              Ver y Gestionar
+              <FontAwesomeIcon icon={faStore} />
+              Gestionar Producto
             </Link>
           ) : (
-            <button 
-              onClick={handleAddToCart}
-              className={`w-full py-3 rounded-xl flex items-center justify-center gap-2 group shadow-sm transition-all font-bold text-sm ${
-                added 
-                ? 'bg-green-500 text-white border-green-500' 
-                : 'btn-primary'
-              }`}
-            >
-              <FontAwesomeIcon icon={added ? faCheck : faShoppingBag} className="group-hover:scale-110 transition-transform" />
-              {added ? '¡Añadido!' : 'Agregar al Carrito'}
-            </button>
+            <>
+              <Link 
+                to={`/product/${product.id}`}
+                className="flex-grow py-3.5 rounded-xl bg-brand-secondary text-white font-black text-xs uppercase tracking-widest flex items-center justify-center gap-2 hover:bg-brand-primary transition-all shadow-md group/btn"
+              >
+                Ver Producto
+              </Link>
+              <button 
+                onClick={handleAddToCart}
+                disabled={added}
+                className={`w-14 h-12.5 flex items-center justify-center rounded-xl transition-all shadow-sm ${
+                  added 
+                  ? 'bg-green-500 text-white' 
+                  : 'bg-brand-primary text-brand-secondary hover:scale-105 active:scale-95'
+                }`}
+                title="Agregar al carrito"
+              >
+                <FontAwesomeIcon icon={added ? faCheck : faShoppingBag} className={added ? "" : "group-hover:rotate-12 transition-transform"} />
+              </button>
+            </>
           )}
         </div>
       </div>
