@@ -27,7 +27,7 @@ class AddressModel {
     // Verificar límite de 4
     const count = await this.countByUserId(userId);
     if (count >= 4) {
-      throw new Error('Haz alcanzado el límite máximo de 4 direcciones. Elimina una para agregar otra.');
+      throw new Error('Has alcanzado el límite máximo de 4 direcciones. Elimina una para agregar otra.');
     }
 
     if (!postalCode || postalCode.trim().length === 0) {

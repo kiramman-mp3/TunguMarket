@@ -60,7 +60,9 @@ class NotificationModel {
    * Guarda una nueva suscripción Web Push para el usuario
    */
   static async savePushSubscription(userId, subscription) {
-    const { endpoint, keys: { p256dh, auth } } = subscription;
+    const { endpoint, keys } = subscription;
+    const p256dh = keys?.p256dh;
+    const auth = keys?.auth;
     
     // Upsert on conflict by endpoint
     const query = `

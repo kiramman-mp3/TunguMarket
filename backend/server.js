@@ -45,7 +45,7 @@ app.use('/api/wallet', walletRoutes);
 
 // Health check
 app.get('/api/health', (req, res) => {
-  res.status(200).json({ status: 'ok', message: 'TunguMarket API is running' });
+  res.status(200).json({ status: 'ok', message: 'La API de TunguMarket está en funcionamiento' });
 });
 
 // Error handling

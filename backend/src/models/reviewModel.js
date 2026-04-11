@@ -33,6 +33,7 @@ class ReviewModel {
       WHERE product_id = $1
     `;
 
+    const dataQuery = `
       SELECT
         r.*,
         u.name as user_name,
@@ -256,7 +257,7 @@ class ReviewModel {
       JOIN orders o ON oi.order_id = o.id
       WHERE oi.product_id = $1 
         AND o.user_id = $2
-        AND oi.status = 'Envío completado'
+        AND o.status = 'Envío completado'
     `;
     const { rows } = await pool.query(query, [productId, userId]);
     return parseInt(rows[0].count, 10) > 0;

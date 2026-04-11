@@ -9,7 +9,7 @@ class AuthService {
   static async register({ name, email, password, birthDate, roleId = 2 }) { // 2 = usuario_general
     const existingUser = await UserModel.findByEmail(email);
     if (existingUser) {
-      throw new Error('User already exists');
+      throw new Error('El usuario ya existe');
     }
 
     // Age validation (>= 18)
@@ -51,12 +51,12 @@ class AuthService {
     
     if (!user) {
       await UserModel.recordLoginLog({ email, ipAddress, deviceInfo, status: 'failure', message: 'Usuario no encontrado' });
-      throw new Error('Invalid credentials');
+      throw new Error('Credenciales inválidas');
     }
 
     if (user.is_banned) {
       await UserModel.recordLoginLog({ userId: user.id, email, ipAddress, deviceInfo, status: 'failure', message: 'Usuario baneado' });
-      throw new Error('Your account is banned. Please contact support.');
+      throw new Error('Tu cuenta está suspendida. Por favor, contacta a soporte.');
     }
 
     // STRICT VERIFICATION
@@ -68,14 +68,14 @@ class AuthService {
     // Login attempts limit logic
     if (user.login_attempts >= 5 && (new Date() - new Date(user.last_attempt)) < 15 * 60 * 1000) {
       await UserModel.recordLoginLog({ userId: user.id, email, ipAddress, deviceInfo, status: 'failure', message: 'Demasiados intentos fallidos' });
-      throw new Error('Too many login attempts. Try again in 15 minutes.');
+      throw new Error('Demasiados intentos de inicio de sesión. Inténtalo de nuevo en 15 minutos.');
     }
 
     const isValid = await bcrypt.compare(password, user.password_hash);
     if (!isValid) {
       await UserModel.incrementLoginAttempts(email);
       await UserModel.recordLoginLog({ userId: user.id, email, ipAddress, deviceInfo, status: 'failure', message: 'Contraseña incorrecta' });
-      throw new Error('Invalid credentials');
+      throw new Error('Credenciales inválidas');
     }
 
     await UserModel.resetLoginAttempts(email);
@@ -119,7 +119,7 @@ class AuthService {
 
   static async verifyEmail(email, token) {
     const user = await UserModel.findByEmail(email);
-    if (!user) throw new Error('User not found');
+    if (!user) throw new Error('Usuario no encontrado');
 
     const verificationToken = await UserModel.findVerificationToken(token);
     if (!verificationToken || verificationToken.user_id !== user.id) {
@@ -147,7 +147,7 @@ class AuthService {
 
   static async resendVerificationEmail(email) {
     const user = await UserModel.findByEmail(email);
-    if (!user) throw new Error('User not found');
+    if (!user) throw new Error('Usuario no encontrado');
     if (user.is_verified) throw new Error('Esta cuenta ya está verificada.');
 
     // Delete old tokens
@@ -171,7 +171,7 @@ class AuthService {
     if (!user) {
       // Security best practice: don't reveal if email exists, but we'll show it for now 
       // as requested by the specific recovery flow.
-      throw new Error('User not found');
+      throw new Error('Usuario no encontrado');
     }
 
     // Delete old reset tokens

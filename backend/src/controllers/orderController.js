@@ -281,12 +281,6 @@ class OrderController {
       // Confirmar la orden
       const confirmedOrder = await OrderModel.confirmOrder(id);
 
-      // Limpiar carrito después de confirmar
-      const cart = await CartModel.getCart(userId);
-      if (cart) {
-        await CartModel.clearCart(cart.id);
-      }
-
       res.status(200).json({
         message: 'Orden confirmada exitosamente',
         order: confirmedOrder

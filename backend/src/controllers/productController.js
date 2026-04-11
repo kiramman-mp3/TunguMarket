@@ -25,12 +25,6 @@ class ProductController {
 
       const { products, total } = await ProductModel.findAll(limitNum, offset);
 
-      // Agregar imágenes principales a cada producto
-      for (let product of products) {
-        const primaryImage = await ProductImageModel.getPrimaryImage(product.id);
-        product.primary_image = primaryImage?.image_url || null;
-      }
-
       res.status(200).json({
         message: 'Productos obtenidos exitosamente',
         data: {
@@ -66,12 +60,6 @@ class ProductController {
       const offset = (pageNum - 1) * limitNum;
 
       const { products, total } = await ProductModel.findByCategory(categoryId, limitNum, offset);
-
-      // Agregar imágenes principales
-      for (let product of products) {
-        const primaryImage = await ProductImageModel.getPrimaryImage(product.id);
-        product.primary_image = primaryImage?.image_url || null;
-      }
 
       res.status(200).json({
         message: 'Productos por categoría obtenidos exitosamente',
@@ -110,12 +98,6 @@ class ProductController {
 
       const { products, total } = await ProductModel.search(q.trim(), limitNum, offset, filters);
 
-      // Agregar imágenes principales
-      for (let product of products) {
-        const primaryImage = await ProductImageModel.getPrimaryImage(product.id);
-        product.primary_image = primaryImage?.image_url || null;
-      }
-
       res.status(200).json({
         message: 'Búsqueda completada exitosamente',
         data: {
@@ -145,12 +127,6 @@ class ProductController {
 
       const limitNum = Math.min(50, Math.max(1, parseInt(limit, 10)));
       const products = await ProductModel.getFeatured(limitNum);
-
-      // Agregar imágenes principales
-      for (let product of products) {
-        const primaryImage = await ProductImageModel.getPrimaryImage(product.id);
-        product.primary_image = primaryImage?.image_url || null;
-      }
 
       res.status(200).json({
         message: 'Productos destacados obtenidos exitosamente',
@@ -436,7 +412,7 @@ class ProductController {
           const filename = urlParts[urlParts.length - 1];
           const filePath = path.join(__dirname, '../../uploads/products', filename);
           if (fs.existsSync(filePath)) {
-            fs.unlinkSync(filePath);
+            await fs.promises.unlink(filePath);
           }
         } catch (err) {
           console.error(`Error eliminando archivo físico: ${img.image_url}`, err);
@@ -472,12 +448,6 @@ class ProductController {
       const offset = (pageNum - 1) * limitNum;
 
       const { products, total } = await ProductModel.findBySeller(sellerId, limitNum, offset);
-
-      // Agregar imágenes principales
-      for (let product of products) {
-        const primaryImage = await ProductImageModel.getPrimaryImage(product.id);
-        product.primary_image = primaryImage?.image_url || null;
-      }
 
       res.status(200).json({
         message: 'Productos del vendedor obtenidos exitosamente',
@@ -570,7 +540,7 @@ class ProductController {
         const filePath = path.join(__dirname, '../../uploads/products', filename);
         
         if (fs.existsSync(filePath)) {
-          fs.unlinkSync(filePath);
+          await fs.promises.unlink(filePath);
         }
       } catch (err) {
         console.error('Error al borrar archivo físico:', err);

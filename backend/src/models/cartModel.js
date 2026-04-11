@@ -69,11 +69,11 @@ class CartModel {
     if (existing.length > 0) {
       const updateQuery = `
         UPDATE cart_items 
-        SET quantity = quantity + $1
+        SET quantity = quantity + $1, price_at_purchase = $4
         WHERE cart_id = $2 AND product_id = $3
         RETURNING *
       `;
-      const result = await pool.query(updateQuery, [quantity, cartId, productId]);
+      const result = await pool.query(updateQuery, [quantity, cartId, productId, priceAtPurchase]);
       await this.updateCartTotal(cartId); 
       return result.rows[0];
     }

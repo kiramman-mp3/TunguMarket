@@ -44,7 +44,8 @@ class ProductModel {
         p.*,
         c.name as category_name,
         COALESCE(u.seller_name, u.name) as seller_name,
-        u.avatar_url as seller_avatar
+        u.avatar_url as seller_avatar,
+        (SELECT image_url FROM product_images WHERE product_id = p.id AND is_primary = true LIMIT 1) as primary_image
       FROM products p
       LEFT JOIN categories c ON p.category_id = c.id
       JOIN users u ON p.seller_id = u.id
@@ -82,7 +83,8 @@ class ProductModel {
         p.*,
         c.name as category_name,
         COALESCE(u.seller_name, u.name) as seller_name,
-        u.avatar_url as seller_avatar
+        u.avatar_url as seller_avatar,
+        (SELECT image_url FROM product_images WHERE product_id = p.id AND is_primary = true LIMIT 1) as primary_image
       FROM products p
       LEFT JOIN categories c ON p.category_id = c.id
       JOIN users u ON p.seller_id = u.id
@@ -120,7 +122,8 @@ class ProductModel {
         c.name as category_name,
         COALESCE(u.seller_name, u.name) as seller_name,
         u.avatar_url as seller_avatar,
-        COUNT(oi.id)::integer as sales_count
+        COUNT(oi.id)::integer as sales_count,
+        (SELECT image_url FROM product_images WHERE product_id = p.id AND is_primary = true LIMIT 1) as primary_image
       FROM products p
       LEFT JOIN categories c ON p.category_id = c.id
       JOIN users u ON p.seller_id = u.id
@@ -254,11 +257,13 @@ class ProductModel {
       JOIN users u ON p.seller_id = u.id
       WHERE p.status = 'activo' AND u.blocked_for_debt = false
     `;
+    let dataQuery = `
       SELECT
         p.*,
         c.name as category_name,
         COALESCE(u.seller_name, u.name) as seller_name,
-        u.avatar_url as seller_avatar
+        u.avatar_url as seller_avatar,
+        (SELECT image_url FROM product_images WHERE product_id = p.id AND is_primary = true LIMIT 1) as primary_image
       FROM products p
       LEFT JOIN categories c ON p.category_id = c.id
       JOIN users u ON p.seller_id = u.id
@@ -330,7 +335,8 @@ class ProductModel {
         p.*,
         c.name as category_name,
         COALESCE(u.seller_name, u.name) as seller_name,
-        u.avatar_url as seller_avatar
+        u.avatar_url as seller_avatar,
+        (SELECT image_url FROM product_images WHERE product_id = p.id AND is_primary = true LIMIT 1) as primary_image
       FROM products p
       LEFT JOIN categories c ON p.category_id = c.id
       LEFT JOIN users u ON p.seller_id = u.id

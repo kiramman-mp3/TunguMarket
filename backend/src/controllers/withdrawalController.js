@@ -14,21 +14,19 @@ class WithdrawalController {
         return res.status(400).json({ error: 'Monto inválido' });
       }
 
-      // Verificar saldo del usuario
-      const user = await UserModel.findById(userId);
-      if (user.balance < amount) {
-        await client.query('ROLLBACK');
-        return res.status(400).json({ error: 'Saldo insuficiente' });
-      }
-
-      // Crear solicitud
-      const withdrawal = await WithdrawalModel.create(userId, amount, bankInfo);
-
-      // Descontar saldo
-      await client.query(
-        'UPDATE users SET balance = balance - $1 WHERE id = $2',
+      // Intentar descontar saldo de forma atómica
+      const updateResult = await client.query(
+        'UPDATE users SET balance = balance - $1 WHERE id = $2 AND balance >= $1 RETURNING balance',
         [amount, userId]
       );
+
+      if (updateResult.rowCount === 0) {
+        await client.query('ROLLBACK');
+        return res.status(400).json({ error: 'Saldo insuficiente para procesar el retiro' });
+      }
+
+      // Crear solicitud de retiro
+      const withdrawal = await WithdrawalModel.create(userId, amount, bankInfo);
 
       await client.query('COMMIT');
 

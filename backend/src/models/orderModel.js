@@ -134,7 +134,15 @@ class OrderModel {
    * @returns {array} Array de órdenes con ese estado
    */
   static async findByStatus(status, limit = 20) {
-    const validStatuses = ['pendiente', 'confirmado', 'cancelado'];
+    const validStatuses = [
+      'pendiente', 
+      'confirmado', 
+      'cancelado', 
+      'Pendiente de verificación', 
+      'Pendiente de pago', 
+      'Aceptado',
+      'Envío completado'
+    ];
     
     if (!validStatuses.includes(status)) {
       throw new Error(`Estado inválido. Debe ser uno de: ${validStatuses.join(', ')}`);
@@ -162,6 +170,8 @@ class OrderModel {
         COUNT(CASE WHEN status = 'confirmado' THEN 1 END) as confirmadas,
         COUNT(CASE WHEN status = 'pendiente' THEN 1 END) as pendientes,
         COUNT(CASE WHEN status = 'cancelado' THEN 1 END) as canceladas,
+        COUNT(CASE WHEN status = 'Aceptado' THEN 1 END) as aceptadas,
+        COUNT(CASE WHEN status = 'Envío completado' THEN 1 END) as completadas,
         SUM(total_price) as total_gastado
       FROM orders
       WHERE user_id = $1
@@ -172,6 +182,8 @@ class OrderModel {
       confirmadas: parseInt(rows[0].confirmadas || 0, 10),
       pendientes: parseInt(rows[0].pendientes || 0, 10),
       canceladas: parseInt(rows[0].canceladas || 0, 10),
+      aceptadas: parseInt(rows[0].aceptadas || 0, 10),
+      completadas: parseInt(rows[0].completadas || 0, 10),
       total_gastado: parseFloat(rows[0].total_gastado || 0)
     };
   }

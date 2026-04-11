@@ -7,7 +7,7 @@ const authMiddleware = async (req, res, next) => {
   const token = authHeader && authHeader.split(' ')[1];
 
   if (!token) {
-    return res.status(401).json({ error: 'Authorization token required' });
+    return res.status(401).json({ error: 'Se requiere un token de autorización' });
   }
 
   try {
@@ -16,7 +16,7 @@ const authMiddleware = async (req, res, next) => {
     // 1. Check if session exists in DB
     const session = await SessionModel.findByToken(token);
     if (!session) {
-      return res.status(401).json({ error: 'Session expired or invalidated' });
+      return res.status(401).json({ error: 'Sesión expirada o invalidada' });
     }
 
     // 2. Check if user is banned
@@ -30,7 +30,7 @@ const authMiddleware = async (req, res, next) => {
     req.user = decoded;
     next();
   } catch (err) {
-    return res.status(401).json({ error: 'Invalid or expired token' });
+    return res.status(401).json({ error: 'Token inválido o expirado' });
   }
 };
 
@@ -67,7 +67,7 @@ const isAdmin = async (req, res, next) => {
   if (req.user && req.user.role === 'admin') {
     next();
   } else {
-    res.status(403).json({ error: 'Require Admin Role' });
+    res.status(403).json({ error: 'Se requiere rol de administrador' });
   }
 };
 

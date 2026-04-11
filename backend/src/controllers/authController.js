@@ -5,7 +5,7 @@ class AuthController {
     try {
       const { name, email, password, birthDate } = req.body;
       const user = await AuthService.register({ name, email, password, birthDate });
-      res.status(201).json({ message: 'User registered successfully', user });
+      res.status(201).json({ message: 'Usuario registrado exitosamente', user });
     } catch (error) {
       res.status(400).json({ error: error.message });
     }
@@ -20,7 +20,7 @@ class AuthController {
       const { user, token } = await AuthService.login({ email, password, ipAddress, deviceInfo });
 
       res.status(200).json({
-        message: 'Login successful',
+        message: 'Inicio de sesión exitoso',
         user: {
           id: user.id,
           name: user.name,
@@ -41,7 +41,7 @@ class AuthController {
       if (token) {
         await AuthService.logout(token);
       }
-      res.status(200).json({ message: 'Logout successful' });
+      res.status(200).json({ message: 'Sesión cerrada exitosamente' });
     } catch (error) {
       res.status(500).json({ error: error.message });
     }
@@ -49,9 +49,13 @@ class AuthController {
 
   static async remoteLogout(req, res) {
     try {
-      const { userId } = req.body; // Only admin should access this
+      if (req.user.role !== 'admin') {
+        return res.status(403).json({ error: 'Solo administradores pueden cerrar sesiones remotamente.' });
+      }
+
+      const { userId } = req.body; 
       await AuthService.logoutAllSessions(userId);
-      res.status(200).json({ message: 'All sessions closed for user' });
+      res.status(200).json({ message: 'Todas las sesiones cerradas para el usuario' });
     } catch (error) {
       res.status(500).json({ error: error.message });
     }

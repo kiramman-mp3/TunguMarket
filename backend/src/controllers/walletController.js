@@ -75,7 +75,7 @@ class WalletController {
         'debt_payment',
         amount,
         0,
-        'Pago de deuda por saldo en efectivo (Admin Clearance)'
+        'Pago de deuda por saldo en efectivo (Liquidación de Administrador)'
       );
 
       res.status(200).json({ message: 'Deuda saldada, el usuario ha sido desbloqueado.' });
