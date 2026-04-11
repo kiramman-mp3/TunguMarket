@@ -29,6 +29,7 @@ import Wishlist from './profile-sections/Wishlist';
 import NotificationPanel from './profile-sections/NotificationPanel';
 import WalletView from './profile-sections/WalletView';
 import AddressManager from './profile-sections/AddressManager';
+import LoadingScreen from '../components/LoadingScreen';
 
 const Profile = () => {
   const { user, logout } = useAuth();
@@ -143,7 +144,7 @@ const Profile = () => {
     </div>
   );
 
-  // Se eliminó renderOverview para limpiar la UI
+  if (loading) return <LoadingScreen message="Cargando tu panel de control..." />;
 
   return (
     <div className="min-h-screen bg-[#fcfdff] pt-24 pb-12">

@@ -75,10 +75,16 @@ export const AuthProvider = ({ children }) => {
     window.location.href = '/login'; // Force redirect to login
   };
 
+  const updateUser = (newData) => {
+    const updatedUser = { ...user, ...newData };
+    setUser(updatedUser);
+    localStorage.setItem('tungu_user', JSON.stringify(updatedUser));
+  };
+
   const isAuthenticated = !!user;
 
   return (
-    <AuthContext.Provider value={{ user, isAuthenticated, loading, login, logout }}>
+    <AuthContext.Provider value={{ user, isAuthenticated, loading, login, logout, updateUser }}>
       {children}
       <BanModal isOpen={showBanModal} onClose={logout} />
     </AuthContext.Provider>

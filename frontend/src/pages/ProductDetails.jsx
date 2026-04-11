@@ -23,6 +23,7 @@ import { getProductReviews, createReview } from '../api/review';
 import { toggleWishlist, getWishlist } from '../api/wishlist';
 import { useAuth } from '../context/AuthContext';
 import { useCart } from '../context/CartContext';
+import LoadingScreen from '../components/LoadingScreen';
 
 const ProductDetails = () => {
   const { user } = useAuth();
@@ -101,26 +102,28 @@ const ProductDetails = () => {
 
   const handleSubmitReview = async (e) => {
     e.preventDefault();
-    if (!user) return alert('Debes iniciar sesión para reseñar');
+    if (!user) return setToast({ show: true, message: 'Debes iniciar sesión para reseñar', type: 'error' });
     setSubmittingReview(true);
     try {
       await createReview({ product_id: id, ...reviewData });
-      const revRes = await getProductReviews(id);
-      setReviews(revRes.data.reviews);
       const prodRes = await getProductById(id);
       setProduct(prodRes.data);
       setShowReviewForm(false);
       setReviewData({ rating: 5, comment: '' });
-      alert('¡Reseña publicada con éxito!');
+      setToast({ show: true, message: '¡Reseña publicada con éxito!', type: 'success' });
     } catch (err) {
-      alert(err.response?.data?.error || 'No puedes reseñar este producto aún. Asegúrate de haberlo recibido primero.');
+      setToast({ 
+        show: true, 
+        message: err.response?.data?.error || 'No puedes reseñar este producto aún. Asegúrate de haberlo recibido primero.', 
+        type: 'error' 
+      });
     } finally {
       setSubmittingReview(false);
     }
   };
 
   const handleToggleWishlist = async () => {
-    if (!user) return alert('Debes iniciar sesión para guardar favoritos');
+    if (!user) return setToast({ show: true, message: 'Debes iniciar sesión para guardar favoritos', type: 'error' });
     setTogglingFavorite(true);
     try {
       const res = await toggleWishlist(id);
@@ -138,11 +141,7 @@ const ProductDetails = () => {
   };
 
   if (loading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center pt-20">
-        <div className="animate-spin rounded-full h-12 w-12 border-4 border-brand-primary border-t-transparent"></div>
-      </div>
-    );
+    return <LoadingScreen message="Cargando detalles del producto..." />;
   }
 
   if (error || !product) {

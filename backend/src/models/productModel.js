@@ -129,7 +129,7 @@ class ProductModel {
       JOIN users u ON p.seller_id = u.id
       LEFT JOIN order_items oi ON p.id = oi.product_id
       WHERE p.seller_id = $1
-      GROUP BY p.id, c.name, u.seller_name, u.name
+      GROUP BY p.id, c.name, u.seller_name, u.name, u.avatar_url
       ORDER BY p.created_at DESC
       LIMIT $2 OFFSET $3
     `;

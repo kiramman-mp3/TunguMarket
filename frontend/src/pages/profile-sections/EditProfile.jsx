@@ -12,7 +12,7 @@ import {
 import { useAuth } from '../../context/AuthContext';
 
 const EditProfile = () => {
-  const { user, login } = useAuth(); // Usamos login para refrescar el estado del usuario si es necesario
+  const { user, updateUser } = useAuth(); 
   const [name, setName] = useState(user?.name || '');
   const [passwords, setPasswords] = useState({ current: '', new: '', confirm: '' });
   const [loading, setLoading] = useState({ profile: false, password: false, avatar: false });
@@ -36,8 +36,8 @@ const EditProfile = () => {
       const data = await res.json();
       if (!res.ok) throw new Error(data.error);
       
-      // Actualizar estado global a través de AuthContext
-      login(data.user, localStorage.getItem('tungu_token'));
+      // Actualizar estado global a través de AuthContext de forma instantánea
+      updateUser({ name: data.user.name });
       
       setMessage({ text: 'Nombre actualizado correctamente', type: 'success' });
     } catch (err) {
@@ -92,8 +92,8 @@ const EditProfile = () => {
       const data = await res.json();
       if (!res.ok) throw new Error(data.error);
 
-      // Actualizar estado global a través de AuthContext
-      login(data.user, localStorage.getItem('tungu_token'));
+      // Actualizar estado global a través de AuthContext de forma instantánea
+      updateUser({ avatar_url: data.avatar_url, ...data.user });
       
       setMessage({ text: 'Foto de perfil actualizada', type: 'success' });
       // Forzar recarga ligera del componente o notificación al padre si fuera necesario

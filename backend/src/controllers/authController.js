@@ -5,7 +5,17 @@ class AuthController {
     try {
       const { name, email, password, birthDate } = req.body;
       const user = await AuthService.register({ name, email, password, birthDate });
-      res.status(201).json({ message: 'Usuario registrado exitosamente', user });
+      res.status(201).json({ 
+        message: 'Usuario registrado exitosamente', 
+        user: {
+          id: user.id,
+          name: user.name,
+          email: user.email,
+          role: 'usuario_general', // Default for register
+          birthDate: user.birth_date,
+          avatar_url: user.avatar_url
+        } 
+      });
     } catch (error) {
       res.status(400).json({ error: error.message });
     }
@@ -26,7 +36,8 @@ class AuthController {
           name: user.name,
           email: user.email,
           role: user.role_name,
-          birthDate: user.birth_date
+          birthDate: user.birth_date,
+          avatar_url: user.avatar_url
         },
         token,
       });
@@ -67,7 +78,17 @@ class AuthController {
     try {
       const { email, token } = req.body;
       const result = await AuthService.verifyEmail(email, token);
-      res.status(200).json(result);
+      res.status(200).json({
+        ...result,
+        user: {
+          id: result.user.id,
+          name: result.user.name,
+          email: result.user.email,
+          role: result.user.role_name,
+          birthDate: result.user.birth_date,
+          avatar_url: result.user.avatar_url
+        }
+      });
     } catch (error) {
       res.status(400).json({ error: error.message });
     }
