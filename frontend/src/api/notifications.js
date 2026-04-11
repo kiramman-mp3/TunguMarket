@@ -31,3 +31,12 @@ export const markAllAsRead = async () => {
   });
   return handleResponse(response);
 };
+
+export const subscribeToPush = async (subscription) => {
+  const response = await fetch(`${API_URL}/notifications/subscribe`, {
+    method: 'POST',
+    headers: getHeaders(),
+    body: JSON.stringify(subscription)
+  });
+  return handleResponse(response);
+};

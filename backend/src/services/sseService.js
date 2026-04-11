@@ -1,3 +1,5 @@
+import WebPushService from './webPushService.js';
+
 /**
  * SSEService manages active Server-Sent Events (SSE) connections.
  * It allows the server to push real-time notifications to specific users.
@@ -41,6 +43,16 @@ class SSEService {
    * Send a real-time event to ALL active sessions/tabs of a specific user.
    */
   sendToUser(userId, data) {
+    // Trigger Web Push Notification asynchronously
+    if (data.type === 'NEW_NOTIFICATION') {
+      const { notification } = data;
+      WebPushService.sendToUser(userId, {
+        title: notification.title,
+        body: notification.message,
+        url: '/' // Puede personalizarse según la notificación
+      });
+    }
+
     if (this.clients.has(userId)) {
       const userClients = this.clients.get(userId);
       const payload = `data: ${JSON.stringify(data)}\n\n`;

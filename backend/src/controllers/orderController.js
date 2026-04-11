@@ -5,6 +5,7 @@ import SSEService from '../services/sseService.js';
 import EmailService from '../services/emailService.js';
 import paymentValidator from '../services/paymentValidator.js';
 import AddressModel from '../models/addressModel.js';
+import WalletModel from '../models/walletModel.js';
 import pool from '../config/db.js';
 
 class OrderController {
@@ -100,6 +101,13 @@ class OrderController {
         return res.status(400).json({ error: 'Dirección de envío requerida' });
       }
 
+      // Validar que el usuario no esté bloqueado por deuda
+      const userCheck = await client.query('SELECT blocked_for_debt FROM users WHERE id = $1', [userId]);
+      if (userCheck.rows[0]?.blocked_for_debt) {
+        await client.query('ROLLBACK');
+        return res.status(403).json({ error: 'Tu cuenta está suspendida por saldo negativo. Debes pagar tu saldo pendiente para comprar.' });
+      }
+
       // 0. Obtener info de la dirección
       const address = await AddressModel.findById(address_id);
       if (!address || address.user_id !== userId) {
@@ -119,13 +127,30 @@ class OrderController {
       const cartResult = await client.query('SELECT * FROM carts WHERE user_id = $1', [userId]);
       const cart = cartResult.rows[0];
 
-      if (!cart || cart.total_price <= 0) {
+      const itemsResult = await client.query('SELECT * FROM cart_items WHERE cart_id = $1', [cart.id]);
+      const cartItems = itemsResult.rows;
+
+      if (cartItems.length === 0) {
         await client.query('ROLLBACK');
         return res.status(400).json({ error: 'El carrito está vacío' });
       }
 
-      const itemsResult = await client.query('SELECT * FROM cart_items WHERE cart_id = $1', [cart.id]);
-      const cartItems = itemsResult.rows;
+      // Validar que ninguno de los vendedores de los productos esté bloqueado por deuda
+      const productIds = cartItems.map(item => item.product_id);
+      const sellersCheck = await client.query(`
+        SELECT u.id, u.name, u.blocked_for_debt 
+        FROM products p 
+        JOIN users u ON p.seller_id = u.id 
+        WHERE p.id = ANY($1) AND u.blocked_for_debt = true
+      `, [productIds]);
+
+      if (sellersCheck.rows.length > 0) {
+        const blockedNames = sellersCheck.rows.map(s => s.name).join(', ');
+        await client.query('ROLLBACK');
+        return res.status(403).json({ 
+          error: `No se puede procesar la compra. Los siguientes vendedores están temporalmente suspendidos: ${blockedNames}` 
+        });
+      }
 
       // 2. Definir estado inicial según método de pago
       let orderStatus = 'pendiente';
@@ -183,7 +208,6 @@ class OrderController {
         [order.id, userId, cart.total_price, payment_method, paymentStatus, receiptUrl]
       );
 
-      // 7. Limpiar carrito
       await client.query('DELETE FROM cart_items WHERE cart_id = $1', [cart.id]);
       await client.query('UPDATE carts SET total_price = 0 WHERE id = $1', [cart.id]);
 
@@ -599,24 +623,6 @@ class OrderController {
         EmailService.sendPaymentConfirmedEmail(buyer.email, buyer.name, order.id, order.total_price).catch(console.error);
       } catch (e) { console.error('Error al notificar comprador:', e); }
 
-      // Actualizar saldo de los vendedores
-      try {
-        const itemsResult = await pool.query(`
-          SELECT p.seller_id, SUM(oi.price_at_purchase * oi.quantity) as earnings
-          FROM order_items oi
-          JOIN products p ON oi.product_id = p.id
-          WHERE oi.order_id = $1
-          GROUP BY p.seller_id
-        `, [order.id]);
-
-        for (const item of itemsResult.rows) {
-          await pool.query(
-            'UPDATE users SET balance = balance + $1 WHERE id = $2',
-            [item.earnings, item.seller_id]
-          );
-        }
-      } catch (e) { console.error('Error al actualizar saldos:', e); }
-
       res.status(200).json({
         message: 'Pago aprobado y orden confirmada',
         data: {
@@ -756,10 +762,11 @@ class OrderController {
 
       // Verificar que el item pertenece a un producto del vendedor
       const itemResult = await pool.query(`
-        SELECT oi.*, p.seller_id, o.user_id as buyer_id, p.title as product_title
+        SELECT oi.*, p.seller_id, o.user_id as buyer_id, p.title as product_title, pay.payment_method
         FROM order_items oi
         JOIN products p ON oi.product_id = p.id
         JOIN orders o ON oi.order_id = o.id
+        LEFT JOIN payments pay ON o.id = pay.order_id
         WHERE oi.id = $1
       `, [itemId]);
 
@@ -773,12 +780,54 @@ class OrderController {
         return res.status(403).json({ error: 'No tienes permiso sobre este ítem' });
       }
 
-      // Actualizar estado del ítem (Podemos necesitar una columna 'status' en order_items o usar la de 'orders')
-      // Para simplicidad en este modelo, actualizaremos el estado de la ORDEN si todos sus items son del mismo vendedor 
-      // O añadiremos lógica de rastreo por ítem. Aquí asumiremos seguimiento por ítem.
+      if (item.status === 'Envío completado') {
+        return res.status(400).json({ error: 'Este ítem ya ha sido marcado como entregado.' });
+      }
+
+      // 1. Actualizar estado del ítem
       await pool.query('UPDATE order_items SET status = $1 WHERE id = $2', [status, itemId]);
 
-      // Notificar al comprador
+      // 2. Transaccionar Billetera (Uber-style)
+      const grossEarnings = parseFloat(item.price_at_purchase) * item.quantity;
+      const commission = grossEarnings * 0.05;
+      const netEarnings = grossEarnings - commission;
+
+      if (item.payment_method === 'efectivo') {
+        // En efectivo, deduce la comisión del saldo
+        await pool.query('UPDATE users SET balance = balance - $1 WHERE id = $2', [commission, sellerId]);
+        
+        await WalletModel.createTransaction(
+          sellerId,
+          item.order_id,
+          'debt_commission',
+          commission * -1, // Monto deducido de la cuenta
+          commission,
+          `Comisión deducida por entrega en Efectivo (${item.product_title})`
+        );
+
+        // Notificación interna indicando que se ha descontado el saldo
+        await NotificationModel.create({
+          userId: sellerId,
+          title: 'Venta en Efectivo Completa',
+          message: `Has entregado "${item.product_title}". Revisa tu saldo, se ha descontado $${commission.toFixed(2)} por comisión de uso de TunguMarket.`,
+          type: 'info'
+        });
+
+      } else {
+        // En tarjeta/transferencia, abona el porcentaje al saldo
+        await pool.query('UPDATE users SET balance = balance + $1 WHERE id = $2', [netEarnings, sellerId]);
+        
+        await WalletModel.createTransaction(
+          sellerId,
+          item.order_id,
+          'earning',
+          netEarnings,
+          commission,
+          `Ganancia por entrega (${item.product_title})`
+        );
+      }
+
+      // 3. Notificar al comprador
       const buyerResult = await pool.query('SELECT name, email FROM users WHERE id = $1', [item.buyer_id]);
       const buyer = buyerResult.rows[0];
 
@@ -789,7 +838,25 @@ class OrderController {
       SSEService.sendToUser(item.buyer_id, { type: 'NOTIFICATION', title, message });
       EmailService.sendOrderShippedEmail(buyer.email, buyer.name, item.order_id).catch(console.error);
 
-      res.status(200).json({ message: 'Item marcado como completado y comprador notificado' });
+      // 4. Propagación de estado: ¿Están todos los ítems de la orden completados?
+      const allItemsResult = await pool.query(
+        'SELECT status FROM order_items WHERE order_id = $1',
+        [item.order_id]
+      );
+      
+      const allCompleted = allItemsResult.rows.every(row => row.status === 'Envío completado');
+      
+      if (allCompleted) {
+        await pool.query(
+          'UPDATE orders SET status = $1, updated_at = CURRENT_TIMESTAMP WHERE id = $2',
+          ['Envío completado', item.order_id]
+        );
+      }
+
+      res.status(200).json({ 
+        message: 'Item marcado como completado y comprador notificado',
+        orderCompleted: allCompleted
+      });
 
     } catch (error) {
       res.status(500).json({ error: error.message });

@@ -36,10 +36,18 @@ export const getProductById = async (id) => {
 };
 
 /**
- * Realiza una búsqueda de productos por texto
+ * Realiza una búsqueda de productos con filtros combinados
  */
-export const searchProducts = async (query, page = 1) => {
-  const response = await fetch(`${API_URL}/search?q=${encodeURIComponent(query)}&page=${page}`);
+export const searchProducts = async (filtersObj, page = 1) => {
+  const params = new URLSearchParams({ page });
+  
+  if (filtersObj.q) params.append('q', filtersObj.q);
+  if (filtersObj.categoryId) params.append('categoryId', filtersObj.categoryId);
+  if (filtersObj.minPrice) params.append('minPrice', filtersObj.minPrice);
+  if (filtersObj.maxPrice) params.append('maxPrice', filtersObj.maxPrice);
+  if (filtersObj.minRating) params.append('minRating', filtersObj.minRating);
+
+  const response = await fetch(`${API_URL}/search?${params.toString()}`);
   return handleResponse(response);
 };
 

@@ -55,6 +55,34 @@ class NotificationModel {
     const { rows } = await pool.query(query, [userId]);
     return rows.length;
   }
+
+  /**
+   * Guarda una nueva suscripción Web Push para el usuario
+   */
+  static async savePushSubscription(userId, subscription) {
+    const { endpoint, keys: { p256dh, auth } } = subscription;
+    
+    // Upsert on conflict by endpoint
+    const query = `
+      INSERT INTO push_subscriptions (user_id, endpoint, p256dh, auth)
+      VALUES ($1, $2, $3, $4)
+      ON CONFLICT (user_id, endpoint) 
+      DO UPDATE SET p256dh = EXCLUDED.p256dh, auth = EXCLUDED.auth, created_at = CURRENT_TIMESTAMP
+      RETURNING *
+    `;
+    
+    const { rows } = await pool.query(query, [userId, endpoint, p256dh, auth]);
+    return rows[0];
+  }
+
+  /**
+   * Obtiene todas las suscripciones Push de un usuario
+   */
+  static async getPushSubscriptions(userId) {
+    const query = `SELECT * FROM push_subscriptions WHERE user_id = $1`;
+    const { rows } = await pool.query(query, [userId]);
+    return rows;
+  }
 }
 
 export default NotificationModel;

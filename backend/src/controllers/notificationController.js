@@ -31,6 +31,22 @@ class NotificationController {
       res.status(500).json({ error: error.message });
     }
   }
+
+  static async subscribe(req, res) {
+    try {
+      const userId = req.user.id;
+      const subscription = req.body;
+
+      if (!subscription || !subscription.endpoint) {
+        return res.status(400).json({ error: 'Suscripción inválida' });
+      }
+
+      await NotificationModel.savePushSubscription(userId, subscription);
+      res.status(201).json({ message: 'Suscripción Web Push exitosa' });
+    } catch (error) {
+      res.status(500).json({ error: error.message });
+    }
+  }
 }
 
 export default NotificationController;

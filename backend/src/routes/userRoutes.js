@@ -46,7 +46,7 @@ router.get('/sessions', authMiddleware, async (req, res) => {
 // Get login logs for the current user
 router.get('/logs', authMiddleware, async (req, res) => {
   try {
-    const query = 'SELECT * FROM login_logs WHERE user_id = $1 ORDER BY timestamp DESC LIMIT 50';
+    const query = 'SELECT * FROM login_logs WHERE user_id = $1 ORDER BY created_at DESC LIMIT 50';
     const { rows } = await pool.query(query, [req.user.id]);
     res.json(rows);
   } catch (error) {

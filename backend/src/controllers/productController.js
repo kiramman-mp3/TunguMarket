@@ -91,21 +91,23 @@ class ProductController {
 
   /**
    * GET /api/products/search
-   * Busca productos por término
+   * Busca productos por término y/o filtros
    */
   static async searchProducts(req, res) {
     try {
-      const { q, page = 1, limit = 20 } = req.query;
-
-      if (!q || q.trim().length === 0) {
-        return res.status(400).json({ error: 'Término de búsqueda requerido' });
-      }
+      const { q = '', page = 1, limit = 20, categoryId, minPrice, maxPrice, minRating } = req.query;
 
       const pageNum = Math.max(1, parseInt(page, 10));
       const limitNum = Math.min(100, Math.max(1, parseInt(limit, 10)));
       const offset = (pageNum - 1) * limitNum;
 
-      const { products, total } = await ProductModel.search(q.trim(), limitNum, offset);
+      const filters = {};
+      if (categoryId) filters.category_id = categoryId;
+      if (minPrice !== undefined && minPrice !== '') filters.minPrice = parseFloat(minPrice);
+      if (maxPrice !== undefined && maxPrice !== '') filters.maxPrice = parseFloat(maxPrice);
+      if (minRating !== undefined && minRating !== '') filters.minRating = parseFloat(minRating);
+
+      const { products, total } = await ProductModel.search(q.trim(), limitNum, offset, filters);
 
       // Agregar imágenes principales
       for (let product of products) {
@@ -117,6 +119,7 @@ class ProductController {
         message: 'Búsqueda completada exitosamente',
         data: {
           query: q,
+          filters,
           products,
           pagination: {
             total,

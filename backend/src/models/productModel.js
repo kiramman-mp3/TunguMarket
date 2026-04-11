@@ -34,7 +34,11 @@ class ProductModel {
    * @returns {object} {products, total}
    */
   static async findAll(limit = 20, offset = 0) {
-    const countQuery = `SELECT COUNT(*)::integer as count FROM products WHERE status = 'activo'`;
+    const countQuery = `
+      SELECT COUNT(*)::integer as count FROM products p
+      JOIN users u ON p.seller_id = u.id
+      WHERE p.status = 'activo' AND u.blocked_for_debt = false
+    `;
     const dataQuery = `
       SELECT
         p.*,
@@ -42,8 +46,8 @@ class ProductModel {
         u.name as seller_name
       FROM products p
       LEFT JOIN categories c ON p.category_id = c.id
-      LEFT JOIN users u ON p.seller_id = u.id
-      WHERE p.status = 'activo'
+      JOIN users u ON p.seller_id = u.id
+      WHERE p.status = 'activo' AND u.blocked_for_debt = false
       ORDER BY p.created_at DESC
       LIMIT $1 OFFSET $2
     `;
@@ -68,8 +72,9 @@ class ProductModel {
    */
   static async findByCategory(categoryId, limit = 20, offset = 0) {
     const countQuery = `
-      SELECT COUNT(*)::integer as count FROM products
-      WHERE category_id = $1 AND status = 'activo'
+      SELECT COUNT(*)::integer as count FROM products p
+      JOIN users u ON p.seller_id = u.id
+      WHERE p.category_id = $1 AND p.status = 'activo' AND u.blocked_for_debt = false
     `;
     const dataQuery = `
       SELECT
@@ -78,8 +83,8 @@ class ProductModel {
         u.name as seller_name
       FROM products p
       LEFT JOIN categories c ON p.category_id = c.id
-      LEFT JOIN users u ON p.seller_id = u.id
-      WHERE p.category_id = $1 AND p.status = 'activo'
+      JOIN users u ON p.seller_id = u.id
+      WHERE p.category_id = $1 AND p.status = 'activo' AND u.blocked_for_debt = false
       ORDER BY p.created_at DESC
       LIMIT $2 OFFSET $3
     `;
@@ -143,8 +148,8 @@ class ProductModel {
         u.email as seller_email
       FROM products p
       LEFT JOIN categories c ON p.category_id = c.id
-      LEFT JOIN users u ON p.seller_id = u.id
-      WHERE p.id = $1
+      JOIN users u ON p.seller_id = u.id
+      WHERE p.id = $1 AND u.blocked_for_debt = false
     `;
 
     const { rows } = await pool.query(query, [id]);
@@ -224,38 +229,79 @@ class ProductModel {
   }
 
   /**
-   * Busca productos por título o descripción
+   * Busca productos por término y filtros avanzados
    * @param {string} searchTerm - Término de búsqueda
    * @param {number} limit - Límite
    * @param {number} offset - Desplazamiento
+   * @param {object} filters - Filtros extras
    * @returns {object} {products, total}
    */
-  static async search(searchTerm, limit = 20, offset = 0) {
+  static async search(searchTerm, limit = 20, offset = 0, filters = {}) {
+    const { category_id, minPrice, maxPrice, minRating } = filters;
     const searchPattern = `%${searchTerm}%`;
 
-    const countQuery = `
-      SELECT COUNT(*)::integer as count FROM products
-      WHERE status = 'activo'
-        AND (title ILIKE $1 OR description ILIKE $1)
+    let countQuery = `
+      SELECT COUNT(*)::integer as count FROM products p
+      JOIN users u ON p.seller_id = u.id
+      WHERE p.status = 'activo' AND u.blocked_for_debt = false
     `;
-
-    const dataQuery = `
+    let dataQuery = `
       SELECT
         p.*,
         c.name as category_name,
         u.name as seller_name
       FROM products p
       LEFT JOIN categories c ON p.category_id = c.id
-      LEFT JOIN users u ON p.seller_id = u.id
-      WHERE p.status = 'activo'
-        AND (p.title ILIKE $1 OR p.description ILIKE $1)
-      ORDER BY p.created_at DESC
-      LIMIT $2 OFFSET $3
+      JOIN users u ON p.seller_id = u.id
+      WHERE p.status = 'activo' AND u.blocked_for_debt = false
     `;
 
+    const queryParams = [];
+    let paramCount = 1;
+
+    if (searchTerm && searchTerm.trim() !== '') {
+      countQuery += ` AND (p.title ILIKE $${paramCount} OR p.description ILIKE $${paramCount})`;
+      dataQuery += ` AND (p.title ILIKE $${paramCount} OR p.description ILIKE $${paramCount})`;
+      queryParams.push(searchPattern);
+      paramCount++;
+    }
+
+    if (category_id) {
+      countQuery += ` AND p.category_id = $${paramCount}`;
+      dataQuery += ` AND p.category_id = $${paramCount}`;
+      queryParams.push(category_id);
+      paramCount++;
+    }
+
+    if (minPrice !== undefined && maxPrice !== undefined) {
+      countQuery += ` AND p.price BETWEEN $${paramCount} AND $${paramCount + 1}`;
+      dataQuery += ` AND p.price BETWEEN $${paramCount} AND $${paramCount + 1}`;
+      queryParams.push(minPrice, maxPrice);
+      paramCount += 2;
+    } else if (minPrice !== undefined) {
+      countQuery += ` AND p.price >= $${paramCount}`;
+      dataQuery += ` AND p.price >= $${paramCount}`;
+      queryParams.push(minPrice);
+      paramCount++;
+    } else if (maxPrice !== undefined) {
+      countQuery += ` AND p.price <= $${paramCount}`;
+      dataQuery += ` AND p.price <= $${paramCount}`;
+      queryParams.push(maxPrice);
+      paramCount++;
+    }
+
+    if (minRating !== undefined) {
+      countQuery += ` AND p.average_rating >= $${paramCount}`;
+      dataQuery += ` AND p.average_rating >= $${paramCount}`;
+      queryParams.push(minRating);
+      paramCount++;
+    }
+
+    dataQuery += ` ORDER BY p.created_at DESC LIMIT $${paramCount} OFFSET $${paramCount + 1}`;
+
     const [countResult, dataResult] = await Promise.all([
-      pool.query(countQuery, [searchPattern]),
-      pool.query(dataQuery, [searchPattern, limit, offset])
+      pool.query(countQuery, queryParams),
+      pool.query(dataQuery, [...queryParams, limit, offset])
     ]);
 
     return {

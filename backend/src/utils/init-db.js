@@ -46,6 +46,8 @@ const initDb = async () => {
       DROP TABLE IF EXISTS wishlists CASCADE;
       DROP TABLE IF EXISTS notifications CASCADE;
       DROP TABLE IF EXISTS withdrawals CASCADE;
+      DROP TABLE IF EXISTS wallet_transactions CASCADE;
+      DROP TABLE IF EXISTS push_subscriptions CASCADE;
       DROP TABLE IF EXISTS users CASCADE;
       DROP TABLE IF EXISTS roles CASCADE;
     `);
@@ -69,6 +71,7 @@ const initDb = async () => {
         balance DECIMAL(12,2) DEFAULT 0,
         is_verified BOOLEAN DEFAULT FALSE,
         is_banned BOOLEAN DEFAULT FALSE,
+        blocked_for_debt BOOLEAN DEFAULT FALSE,
         login_attempts INTEGER DEFAULT 0,
         last_attempt TIMESTAMP,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
@@ -239,6 +242,28 @@ const initDb = async () => {
           status VARCHAR(20) DEFAULT 'pendiente',
           bank_info JSONB NOT NULL,
           created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      );
+
+      CREATE TABLE wallet_transactions (
+          id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
+          user_id UUID REFERENCES users(id) ON DELETE CASCADE,
+          order_id UUID REFERENCES orders(id) ON DELETE SET NULL,
+          type VARCHAR(20) NOT NULL, -- 'earning', 'withdrawal', 'refund'
+          amount DECIMAL(12,2) NOT NULL,
+          commission DECIMAL(12,2) DEFAULT 0,
+          status VARCHAR(20) DEFAULT 'completed',
+          description TEXT,
+          created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      );
+
+      CREATE TABLE push_subscriptions (
+          id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
+          user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+          endpoint TEXT NOT NULL,
+          p256dh TEXT NOT NULL,
+          auth TEXT NOT NULL,
+          created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+          UNIQUE(user_id, endpoint)
       );
 
       CREATE TABLE user_addresses (
