@@ -15,10 +15,12 @@ import {
   faShareAlt,
   faAlignLeft,
   faCheck,
-  faSpinner
+  faSpinner,
+  faHeart
 } from '@fortawesome/free-solid-svg-icons';
 import { getProductById } from '../api/product';
 import { getProductReviews, createReview } from '../api/review';
+import { toggleWishlist, getWishlist } from '../api/wishlist';
 import { useAuth } from '../context/AuthContext';
 import { useCart } from '../context/CartContext';
 
@@ -37,17 +39,27 @@ const ProductDetails = () => {
   const [showReviewForm, setShowReviewForm] = useState(false);
   const [reviewData, setReviewData] = useState({ rating: 5, comment: '' });
   const [submittingReview, setSubmittingReview] = useState(false);
+  const [isFavorite, setIsFavorite] = useState(false);
+  const [togglingFavorite, setTogglingFavorite] = useState(false);
+  const [toast, setToast] = useState({ show: false, message: '', type: 'success' });
 
   const handleAddToCart = async () => {
     try {
       await addToCart(product, quantity);
       setAdded(true);
+      setToast({ show: true, message: '¡Producto añadido al carrito!', type: 'success' });
       setTimeout(() => setAdded(false), 2000);
     } catch (err) {
-      console.error(err);
-      alert(err.message || 'Error al agregar al carrito');
+      setToast({ show: true, message: 'Error al añadir al carrito', type: 'error' });
     }
   };
+
+  useEffect(() => {
+    if (toast.show) {
+      const timer = setTimeout(() => setToast({ ...toast, show: false }), 3000);
+      return () => clearTimeout(timer);
+    }
+  }, [toast.show]);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -59,6 +71,17 @@ const ProductDetails = () => {
         ]);
         setProduct(prodRes.data);
         setReviews(revRes.data.reviews);
+
+        // Verificar si es favorito si el usuario está logueado
+        if (localStorage.getItem('tungu_token')) {
+          try {
+            const wishRes = await getWishlist();
+            const isInWishlist = wishRes.data.some(item => item.product_id === id);
+            setIsFavorite(isInWishlist);
+          } catch (err) {
+            console.error('Error cargando wishlist:', err);
+          }
+        }
       } catch (err) {
         setError('No pudimos encontrar el producto solicitado.');
       } finally {
@@ -93,6 +116,24 @@ const ProductDetails = () => {
       alert(err.response?.data?.error || 'No puedes reseñar este producto aún. Asegúrate de haberlo recibido primero.');
     } finally {
       setSubmittingReview(false);
+    }
+  };
+
+  const handleToggleWishlist = async () => {
+    if (!user) return alert('Debes iniciar sesión para guardar favoritos');
+    setTogglingFavorite(true);
+    try {
+      const res = await toggleWishlist(id);
+      setIsFavorite(res.isFavorite);
+      setToast({ 
+        show: true, 
+        message: res.isFavorite ? '¡Añadido a favoritos!' : 'Eliminado de favoritos', 
+        type: 'success' 
+      });
+    } catch (err) {
+      setToast({ show: true, message: 'Error al actualizar favoritos', type: 'error' });
+    } finally {
+      setTogglingFavorite(false);
     }
   };
 
@@ -285,10 +326,24 @@ const ProductDetails = () => {
                     <FontAwesomeIcon icon={added ? faCheck : faShoppingBag} className="group-hover:scale-110 transition-transform" />
                     {added ? '¡Producto Añadido!' : 'Agregar al Carrito'}
                   </button>
-                  <button className="btn-outline w-16 h-16 rounded-[1.25rem] flex items-center justify-center hover:bg-red-50 hover:text-red-500 hover:border-red-200 transition-all">
-                    <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
-                    </svg>
+                  <button 
+                    onClick={handleToggleWishlist}
+                    disabled={togglingFavorite}
+                    className={`btn-outline w-20 h-20 rounded-[1.5rem] flex items-center justify-center transition-all ${
+                      isFavorite 
+                        ? 'bg-red-50 text-red-500 border-red-200 shadow-inner' 
+                        : 'hover:bg-red-50 hover:text-red-500 hover:border-red-200'
+                    }`}
+                  >
+                    <motion.div
+                      animate={isFavorite ? { scale: [1, 1.3, 1] } : {}}
+                      transition={{ duration: 0.3 }}
+                    >
+                      <FontAwesomeIcon 
+                        icon={faHeart} 
+                        className={`text-3xl ${isFavorite ? 'text-red-500' : 'text-gray-300'}`} 
+                      />
+                    </motion.div>
                   </button>
                 </div>
                 
@@ -421,6 +476,26 @@ const ProductDetails = () => {
           </div>
         </div>
       </div>
+      {/* Toast Notification */}
+      <AnimatePresence>
+        {toast.show && (
+          <motion.div
+            initial={{ opacity: 0, y: 50, scale: 0.9 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: 20, scale: 0.9 }}
+            className="fixed bottom-10 left-1/2 -translate-x-1/2 z-50 pointer-events-none"
+          >
+            <div className={`px-6 py-4 rounded-2xl shadow-2xl flex items-center gap-3 border backdrop-blur-md ${
+              toast.type === 'success' 
+                ? 'bg-green-600/90 text-white border-green-400' 
+                : 'bg-red-600/90 text-white border-red-400'
+            }`}>
+              <FontAwesomeIcon icon={toast.type === 'success' ? faCheck : faHeart} />
+              <span className="font-medium">{toast.message}</span>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 };

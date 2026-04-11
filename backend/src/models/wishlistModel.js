@@ -33,12 +33,17 @@ class WishlistModel {
    */
   static async getByUser(userId) {
     const query = `
-      SELECT w.*, p.title, p.price, p.stock, 
-             (SELECT url FROM product_images WHERE product_id = p.id LIMIT 1) as image_url
+      SELECT DISTINCT ON (w.product_id)
+        w.*, 
+        p.title, 
+        p.price, 
+        p.stock,
+        pi.image_url
       FROM wishlists w
       JOIN products p ON w.product_id = p.id
+      LEFT JOIN product_images pi ON p.id = pi.product_id AND pi.is_primary = TRUE
       WHERE w.user_id = $1
-      ORDER BY w.created_at DESC
+      ORDER BY w.product_id, w.created_at DESC
     `;
     const { rows } = await pool.query(query, [userId]);
     return rows;

@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faCreditCard, faLock, faCheckCircle } from '@fortawesome/free-solid-svg-icons';
+import { faCcVisa } from '@fortawesome/free-brands-svg-icons';
 
 const CreditCardForm = ({ onSubmit, total }) => {
   const [cardNumber, setCardNumber] = useState('');
@@ -53,45 +54,70 @@ const CreditCardForm = ({ onSubmit, total }) => {
 
   const getCardIcon = () => {
     switch (cardType) {
-      case 'visa': return 'https://upload.wikimedia.org/wikipedia/commons/d/d6/Visa_2021.svg';
-      case 'mastercard': return 'https://upload.wikimedia.org/wikipedia/commons/2/2a/Mastercard-logo.svg';
-      case 'amex': return 'https://upload.wikimedia.org/wikipedia/commons/f/fa/American_Express_logo_%282018%29.svg';
+      case 'visa': return { type: 'icon', value: faCcVisa, color: 'white' };
+      case 'mastercard': return { type: 'image', value: 'https://upload.wikimedia.org/wikipedia/commons/2/2a/Mastercard-logo.svg' };
+      case 'amex': return { type: 'image', value: 'https://upload.wikimedia.org/wikipedia/commons/f/fa/American_Express_logo_%282018%29.svg' };
       default: return null;
+    }
+  };
+
+  // Clases de gradiente dinámicas según el tipo de tarjeta
+  const getCardClasses = () => {
+    switch (cardType) {
+      case 'visa': return 'bg-gradient-to-br from-[#1A1F71] to-[#2B32B2]';
+      case 'mastercard': return 'bg-gradient-to-br from-[#EB001B] to-[#FF5F00]';
+      case 'amex': return 'bg-gradient-to-br from-[#007BC1] to-[#01a6ce]';
+      default: return 'bg-gradient-to-br from-gray-700 to-gray-900';
     }
   };
 
   return (
     <div className="space-y-8">
-      {/* Card Preview */}
+      {/* Card Preview - REAL ASPECT RATIO 1.586/1 */}
       <motion.div
         layout
-        className={`relative h-48 w-full max-w-sm mx-auto rounded-2xl p-6 text-white shadow-2xl overflow-hidden transition-colors duration-500 ${cardType === 'visa' ? 'bg-gradient-to-br from-blue-600 to-blue-800' :
-            cardType === 'mastercard' ? 'bg-gradient-to-br from-red-500 to-orange-600' :
-              cardType === 'amex' ? 'bg-gradient-to-br from-emerald-500 to-emerald-700' :
-                'bg-gradient-to-br from-gray-700 to-gray-900'
-          }`}
+        className={`relative aspect-[1.586/1] w-full max-w-sm mx-auto rounded-[1.25rem] p-8 text-white shadow-2xl overflow-hidden transition-all duration-700 ${getCardClasses()}`}
       >
-        <div className="flex justify-between items-start">
-          <div className="w-12 h-10 bg-yellow-200/20 rounded-lg backdrop-blur-sm border border-white/20" />
-          {getCardIcon() && (
-            <img src={getCardIcon()} alt={cardType} className="h-8 object-contain" />
-          )}
-        </div>
-        <div className="mt-8">
-          <p className="text-xl tracking-[0.2em] font-mono h-8">
-            {cardNumber || '•••• •••• •••• ••••'}
-          </p>
-        </div>
-        <div className="mt-6 flex justify-between items-end">
-          <div className="space-y-1">
-            <p className="text-[10px] uppercase tracking-widest opacity-70">Card Holder</p>
-            <p className="text-sm font-bold tracking-wider truncate max-w-[150px]">
-              {cardHolder.toUpperCase() || 'YOUR NAME'}
-            </p>
+        <div className="relative z-10 h-full flex flex-col justify-between">
+          <div className="flex justify-between items-start">
+            {/* Chip Reemplazado por uno más Realista */}
+            <div className="w-12 h-9 bg-gradient-to-br from-yellow-300 to-yellow-600 rounded-md shadow-inner opacity-90 border border-yellow-200/50" />
+            {getCardIcon() && (
+              <div className="h-16 flex items-center">
+                {getCardIcon().type === 'icon' ? (
+                  <FontAwesomeIcon
+                    icon={getCardIcon().value}
+                    style={{ color: 'white' }}
+                    className="text-6xl drop-shadow-md bg-white/10 p-2 rounded-xl backdrop-blur-sm"
+                  />
+                ) : (
+                  <img
+                    src={getCardIcon().value}
+                    alt={cardType}
+                    className="h-14 object-contain drop-shadow-md p-1 bg-white/20 rounded-xl backdrop-blur-sm"
+                  />
+                )}
+              </div>
+            )}
           </div>
-          <div className="space-y-1 text-right">
-            <p className="text-[10px] uppercase tracking-widest opacity-70">Expires</p>
-            <p className="text-sm font-bold tracking-wider">{expiry || 'MM/YY'}</p>
+
+          <div className="mt-auto">
+            <p className="text-xl md:text-2xl tracking-[0.15em] font-mono drop-shadow-lg mb-6">
+              {cardNumber || '•••• •••• •••• ••••'}
+            </p>
+
+            <div className="flex justify-between items-end">
+              <div className="space-y-1">
+                <p className="text-[9px] uppercase tracking-[0.2em] font-black opacity-80 text-shadow-sm">Titular </p>
+                <p className="text-sm font-black tracking-widest truncate max-w-[180px] drop-shadow-md">
+                  {cardHolder.toUpperCase() || 'TU NOMBRE AQUÍ'}
+                </p>
+              </div>
+              <div className="space-y-1 text-right">
+                <p className="text-[9px] uppercase tracking-[0.2em] font-black opacity-80 text-shadow-sm">Expiración</p>
+                <p className="text-sm font-black tracking-widest drop-shadow-md">{expiry || 'MM/YY'}</p>
+              </div>
+            </div>
           </div>
         </div>
       </motion.div>

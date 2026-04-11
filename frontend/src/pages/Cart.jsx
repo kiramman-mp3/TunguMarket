@@ -25,8 +25,8 @@ const Cart = () => {
           animate={{ opacity: 1, scale: 1 }}
           className="text-center space-y-8"
         >
-          <div className="w-32 h-32 bg-white rounded-full flex items-center justify-center mx-auto shadow-premium text-brand-primary">
-            <FontAwesomeIcon icon={faShoppingBasket} size="3xl" />
+          <div className="w-52 h-52 bg-white rounded-full flex items-center justify-center mx-auto shadow-premium text-brand-primary border-8 border-brand-light">
+            <FontAwesomeIcon icon={faShoppingBasket} className="text-8xl" />
           </div>
           <div className="space-y-2">
             <h1 className="text-4xl font-display font-black text-brand-secondary">Tu bolsa está vacía</h1>

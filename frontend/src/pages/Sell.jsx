@@ -364,7 +364,7 @@ const Sell = () => {
               className="bg-brand-secondary p-8 rounded-[2rem] text-white shadow-xl relative overflow-hidden group"
             >
               <div className="relative z-10 space-y-4">
-                <h4 className="text-xl font-bold">Consejos de Oro 💡</h4>
+                <h4 className="text-xl font-bold text-white">Consejos de Oro 💡</h4>
                 <ul className="text-sm space-y-3 font-medium opacity-90">
                   <li className="flex gap-3">
                     <span className="text-brand-primary">•</span> Un buen título atrae 3 veces más clientes.

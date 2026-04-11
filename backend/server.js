@@ -1,4 +1,4 @@
-import express from 'express';
+import express from 'express'; // Force restart to apply wishlist model fixes
 import cors from 'cors';
 import dotenv from 'dotenv';
 import authRoutes from './src/routes/authRoutes.js';
