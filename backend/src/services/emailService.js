@@ -171,6 +171,68 @@ class EmailService {
     };
     return await transporter.sendMail(mailOptions);
   }
+
+  static async sendProfileUpdateNotification(email, name, fieldChanged) {
+    const brandPrimary = '#fbbf24';
+    const brandSecondary = '#1e3a8a';
+    
+    const mailOptions = {
+      from: process.env.EMAIL_FROM || '"TunguMarket" <907johan@gmail.com>',
+      to: email,
+      subject: `Actualización de perfil: ${fieldChanged} - TunguMarket`,
+      html: `
+        <div style="background-color: #f8fafc; padding: 40px 20px; font-family: sans-serif;">
+          <div style="max-width: 500px; margin: 0 auto; background: white; border-radius: 20px; overflow: hidden; border: 1px solid #e2e8f0;">
+            <div style="background-color: ${brandSecondary}; padding: 20px; text-align: center;">
+              <h2 style="color: ${brandPrimary}; margin: 0;">Aviso de Perfil</h2>
+            </div>
+            <div style="padding: 30px; text-align: center;">
+              <h3 style="color: ${brandSecondary};">Hola, ${name}</h3>
+              <p style="color: #64748b; font-size: 16px;">
+                Te informamos que tu <strong>${fieldChanged}</strong> ha sido actualizado correctamente en tu cuenta de TunguMarket.
+              </p>
+              <div style="margin-top: 30px; padding: 15px; background: #fffbeb; border-radius: 12px; border: 1px solid #fef3c7; color: #92400e; font-size: 14px;">
+                Si no realizaste este cambio, por favor contacta con soporte de inmediato.
+              </div>
+            </div>
+          </div>
+        </div>
+      `,
+    };
+    return await transporter.sendMail(mailOptions);
+  }
+
+  static async sendSecurityAlertEmail(email, name) {
+    const brandSecondary = '#1e3a8a';
+    
+    const mailOptions = {
+      from: process.env.EMAIL_FROM || '"TunguMarket" <907johan@gmail.com>',
+      to: email,
+      subject: `ALERTA DE SEGURIDAD: Contraseña cambiada - TunguMarket`,
+      html: `
+        <div style="background-color: #fef2f2; padding: 40px 20px; font-family: sans-serif;">
+          <div style="max-width: 500px; margin: 0 auto; background: white; border-radius: 20px; overflow: hidden; border: 1px solid #fee2e2;">
+            <div style="background-color: #dc2626; padding: 20px; text-align: center;">
+              <h2 style="color: white; margin: 0;">Alerta de Seguridad</h2>
+            </div>
+            <div style="padding: 30px; text-align: center;">
+              <h3 style="color: #111827;">Hola, ${name}</h3>
+              <p style="color: #4b5563; font-size: 16px; line-height: 1.6;">
+                Te notificamos que la **contraseña** de tu cuenta en TunguMarket acaba de ser modificada.
+              </p>
+              <p style="color: #ef4444; font-weight: bold; margin-top: 20px;">
+                ¿No fuiste tú?
+              </p>
+              <p style="color: #4b5563; font-size: 14px;">
+                Si no autorizaste este cambio, alguien más podría tener acceso a tu cuenta. Te recomendamos restablecer tu contraseña y contactar con nosotros urgentemente.
+              </p>
+            </div>
+          </div>
+        </div>
+      `,
+    };
+    return await transporter.sendMail(mailOptions);
+  }
 }
 
 export default EmailService;

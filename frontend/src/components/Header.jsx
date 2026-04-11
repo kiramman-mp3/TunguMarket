@@ -138,8 +138,12 @@ const Header = () => {
                     <span className="text-[11px] font-black text-brand-secondary leading-tight">{user.name}</span>
                     <span className="text-[9px] text-gray-500 font-medium uppercase tracking-tighter">Mi Cuenta</span>
                   </div>
-                  <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-brand-secondary to-blue-800 flex items-center justify-center text-white font-black shadow-inner shadow-black/20 text-sm">
-                    {user.name && user.name[0].toUpperCase()}
+                  <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-brand-secondary to-blue-800 flex items-center justify-center text-white font-black shadow-inner shadow-black/20 text-sm overflow-hidden">
+                    {user.avatar_url ? (
+                      <img src={user.avatar_url} alt="Profile" className="w-full h-full object-cover" />
+                    ) : (
+                      user.name && user.name[0].toUpperCase()
+                    )}
                   </div>
                   <FontAwesomeIcon 
                     icon={faChevronDown} 
@@ -155,10 +159,18 @@ const Header = () => {
                       exit={{ opacity: 0, y: 15, scale: 0.95 }}
                       className="absolute right-0 mt-3 w-64 bg-white rounded-2xl shadow-2xl border border-gray-100 p-2 z-[100] overflow-hidden"
                     >
-                      <div className="px-4 py-3 mb-2 bg-gray-50 rounded-xl border border-gray-100">
-                        <p className="text-[10px] text-gray-400 font-bold uppercase tracking-widest">Identificado como</p>
-                        <p className="text-sm font-black text-brand-secondary truncate">{user.name}</p>
-                        <p className="text-[11px] text-brand-primary font-bold capitalize">{user.role}</p>
+                      <div className="px-4 py-3 mb-2 bg-gray-50 rounded-xl border border-gray-100 flex items-center gap-3">
+                        <div className="w-10 h-10 rounded-lg bg-white border border-gray-100 flex items-center justify-center text-brand-secondary font-black text-xs overflow-hidden flex-shrink-0">
+                          {user.avatar_url ? (
+                            <img src={user.avatar_url} alt="Avatar" className="w-full h-full object-cover" />
+                          ) : (
+                            user.name?.[0]?.toUpperCase()
+                          )}
+                        </div>
+                        <div className="overflow-hidden">
+                          <p className="text-[10px] text-gray-400 font-bold uppercase tracking-widest leading-tight">Identificado como</p>
+                          <p className="text-sm font-black text-brand-secondary truncate">{user.name}</p>
+                        </div>
                       </div>
 
                       <Link 

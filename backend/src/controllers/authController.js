@@ -21,12 +21,12 @@ class AuthController {
 
       res.status(200).json({
         message: 'Login successful',
-        user: { 
-          id: user.id, 
-          name: user.name, 
-          email: user.email, 
+        user: {
+          id: user.id,
+          name: user.name,
+          email: user.email,
           role: user.role_name,
-          birthDate: user.birth_date 
+          birthDate: user.birth_date
         },
         token,
       });

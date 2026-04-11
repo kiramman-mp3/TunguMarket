@@ -76,6 +76,7 @@ const initDb = async () => {
         blocked_for_debt BOOLEAN DEFAULT FALSE,
         login_attempts INTEGER DEFAULT 0,
         last_attempt TIMESTAMP,
+        avatar_url TEXT,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
         updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       );

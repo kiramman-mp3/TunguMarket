@@ -43,7 +43,8 @@ class ProductModel {
       SELECT
         p.*,
         c.name as category_name,
-        COALESCE(u.seller_name, u.name) as seller_name
+        COALESCE(u.seller_name, u.name) as seller_name,
+        u.avatar_url as seller_avatar
       FROM products p
       LEFT JOIN categories c ON p.category_id = c.id
       JOIN users u ON p.seller_id = u.id
@@ -80,7 +81,8 @@ class ProductModel {
       SELECT
         p.*,
         c.name as category_name,
-        COALESCE(u.seller_name, u.name) as seller_name
+        COALESCE(u.seller_name, u.name) as seller_name,
+        u.avatar_url as seller_avatar
       FROM products p
       LEFT JOIN categories c ON p.category_id = c.id
       JOIN users u ON p.seller_id = u.id
@@ -117,6 +119,7 @@ class ProductModel {
         p.*,
         c.name as category_name,
         COALESCE(u.seller_name, u.name) as seller_name,
+        u.avatar_url as seller_avatar,
         COUNT(oi.id)::integer as sales_count
       FROM products p
       LEFT JOIN categories c ON p.category_id = c.id
@@ -150,7 +153,8 @@ class ProductModel {
         p.*,
         c.name as category_name,
         COALESCE(u.seller_name, u.name) as seller_name,
-        u.email as seller_email
+        u.email as seller_email,
+        u.avatar_url as seller_avatar
       FROM products p
       LEFT JOIN categories c ON p.category_id = c.id
       JOIN users u ON p.seller_id = u.id
@@ -250,11 +254,11 @@ class ProductModel {
       JOIN users u ON p.seller_id = u.id
       WHERE p.status = 'activo' AND u.blocked_for_debt = false
     `;
-    let dataQuery = `
       SELECT
         p.*,
         c.name as category_name,
-        COALESCE(u.seller_name, u.name) as seller_name
+        COALESCE(u.seller_name, u.name) as seller_name,
+        u.avatar_url as seller_avatar
       FROM products p
       LEFT JOIN categories c ON p.category_id = c.id
       JOIN users u ON p.seller_id = u.id
@@ -325,7 +329,8 @@ class ProductModel {
       SELECT
         p.*,
         c.name as category_name,
-        COALESCE(u.seller_name, u.name) as seller_name
+        COALESCE(u.seller_name, u.name) as seller_name,
+        u.avatar_url as seller_avatar
       FROM products p
       LEFT JOIN categories c ON p.category_id = c.id
       LEFT JOIN users u ON p.seller_id = u.id

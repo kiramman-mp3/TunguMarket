@@ -33,11 +33,11 @@ class ReviewModel {
       WHERE product_id = $1
     `;
 
-    const dataQuery = `
       SELECT
         r.*,
         u.name as user_name,
-        u.email as user_email
+        u.email as user_email,
+        u.avatar_url as user_avatar
       FROM reviews r
       LEFT JOIN users u ON r.user_id = u.id
       WHERE r.product_id = $1
@@ -102,6 +102,7 @@ class ReviewModel {
       SELECT
         r.*,
         u.name as user_name,
+        u.avatar_url as user_avatar,
         p.title as product_title
       FROM reviews r
       LEFT JOIN users u ON r.user_id = u.id
@@ -225,7 +226,8 @@ class ReviewModel {
     const query = `
       SELECT
         r.*,
-        u.name as user_name
+        u.name as user_name,
+        u.avatar_url as user_avatar
       FROM reviews r
       LEFT JOIN users u ON r.user_id = u.id
       WHERE r.product_id = $1

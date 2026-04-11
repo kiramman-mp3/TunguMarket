@@ -66,8 +66,12 @@ const SellerProfile = () => {
           <div className="absolute -top-20 -right-20 w-80 h-80 bg-brand-primary/10 rounded-full blur-3xl"></div>
           
           <div className="flex flex-col md:flex-row items-center gap-12 relative z-10">
-            <div className="w-40 h-40 bg-brand-secondary text-brand-primary rounded-[3rem] flex items-center justify-center text-6xl font-black shadow-2xl">
-              {seller.name?.[0].toUpperCase()}
+            <div className="w-40 h-40 bg-brand-secondary text-brand-primary rounded-[3rem] flex items-center justify-center text-6xl font-black shadow-2xl overflow-hidden border-4 border-white">
+              {seller.avatar_url ? (
+                <img src={seller.avatar_url} alt={seller.name} className="w-full h-full object-cover" />
+              ) : (
+                seller.name?.[0].toUpperCase()
+              )}
             </div>
             
             <div className="text-center md:text-left space-y-4 flex-1">

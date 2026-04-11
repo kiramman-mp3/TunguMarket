@@ -231,8 +231,14 @@ const ProductDetails = () => {
               </h1>
 
               <div className="flex items-center gap-6 text-sm">
-                <div className="flex items-center gap-2 text-gray-500 font-medium">
-                  <FontAwesomeIcon icon={faStore} className="text-brand-primary" />
+                <div className="flex items-center gap-2 text-gray-500 font-medium whitespace-nowrap">
+                  <div className="w-8 h-8 rounded-full bg-gray-100 overflow-hidden flex-shrink-0 border border-gray-100 shadow-sm flex items-center justify-center text-[10px] font-black text-brand-secondary">
+                    {product.seller_avatar ? (
+                      <img src={product.seller_avatar} alt="Seller" className="w-full h-full object-cover" />
+                    ) : (
+                      <FontAwesomeIcon icon={faStore} className="text-brand-primary" />
+                    )}
+                  </div>
                   Vendido por: <Link to={`/seller/${product.seller_id}`} className="text-brand-secondary font-black hover:text-brand-primary transition-colors cursor-pointer decoration-2 underline-offset-4 hover:underline">{product.seller_name}</Link>
                 </div>
                 <div className="flex items-center gap-2 text-gray-500 font-medium">
@@ -449,8 +455,12 @@ const ProductDetails = () => {
                 >
                   <div className="flex justify-between items-start">
                     <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 rounded-full bg-brand-primary/20 flex items-center justify-center font-black text-brand-secondary text-sm">
-                        {review.user_name?.[0]?.toUpperCase()}
+                      <div className="w-10 h-10 rounded-full bg-brand-primary/20 flex items-center justify-center font-black text-brand-secondary text-sm overflow-hidden border border-gray-50 shadow-sm">
+                        {review.user_avatar ? (
+                          <img src={review.user_avatar} alt={review.user_name} className="w-full h-full object-cover" />
+                        ) : (
+                          review.user_name?.[0]?.toUpperCase()
+                        )}
                       </div>
                       <div>
                         <p className="font-bold text-brand-secondary text-sm">{review.user_name}</p>

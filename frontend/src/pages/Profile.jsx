@@ -14,10 +14,13 @@ import {
   faSignOutAlt,
   faLaptop,
   faHistory,
-  faMapMarkerAlt
+  faMapMarkerAlt,
+  faUserEdit,
+  faChartLine
 } from '@fortawesome/free-solid-svg-icons';
 import { useAuth } from '../context/AuthContext';
 import { getSessions, getLogs, deleteSession } from '../api/user';
+import EditProfile from './profile-sections/EditProfile';
 
 // Profile Sections
 import BuyerOrders from './profile-sections/BuyerOrders';
@@ -29,101 +32,118 @@ import AddressManager from './profile-sections/AddressManager';
 
 const Profile = () => {
   const { user, logout } = useAuth();
-  const [activeTab, setActiveTab] = useState('overview');
+  const [activeTab, setActiveTab] = useState('dashboard');
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
-  const [sessions, setSessions] = useState([]);
-  const [logs, setLogs] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
 
   const tabs = [
-    { id: 'overview', label: 'Mi Actividad', icon: faShieldAlt },
+    { id: 'dashboard', label: 'Dashboard', icon: faChartLine },
     { id: 'purchases', label: 'Mis Compras', icon: faShoppingBag },
     { id: 'sales', label: 'Mis Ventas', icon: faStore },
+    { id: 'edit', label: 'Editar Perfil', icon: faUserEdit },
     { id: 'wishlist', label: 'Favoritos', icon: faHeart },
     { id: 'notifications', label: 'Notificaciones', icon: faBell },
     { id: 'wallet', label: 'Billetera', icon: faWallet },
     { id: 'addresses', label: 'Direcciones', icon: faMapMarkerAlt },
   ];
 
-  useEffect(() => {
-    if (activeTab === 'overview') {
-      fetchActivityData();
-    }
-  }, [activeTab]);
-
-  const fetchActivityData = async () => {
-    try {
-      setLoading(true);
-      const [sessionsData, logsData] = await Promise.all([getSessions(), getLogs()]);
-      setSessions(sessionsData);
-      setLogs(logsData);
-    } catch (err) {
-      console.error('Error al cargar actividad:', err);
-    } finally {
-      setLoading(false);
-    }
-  };
+  // Eliminada lógica de fetching de actividad para limpiar el componente
 
   const renderContent = () => {
     switch (activeTab) {
+      case 'dashboard': return renderDashboard();
+      case 'edit': return <EditProfile />;
       case 'purchases': return <BuyerOrders />;
       case 'sales': return <SellerSales />;
       case 'wishlist': return <Wishlist />;
       case 'notifications': return <NotificationPanel />;
       case 'wallet': return <WalletView />;
       case 'addresses': return <AddressManager />;
-      default: return renderOverview();
+      default: return null;
     }
   };
 
-  const renderOverview = () => (
+  const renderDashboard = () => (
     <div className="space-y-8">
-      {/* Security Info Card */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="glass-card p-8">
-          <h3 className="text-xl font-bold text-brand-secondary mb-6 flex items-center gap-3">
-            <FontAwesomeIcon icon={faLaptop} className="text-brand-primary" />
-            Sesiones Activas
-          </h3>
-          <div className="space-y-4">
-            {sessions.map(s => (
-              <div key={s.id} className="flex justify-between items-center p-4 bg-gray-50 rounded-2xl border border-gray-100">
-                <div className="flex items-center gap-3">
-                   <div className="w-8 h-8 rounded-lg bg-white flex items-center justify-center text-brand-secondary shadow-sm">
-                      <FontAwesomeIcon icon={faLaptop} size="xs" />
-                   </div>
-                   <div>
-                     <p className="text-sm font-bold text-brand-secondary">{s.device_info || 'Unknown Device'}</p>
-                     <p className="text-[10px] text-gray-400">{s.ip_address}</p>
-                   </div>
-                </div>
-                {s.token !== localStorage.getItem('tungu_token') && (
-                  <button onClick={() => deleteSession(s.token)} className="text-red-400 hover:text-red-600 p-2"><FontAwesomeIcon icon={faSignOutAlt} size="sm" /></button>
-                )}
-              </div>
-            ))}
+      <header>
+        <h2 className="text-3xl font-bold text-brand-secondary">Panel de Control</h2>
+        <p className="text-gray-400 mt-2 font-medium italic">Hola {user?.name.split(' ')[0]}, bienvenido de vuelta a TunguMarket.</p>
+      </header>
+
+      {/* Quick Stats Grid */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="glass-card p-8 bg-gradient-to-br from-white to-brand-primary/10">
+          <div className="flex items-center justify-between mb-4">
+            <div className="w-12 h-12 rounded-2xl bg-brand-primary/20 flex items-center justify-center text-brand-secondary">
+              <FontAwesomeIcon icon={faWallet} className="text-xl" />
+            </div>
+            <span className="text-[10px] bg-white px-2 py-1 rounded-full font-bold text-brand-secondary shadow-sm">SALDO DISPONIBLE</span>
           </div>
+          <p className="text-4xl font-extrabold text-brand-secondary tracking-tight">${user?.balance || '0.00'}</p>
+          <button 
+            onClick={() => setActiveTab('wallet')}
+            className="mt-6 text-sm font-bold text-brand-secondary hover:text-brand-primary transition-colors flex items-center gap-2"
+          >
+            Gestionar Billetera <FontAwesomeIcon icon={faBars} size="xs" />
+          </button>
         </motion.div>
 
-        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }} className="glass-card p-8 font-medium">
-           <h3 className="text-xl font-bold text-brand-secondary mb-6 flex items-center gap-3">
-            <FontAwesomeIcon icon={faHistory} className="text-brand-primary" />
-            Últimos Accesos
-          </h3>
-          <div className="space-y-3">
-             {logs.slice(0, 5).map(log => (
-               <div key={log.id} className="flex items-center justify-between text-xs py-2 border-b border-gray-50 last:border-0">
-                 <span className="text-gray-500">{new Date(log.timestamp).toLocaleString()}</span>
-                 <span className={`font-bold ${log.status === 'success' ? 'text-green-600' : 'text-red-600'}`}>
-                   {log.status === 'success' ? 'Éxito' : 'Fallo'}
-                 </span>
-               </div>
-             ))}
+        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }} className="glass-card p-8">
+          <div className="flex items-center justify-between mb-4">
+            <div className="w-12 h-12 rounded-2xl bg-blue-50 flex items-center justify-center text-blue-500">
+              <FontAwesomeIcon icon={faShoppingBag} className="text-xl" />
+            </div>
           </div>
+          <p className="text-2xl font-bold text-brand-secondary">Mis Compras</p>
+          <p className="text-sm text-gray-400 mt-1">Revisa el estado de tus pedidos</p>
+          <button onClick={() => setActiveTab('purchases')} className="mt-4 btn-outline py-2 px-4 rounded-xl text-xs font-bold">Ver Todo</button>
         </motion.div>
+
+        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }} className="glass-card p-8">
+          <div className="flex items-center justify-between mb-4">
+            <div className="w-12 h-12 rounded-2xl bg-purple-50 flex items-center justify-center text-purple-500">
+              <FontAwesomeIcon icon={faBell} className="text-xl" />
+            </div>
+          </div>
+          <p className="text-2xl font-bold text-brand-secondary">Alertas</p>
+          <p className="text-sm text-gray-400 mt-1">Nuevas notificaciones recibidas</p>
+          <button onClick={() => setActiveTab('notifications')} className="mt-4 btn-outline py-2 px-4 rounded-xl text-xs font-bold">Ver Centro de Mensajes</button>
+        </motion.div>
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+         {/* Action Shortcut */}
+         <div className="glass-card p-8 border-l-8 border-brand-primary">
+            <h3 className="font-bold text-brand-secondary text-xl mb-4">¿Quieres vender algo?</h3>
+            <p className="text-gray-400 text-sm mb-6 leading-relaxed">Publica tus productos locales y llega a miles de compradores en Quero y toda Tungurahua.</p>
+            <a href="/sell" className="btn-primary inline-flex items-center gap-3 px-8 py-3 rounded-2xl font-bold">
+               <FontAwesomeIcon icon={faStore} /> Empezar a Vender
+            </a>
+         </div>
+
+         {/* Identity Short Info */}
+         <div className="glass-card p-8">
+            <div className="flex items-center gap-6 mb-6">
+                <div className="w-16 h-16 rounded-2xl bg-gray-100 overflow-hidden flex items-center justify-center text-brand-secondary text-2xl font-bold">
+                  {user?.avatar_url ? <img src={user.avatar_url} className="w-full h-full object-cover" /> : user?.name?.[0].toUpperCase()}
+                </div>
+                <div>
+                  <h4 className="font-bold text-brand-secondary text-lg">{user?.name}</h4>
+                  <p className="text-sm text-gray-400">Verificamos tu identidad para mayor seguridad.</p>
+                </div>
+            </div>
+            <button 
+              onClick={() => setActiveTab('edit')}
+              className="w-full py-4 border-2 border-dashed border-gray-100 rounded-2xl text-gray-400 hover:border-brand-primary hover:text-brand-primary transition-all font-bold text-sm"
+            >
+              Completar Perfil / cambiar foto 📸
+            </button>
+         </div>
       </div>
     </div>
   );
+
+  // Se eliminó renderOverview para limpiar la UI
 
   return (
     <div className="min-h-screen bg-[#fcfdff] pt-24 pb-12">
@@ -151,13 +171,19 @@ const Profile = () => {
             
             <div className="relative w-72 lg:w-full bg-white h-full lg:h-fit min-h-[calc(100vh-15rem)] lg:rounded-[2rem] shadow-2xl lg:shadow-xl lg:border border-gray-100 flex flex-col p-6 overflow-hidden">
                {/* User Brief */}
-               <div className="text-center mb-8 pb-8 border-b border-gray-50">
-                  <div className="w-20 h-20 bg-brand-primary/20 rounded-[1.5rem] mx-auto flex items-center justify-center text-brand-secondary text-3xl font-bold mb-4">
-                    {user?.name?.[0].toUpperCase()}
+               <div className="text-center mb-8 pb-8 border-b border-gray-50 px-2">
+                  <div className="w-24 h-24 mx-auto mb-4 relative">
+                    <div className="w-full h-full bg-brand-primary/20 rounded-[2rem] flex items-center justify-center text-brand-secondary text-4xl font-bold overflow-hidden border-4 border-white shadow-lg">
+                      {user?.avatar_url ? (
+                        <img src={user.avatar_url} alt="Profile" className="w-full h-full object-cover" />
+                      ) : (
+                        user?.name?.[0].toUpperCase()
+                      )}
+                    </div>
                   </div>
-                  <h2 className="font-bold text-brand-secondary text-xl truncate">{user?.name}</h2>
+                  <h2 className="font-bold text-brand-secondary text-xl truncate px-2">{user?.name}</h2>
                   <p className="text-xs text-gray-400 mt-1 uppercase tracking-widest font-bold">
-                    {user?.role === 'admin' ? 'Administrador' : 'Miembro Gold'}
+                    {user?.role === 'admin' ? 'Administrador' : 'Usuario Verificado'}
                   </p>
                </div>
 
