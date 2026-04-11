@@ -108,6 +108,69 @@ class EmailService {
 
     return await transporter.sendMail(mailOptions);
   }
+
+  static async sendNewSaleEmail(email, sellerName, productTitle, buyerName) {
+    const brandPrimary = '#fbbf24';
+    const brandSecondary = '#1e3a8a';
+    const brandLight = '#f8fafc';
+
+    const mailOptions = {
+      from: process.env.EMAIL_FROM || '"TunguMarket" <907johan@gmail.com>',
+      to: email,
+      subject: `¡Nueva venta realizada! - ${productTitle}`,
+      html: `
+        <div style="background-color: ${brandLight}; padding: 40px 20px; font-family: 'Segoe UI', sans-serif;">
+          <div style="max-width: 500px; margin: 0 auto; background: white; border-radius: 24px; overflow: hidden; box-shadow: 0 10px 15px -3px rgba(0,0,0,0.1);">
+            <div style="background-color: ${brandSecondary}; padding: 30px; text-align: center;">
+              <h1 style="color: ${brandPrimary}; margin: 0;">¡Nueva Venta!</h1>
+            </div>
+            <div style="padding: 40px 30px; text-align: center;">
+              <h2 style="color: ${brandSecondary};">¡Felicidades ${sellerName}!</h2>
+              <p>Has vendido <strong>${productTitle}</strong> a <strong>${buyerName}</strong>.</p>
+              <p>Revisa tu sección de "Mis Ventas" en TunguMarket para gestionar el envío.</p>
+            </div>
+          </div>
+        </div>
+      `,
+    };
+    return await transporter.sendMail(mailOptions);
+  }
+
+  static async sendOrderShippedEmail(email, buyerName, orderId) {
+    const brandPrimary = '#fbbf24';
+    const brandSecondary = '#1e3a8a';
+    
+    const mailOptions = {
+      from: process.env.EMAIL_FROM || '"TunguMarket" <907johan@gmail.com>',
+      to: email,
+      subject: `Tu pedido ha sido enviado - TunguMarket`,
+      html: `
+        <div style="padding: 40px; font-family: sans-serif;">
+          <h2 style="color: ${brandSecondary};">¡Buenas noticias, ${buyerName}!</h2>
+          <p>Tu pedido #${orderId} ha sido marcado como <strong>Enviado</strong> por el vendedor.</p>
+          <p>¡Pronto lo tendrás en tus manos!</p>
+        </div>
+      `,
+    };
+    return await transporter.sendMail(mailOptions);
+  }
+
+  static async sendPaymentConfirmedEmail(email, buyerName, orderId, total) {
+    const brandSecondary = '#1e3a8a';
+    const mailOptions = {
+      from: process.env.EMAIL_FROM || '"TunguMarket" <907johan@gmail.com>',
+      to: email,
+      subject: `Pago Confirmado - Orden #${orderId}`,
+      html: `
+        <div style="padding: 40px; font-family: sans-serif;">
+          <h2 style="color: ${brandSecondary};">Pago Confirmado, ${buyerName}</h2>
+          <p>Hemos validado tu pago por un total de <strong>$${total}</strong>.</p>
+          <p>El vendedor ya puede proceder con el envío de tus productos.</p>
+        </div>
+      `,
+    };
+    return await transporter.sendMail(mailOptions);
+  }
 }
 
 export default EmailService;

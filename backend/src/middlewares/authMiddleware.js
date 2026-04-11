@@ -34,6 +34,8 @@ const authMiddleware = async (req, res, next) => {
   }
 };
 
+const authenticateToken = authMiddleware;
+
 const isAdmin = (req, res, next) => {
   if (req.user && req.user.role === 'admin') {
     next();
@@ -42,4 +44,4 @@ const isAdmin = (req, res, next) => {
   }
 };
 
-export { authMiddleware, isAdmin };
+export { authMiddleware, authenticateToken, isAdmin };

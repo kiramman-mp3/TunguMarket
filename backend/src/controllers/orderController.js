@@ -1,5 +1,8 @@
 import OrderModel from '../models/orderModel.js';
 import CartModel from '../models/cartModel.js';
+import NotificationModel from '../models/notificationModel.js';
+import SSEService from '../services/sseService.js';
+import EmailService from '../services/emailService.js';
 import paymentValidator from '../services/paymentValidator.js';
 import pool from '../config/db.js';
 
@@ -133,7 +136,16 @@ class OrderController {
         );
       }
 
-      // 5. Registrar el Pago
+      // 5. Preparar notificaciones a los vendedores ANTES de limpiar carrito
+      const sellersResult = await client.query(`
+        SELECT DISTINCT p.seller_id, u.email, u.name as seller_name, p.title
+        FROM cart_items ci
+        JOIN products p ON ci.product_id = p.id
+        JOIN users u ON p.seller_id = u.id
+        WHERE ci.cart_id = $1
+      `, [cart.id]);
+
+      // 6. Registrar el Pago
       let paymentStatus = 'pendiente';
       if (payment_method === 'tarjeta') paymentStatus = 'completado';
       
@@ -149,11 +161,36 @@ class OrderController {
         [order.id, userId, cart.total_price, payment_method, paymentStatus, receiptUrl]
       );
 
-      // 6. Limpiar carrito
+      // 7. Limpiar carrito
       await client.query('DELETE FROM cart_items WHERE cart_id = $1', [cart.id]);
       await client.query('UPDATE carts SET total_price = 0 WHERE id = $1', [cart.id]);
 
       await client.query('COMMIT');
+
+      // 8. Enviar notificaciones (fuera de la transacción de escritura)
+      try {
+        for (const seller of sellersResult.rows) {
+          const title = 'Nueva venta recibida';
+          const message = `Has recibido una nueva orden para tu producto: ${seller.title}`;
+          
+          await NotificationModel.create({
+            userId: seller.seller_id,
+            title,
+            message,
+            type: 'sale'
+          });
+
+          SSEService.sendToUser(seller.seller_id, {
+            type: 'NOTIFICATION',
+            title,
+            message
+          });
+
+          EmailService.sendNewSaleEmail(seller.email, seller.seller_name, seller.title, req.user.name).catch(console.error);
+        }
+      } catch (notifyError) {
+        console.error('Error al notificar vendedores:', notifyError);
+      }
 
       res.status(201).json({
         message: 'Orden procesada exitosamente',
@@ -527,6 +564,37 @@ class OrderController {
       // Confirmar la orden
       const updatedOrder = await OrderModel.confirmOrder(payment.order_id);
 
+      // Notificar al comprador
+      try {
+        const buyerResult = await pool.query('SELECT name, email FROM users WHERE id = $1', [order.user_id]);
+        const buyer = buyerResult.rows[0];
+        
+        const title = 'Pago Confirmado';
+        const message = `Tu pago para la orden #${order.id} ha sido confirmado.`;
+        
+        await NotificationModel.create({ userId: order.user_id, title, message, type: 'payment' });
+        SSEService.sendToUser(order.user_id, { type: 'NOTIFICATION', title, message });
+        EmailService.sendPaymentConfirmedEmail(buyer.email, buyer.name, order.id, order.total_price).catch(console.error);
+      } catch (e) { console.error('Error al notificar comprador:', e); }
+
+      // Actualizar saldo de los vendedores
+      try {
+        const itemsResult = await pool.query(`
+          SELECT p.seller_id, SUM(oi.price_at_purchase * oi.quantity) as earnings
+          FROM order_items oi
+          JOIN products p ON oi.product_id = p.id
+          WHERE oi.order_id = $1
+          GROUP BY p.seller_id
+        `, [order.id]);
+
+        for (const item of itemsResult.rows) {
+          await pool.query(
+            'UPDATE users SET balance = balance + $1 WHERE id = $2',
+            [item.earnings, item.seller_id]
+          );
+        }
+      } catch (e) { console.error('Error al actualizar saldos:', e); }
+
       res.status(200).json({
         message: 'Pago aprobado y orden confirmada',
         data: {
@@ -632,6 +700,76 @@ class OrderController {
 
     } catch (error) {
       console.error('Error rejecting payment:', error);
+      res.status(500).json({ error: error.message });
+    }
+  }
+
+  /**
+   * GET /api/orders/seller/sales
+   * Obtiene las ventas realizadas por el vendedor
+   */
+  static async getSellerSales(req, res) {
+    try {
+      const sellerId = req.user.id;
+      const sales = await OrderModel.findSalesBySellerId(sellerId);
+      res.status(200).json({ data: sales });
+    } catch (error) {
+      res.status(500).json({ error: error.message });
+    }
+  }
+
+  /**
+   * PUT /api/orders/seller/status/:itemId
+   * Permitir al vendedor marcar un ítem como enviado
+   */
+  static async updateSellerItemStatus(req, res) {
+    try {
+      const sellerId = req.user.id;
+      const { itemId } = req.params;
+      const { status } = req.body; // Solo 'Enviado' o similar
+
+      if (status !== 'Enviado') {
+        return res.status(400).json({ error: 'Estado no permitido para vendedores' });
+      }
+
+      // Verificar que el item pertenece a un producto del vendedor
+      const itemResult = await pool.query(`
+        SELECT oi.*, p.seller_id, o.user_id as buyer_id, p.title as product_title
+        FROM order_items oi
+        JOIN products p ON oi.product_id = p.id
+        JOIN orders o ON oi.order_id = o.id
+        WHERE oi.id = $1
+      `, [itemId]);
+
+      if (itemResult.rows.length === 0) {
+        return res.status(404).json({ error: 'Ítem no encontrado' });
+      }
+
+      const item = itemResult.rows[0];
+
+      if (item.seller_id !== sellerId) {
+        return res.status(403).json({ error: 'No tienes permiso sobre este ítem' });
+      }
+
+      // Actualizar estado del ítem (Podemos necesitar una columna 'status' en order_items o usar la de 'orders')
+      // Para simplicidad en este modelo, actualizaremos el estado de la ORDEN si todos sus items son del mismo vendedor 
+      // O añadiremos lógica de rastreo por ítem. Aquí asumiremos seguimiento por ítem.
+      await pool.query('UPDATE order_items SET status = $1 WHERE id = $2', [status, itemId]);
+
+      // Notificar al comprador
+      const buyerResult = await pool.query('SELECT name, email FROM users WHERE id = $1', [item.buyer_id]);
+      const buyer = buyerResult.rows[0];
+
+      const title = '¡Tu pedido ha sido enviado!';
+      const message = `El vendedor ha marcado tu producto "${item.product_title}" como enviado.`;
+      
+      await NotificationModel.create({ userId: item.buyer_id, title, message, type: 'shipping' });
+      SSEService.sendToUser(item.buyer_id, { type: 'NOTIFICATION', title, message });
+      EmailService.sendOrderShippedEmail(buyer.email, buyer.name, item.order_id).catch(console.error);
+
+      res.status(200).json({ message: 'Item marcado como enviado y comprador notificado' });
+
+    } catch (error) {
       res.status(500).json({ error: error.message });
     }
   }

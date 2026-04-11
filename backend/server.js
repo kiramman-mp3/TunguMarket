@@ -9,6 +9,8 @@ import orderRoutes from './src/routes/orderRoutes.js';
 import categoryRoutes from './src/routes/categoryRoutes.js';
 import productRoutes from './src/routes/productRoutes.js';
 import reviewRoutes from './src/routes/reviewRoutes.js';
+import wishlistRoutes from './src/routes/wishlistRoutes.js';
+import withdrawalRoutes from './src/routes/withdrawalRoutes.js';
 import { notFound, errorHandler } from './src/middlewares/errorMiddleware.js';
 
 
@@ -31,6 +33,8 @@ app.use('/api/orders', orderRoutes);
 app.use('/api/categories', categoryRoutes);
 app.use('/api/products', productRoutes);
 app.use('/api/reviews', reviewRoutes);
+app.use('/api/wishlist', wishlistRoutes);
+app.use('/api/withdrawals', withdrawalRoutes);
 
 // Health check
 app.get('/api/health', (req, res) => {

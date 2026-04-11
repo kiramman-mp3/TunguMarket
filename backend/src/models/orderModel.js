@@ -190,22 +190,40 @@ class OrderModel {
    */
   static async deleteOrder(orderId) {
     const order = await this.findById(orderId);
+    if (!order) return false;
     
-    if (!order) {
-      throw new Error('Orden no encontrada');
-    }
-    
-    if (order.status !== 'cancelado') {
-      throw new Error(`Solo puedes eliminar órdenes canceladas. Estado actual: "${order.status}"`);
+    // Solo permitir eliminar si ya está cancelada o rechazada
+    if (order.status !== 'cancelado' && !order.status.toLowerCase().includes('rechazado')) {
+      throw new Error('Solo se pueden eliminar órdenes canceladas o rechazadas');
     }
 
+    const { rowCount } = await pool.query('DELETE FROM orders WHERE id = $1', [orderId]);
+    return rowCount > 0;
+  }
+
+  /**
+   * Obtiene todos los ítems vendidos por un vendedor específico
+   * @param {string} sellerId - ID del vendedor
+   * @returns {array} Array de ítems vendidos con info del comprador
+   */
+  static async findSalesBySellerId(sellerId) {
     const query = `
-      DELETE FROM orders
-      WHERE id = $1
-      RETURNING *
+      SELECT 
+        oi.*, 
+        o.status as order_status, 
+        o.created_at,
+        p.title, 
+        u.name as buyer_name,
+        u.email as buyer_email
+      FROM order_items oi
+      JOIN orders o ON oi.order_id = o.id
+      JOIN products p ON oi.product_id = p.id
+      JOIN users u ON o.user_id = u.id
+      WHERE p.seller_id = $1
+      ORDER BY o.created_at DESC
     `;
-    const { rows } = await pool.query(query, [orderId]);
-    return rows.length > 0;
+    const { rows } = await pool.query(query, [sellerId]);
+    return rows;
   }
 }
 

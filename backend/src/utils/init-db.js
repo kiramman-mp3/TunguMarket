@@ -35,6 +35,7 @@ const initDb = async () => {
       DROP TABLE IF EXISTS cart_items CASCADE;
       DROP TABLE IF EXISTS carts CASCADE;
       DROP TABLE IF EXISTS payments CASCADE;
+      DROP TABLE IF EXISTS order_items CASCADE;
       DROP TABLE IF EXISTS orders CASCADE;
       DROP TABLE IF EXISTS products CASCADE;
       DROP TABLE IF EXISTS categories CASCADE;
@@ -42,6 +43,9 @@ const initDb = async () => {
       DROP TABLE IF EXISTS verification_tokens CASCADE;
       DROP TABLE IF EXISTS sessions CASCADE;
       DROP TABLE IF EXISTS login_logs CASCADE;
+      DROP TABLE IF EXISTS wishlists CASCADE;
+      DROP TABLE IF EXISTS notifications CASCADE;
+      DROP TABLE IF EXISTS withdrawals CASCADE;
       DROP TABLE IF EXISTS users CASCADE;
       DROP TABLE IF EXISTS roles CASCADE;
     `);
@@ -62,6 +66,7 @@ const initDb = async () => {
         password_hash VARCHAR(255),
         birth_date DATE,
         role_id INTEGER REFERENCES roles(id),
+        balance DECIMAL(12,2) DEFAULT 0,
         is_verified BOOLEAN DEFAULT FALSE,
         is_banned BOOLEAN DEFAULT FALSE,
         login_attempts INTEGER DEFAULT 0,
@@ -176,6 +181,7 @@ const initDb = async () => {
         product_id UUID NOT NULL REFERENCES products(id) ON DELETE RESTRICT,
         quantity INTEGER NOT NULL,
         price_at_purchase DECIMAL(10, 2) NOT NULL,
+        status VARCHAR(50) DEFAULT 'Pendiente',
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       );
 
@@ -194,7 +200,7 @@ const initDb = async () => {
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       );
 
-      -- 4. SOCIAL
+      -- 5. SOCIAL & USER MODULES
       CREATE TABLE reviews (
         id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
         product_id UUID NOT NULL REFERENCES products(id) ON DELETE CASCADE,
@@ -206,7 +212,34 @@ const initDb = async () => {
         UNIQUE (product_id, user_id)
       );
 
-      -- 5. AUTOMATION (TRIGGERS)
+      CREATE TABLE wishlists (
+          id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
+          user_id UUID REFERENCES users(id) ON DELETE CASCADE,
+          product_id UUID REFERENCES products(id) ON DELETE CASCADE,
+          created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+          UNIQUE(user_id, product_id)
+      );
+
+      CREATE TABLE notifications (
+          id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
+          user_id UUID REFERENCES users(id) ON DELETE CASCADE,
+          title VARCHAR(255) NOT NULL,
+          message TEXT NOT NULL,
+          type VARCHAR(50) DEFAULT 'info',
+          is_read BOOLEAN DEFAULT false,
+          created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      );
+
+      CREATE TABLE withdrawals (
+          id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
+          user_id UUID REFERENCES users(id) ON DELETE CASCADE,
+          amount DECIMAL(12,2) NOT NULL,
+          status VARCHAR(20) DEFAULT 'pendiente',
+          bank_info JSONB NOT NULL,
+          created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      );
+
+      -- 6. AUTOMATION (TRIGGERS)
       -- Function to update product rating stats
       CREATE OR REPLACE FUNCTION update_product_rating_stats()
       RETURNS TRIGGER AS $$
