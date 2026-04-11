@@ -1,6 +1,14 @@
 import ProductModel from '../models/productModel.js';
 import ProductImageModel from '../models/productImageModel.js';
+import OrderModel from '../models/orderModel.js';
 import ForbiddenKeywordService from '../services/forbiddenKeywordService.js';
+import pool from '../config/db.js';
+import fs from 'fs';
+import path from 'path';
+import { fileURLToPath } from 'url';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 class ProductController {
   /**
@@ -16,12 +24,6 @@ class ProductController {
       const offset = (pageNum - 1) * limitNum;
 
       const { products, total } = await ProductModel.findAll(limitNum, offset);
-
-      // Agregar imágenes principales a cada producto
-      for (let product of products) {
-        const primaryImage = await ProductImageModel.getPrimaryImage(product.id);
-        product.primary_image = primaryImage?.image_url || null;
-      }
 
       res.status(200).json({
         message: 'Productos obtenidos exitosamente',
@@ -59,12 +61,6 @@ class ProductController {
 
       const { products, total } = await ProductModel.findByCategory(categoryId, limitNum, offset);
 
-      // Agregar imágenes principales
-      for (let product of products) {
-        const primaryImage = await ProductImageModel.getPrimaryImage(product.id);
-        product.primary_image = primaryImage?.image_url || null;
-      }
-
       res.status(200).json({
         message: 'Productos por categoría obtenidos exitosamente',
         data: {
@@ -84,32 +80,32 @@ class ProductController {
 
   /**
    * GET /api/products/search
-   * Busca productos por término
+   * Busca productos por término y/o filtros
    */
   static async searchProducts(req, res) {
     try {
-      const { q, page = 1, limit = 20 } = req.query;
-
-      if (!q || q.trim().length === 0) {
-        return res.status(400).json({ error: 'Término de búsqueda requerido' });
-      }
+      const { q = '', page = 1, limit = 20, categoryId, minPrice, maxPrice, minRating } = req.query;
 
       const pageNum = Math.max(1, parseInt(page, 10));
       const limitNum = Math.min(100, Math.max(1, parseInt(limit, 10)));
       const offset = (pageNum - 1) * limitNum;
 
-      const { products, total } = await ProductModel.search(q.trim(), limitNum, offset);
+      const filters = {};
+      if (categoryId) filters.category_id = categoryId;
+      if (minPrice !== undefined && minPrice !== '') filters.minPrice = parseFloat(minPrice);
+      if (maxPrice !== undefined && maxPrice !== '') filters.maxPrice = parseFloat(maxPrice);
+      if (minRating !== undefined && minRating !== '') filters.minRating = parseFloat(minRating);
 
-      // Agregar imágenes principales
-      for (let product of products) {
-        const primaryImage = await ProductImageModel.getPrimaryImage(product.id);
-        product.primary_image = primaryImage?.image_url || null;
-      }
+      // Si es admin, mostrar todos los productos (incluyendo bloqueados y pendientes)
+      const isAdmin = req.user && req.user.role === 'admin';
+
+      const { products, total } = await ProductModel.search(q.trim(), limitNum, offset, filters, isAdmin);
 
       res.status(200).json({
         message: 'Búsqueda completada exitosamente',
         data: {
           query: q,
+          filters,
           products,
           pagination: {
             total,
@@ -134,12 +130,6 @@ class ProductController {
 
       const limitNum = Math.min(50, Math.max(1, parseInt(limit, 10)));
       const products = await ProductModel.getFeatured(limitNum);
-
-      // Agregar imágenes principales
-      for (let product of products) {
-        const primaryImage = await ProductImageModel.getPrimaryImage(product.id);
-        product.primary_image = primaryImage?.image_url || null;
-      }
 
       res.status(200).json({
         message: 'Productos destacados obtenidos exitosamente',
@@ -168,6 +158,16 @@ class ProductController {
         return res.status(404).json({ error: 'Producto no encontrado' });
       }
 
+      // Lógica de visibilidad personalizada
+      // Si el producto está oculto, solo el vendedor o un admin pueden verlo
+      if (product.status !== 'activo') {
+        const canView = req.user && (req.user.id === product.seller_id || req.user.role === 'admin');
+        if (!canView) {
+          // Si es un comprador/guest intentando ver algo oculto
+          return res.status(404).json({ error: 'Este producto no está disponible actualmente' });
+        }
+      }
+
       // Obtener imágenes
       const images = await ProductImageModel.findByProductId(id);
 
@@ -191,26 +191,27 @@ class ProductController {
   static async createProduct(req, res) {
     try {
       const userId = req.user.id;
-      const { category_id, title, description, price, stock = 1 } = req.body;
+      let { category_id, title, description, price, stock = 1 } = req.body;
 
-      // Validar campos obligatorios
-      if (!category_id || !title || !description || price === undefined) {
-        return res.status(400).json({
-          error: 'category_id, title, description, price requeridos'
-        });
+      // Convertir a números (Multer recibe todo como string en FormData)
+      price = parseFloat(price);
+      stock = parseInt(stock, 10);
+
+      // Validar campos obligatorios uno por uno para diagnóstico preciso
+      if (!title || title.trim().length === 0) {
+        return res.status(400).json({ error: 'El título es obligatorio' });
       }
-
-      // Validar tipos
-      if (typeof title !== 'string' || title.trim().length === 0) {
-        return res.status(400).json({ error: 'Título inválido' });
+      if (!description || description.trim().length === 0) {
+        return res.status(400).json({ error: 'La descripción es obligatoria' });
       }
-
-      if (typeof description !== 'string' || description.trim().length === 0) {
-        return res.status(400).json({ error: 'Descripción inválida' });
+      if (isNaN(price)) {
+        return res.status(400).json({ error: 'El precio debe ser un número válido' });
       }
-
-      if (typeof price !== 'number' || price < 0) {
-        return res.status(400).json({ error: 'Precio inválido' });
+      if (price < 0) {
+        return res.status(400).json({ error: 'El precio debe ser un valor positivo' });
+      }
+      if (!category_id) {
+        return res.status(400).json({ error: 'Debes seleccionar una categoría' });
       }
 
       // ========== DETECCIÓN DE PALABRAS PROHIBIDAS ==========
@@ -230,9 +231,25 @@ class ProductController {
         productData.status = 'bloqueado';
         productData.is_flagged = true;
         productData.blocked_reason = ForbiddenKeywordService.generateBlockReason(detection.flaggedKeywords);
+      } else {
+        // REQUERIMIENTO: Todos los productos nuevos deben ser aprobados antes de publicación
+        productData.status = 'pendiente';
       }
 
       const product = await ProductModel.create(productData);
+
+      // ========== GESTIÓN DE IMÁGENES MÚLTIPLES ==========
+      if (req.files && req.files.length > 0) {
+        const baseUrl = process.env.BACKEND_URL || `${req.protocol}://${req.get('host')}`;
+        
+        for (let i = 0; i < req.files.length; i++) {
+          const file = req.files[i];
+          const imageUrl = `${baseUrl}/uploads/products/${file.filename}`;
+          const isPrimary = i === 0; // La primera es la principal
+          
+          await ProductImageModel.create(product.id, imageUrl, isPrimary, i);
+        }
+      }
 
       res.status(201).json({
         message: detection.isProhibited 
@@ -256,21 +273,19 @@ class ProductController {
   static async updateProduct(req, res) {
     try {
       const { id } = req.params;
-      const { title, description, price, stock, status } = req.body;
+      let { title, description, price, stock, status, category_id } = req.body;
       const userId = req.user.id;
 
-      if (!id) {
-        return res.status(400).json({ error: 'ID de producto requerido' });
-      }
-
-      const product = await ProductModel.findById(id);
+      const productId = String(id).trim().toLowerCase();
+      const product = await ProductModel.findById(productId);
 
       if (!product) {
         return res.status(404).json({ error: 'Producto no encontrado' });
       }
 
-      // Verificar permisos (vendedor o admin)
-      if (product.seller_id !== userId && req.user.role !== 'admin') {
+      // Verificar permisos (vendedor o admin) - Comparación robusta de UUIDs
+      const isOwner = String(product.seller_id).toLowerCase() === String(userId).toLowerCase();
+      if (!isOwner && req.user.role !== 'admin') {
         return res.status(403).json({ error: 'No tienes permiso para actualizar este producto' });
       }
 
@@ -292,20 +307,62 @@ class ProductController {
         updates.description = description.trim();
       }
 
-      if (price !== undefined && typeof price === 'number' && price >= 0) {
-        updates.price = price;
+      // Convertir y validar precio si se proporciona
+      if (price !== undefined) {
+        const numPrice = parseFloat(price);
+        if (isNaN(numPrice) || numPrice < 0) {
+          return res.status(400).json({ error: 'Precio inválido' });
+        }
+        updates.price = numPrice;
       }
 
-      if (stock !== undefined && Number.isInteger(stock) && stock >= 0) {
-        updates.stock = stock;
+      // Convertir y validar stock si se proporciona
+      if (stock !== undefined) {
+        const numStock = parseInt(stock, 10);
+        if (isNaN(numStock) || numStock < 0) {
+          return res.status(400).json({ error: 'Stock inválido' });
+        }
+        updates.stock = numStock;
       }
 
-      // Solo admin puede cambiar estado
-      if (status !== undefined && req.user.role === 'admin') {
-        updates.status = status;
+      if (category_id !== undefined) {
+        updates.category_id = category_id;
       }
 
-      const updated = await ProductModel.update(id, updates);
+      // Normalización y validación de cambio de estado
+      if (status !== undefined) {
+        const normalizedStatus = String(status).trim().toLowerCase();
+        
+        if (req.user.role === 'admin') {
+          updates.status = normalizedStatus;
+        } else if (normalizedStatus === 'activo' || normalizedStatus === 'oculto') {
+          updates.status = normalizedStatus;
+        }
+      }
+
+      // ========== ACTUALIZACIÓN DE IMÁGENES MÚLTIPLES ==========
+      if (req.files && req.files.length > 0) {
+        const baseUrl = process.env.BACKEND_URL || `${req.protocol}://${req.get('host')}`;
+        
+        // Obtener el orden actual para continuar
+        const currentCount = await ProductImageModel.countByProductId(id);
+        
+        for (let i = 0; i < req.files.length; i++) {
+          const file = req.files[i];
+          const imageUrl = `${baseUrl}/uploads/products/${file.filename}`;
+          
+          // Si es la primera vez que se suben imágenes o si se quiere reemplazar el primary (lógica simple: añadir)
+          await ProductImageModel.create(id, imageUrl, false, currentCount + i);
+        }
+      }
+
+      // Solo proceder si hay algo que actualizar
+      let updated;
+      if (Object.keys(updates).length > 0) {
+        updated = await ProductModel.update(id, updates);
+      } else {
+        updated = product;
+      }
 
       res.status(200).json({
         message: 'Producto actualizado exitosamente',
@@ -340,8 +397,36 @@ class ProductController {
         return res.status(403).json({ error: 'No tienes permiso para eliminar este producto' });
       }
 
+      // Verificar si el producto tiene ventas antes de borrar
+      const salesCount = await OrderModel.countSalesByProductId(id);
+      
+      if (salesCount > 0) {
+        // En vez de borrar, lo ocultamos para preservar el historial de órdenes del comprador
+        await ProductModel.update(id, { status: 'oculto' });
+        return res.status(200).json({
+          message: 'El producto ahora está oculto. No se pudo eliminar físicamente porque tiene ventas registradas.',
+          hidden: true
+        });
+      }
+
+      // Si no hay ventas, procedemos con el borrado físico completo
+      // Obtener todas las imágenes para borrarlas del disco
+      const images = await ProductImageModel.findByProductId(id);
+      for (const img of images) {
+        try {
+          const urlParts = img.image_url.split('/');
+          const filename = urlParts[urlParts.length - 1];
+          const filePath = path.join(__dirname, '../../uploads/products', filename);
+          if (fs.existsSync(filePath)) {
+            await fs.promises.unlink(filePath);
+          }
+        } catch (err) {
+          console.error(`Error eliminando archivo físico: ${img.image_url}`, err);
+        }
+      }
+
       await ProductModel.delete(id);
-      await ProductImageModel.deleteByProductId(id); // Eliminar imágenes también
+      await ProductImageModel.deleteByProductId(id);
 
       res.status(200).json({
         message: 'Producto eliminado exitosamente'
@@ -369,12 +454,6 @@ class ProductController {
       const offset = (pageNum - 1) * limitNum;
 
       const { products, total } = await ProductModel.findBySeller(sellerId, limitNum, offset);
-
-      // Agregar imágenes principales
-      for (let product of products) {
-        const primaryImage = await ProductImageModel.getPrimaryImage(product.id);
-        product.primary_image = primaryImage?.image_url || null;
-      }
 
       res.status(200).json({
         message: 'Productos del vendedor obtenidos exitosamente',
@@ -454,11 +533,26 @@ class ProductController {
         return res.status(403).json({ error: 'No tienes permiso para eliminar imágenes de este producto' });
       }
 
-      const deleted = await ProductImageModel.delete(imageId);
-
-      if (!deleted) {
+      // Obtener detalles de la imagen antes de borrar
+      const image = await ProductImageModel.findById(imageId);
+      if (!image) {
         return res.status(404).json({ error: 'Imagen no encontrada' });
       }
+
+      // Eliminar archivo físico
+      try {
+        const urlParts = image.image_url.split('/');
+        const filename = urlParts[urlParts.length - 1];
+        const filePath = path.join(__dirname, '../../uploads/products', filename);
+        
+        if (fs.existsSync(filePath)) {
+          await fs.promises.unlink(filePath);
+        }
+      } catch (err) {
+        console.error('Error al borrar archivo físico:', err);
+      }
+
+      await ProductImageModel.delete(imageId);
 
       res.status(200).json({
         message: 'Imagen eliminada exitosamente'
@@ -491,6 +585,175 @@ class ProductController {
       res.status(200).json({
         message: 'Imágenes obtenidas exitosamente',
         data: images
+      });
+    } catch (error) {
+      res.status(500).json({ error: error.message });
+    }
+  }
+
+  /**
+   * PATCH /api/products/:id/images/:imageId/primary
+   * Establece una imagen como principal
+   */
+  static async setPrimaryImage(req, res) {
+    try {
+      const { id, imageId } = req.params;
+      const userId = req.user.id;
+
+      const product = await ProductModel.findById(id);
+      if (!product) {
+        return res.status(404).json({ error: 'Producto no encontrado' });
+      }
+
+      // Verificar permisos
+      if (product.seller_id !== userId && req.user.role !== 'admin') {
+        return res.status(403).json({ error: 'No tienes permiso para modificar este producto' });
+      }
+
+      await ProductImageModel.update(imageId, { is_primary: true });
+
+      res.status(200).json({
+        message: 'Imagen principal actualizada exitosamente'
+      });
+    } catch (error) {
+      res.status(500).json({ error: error.message });
+    }
+  }
+
+  /**
+   * PATCH /api/products/:id/status
+   * Punto de acceso dedicado para alternar la visibilidad (activo/oculto)
+   * Evita conflictos con Multer/Subida de imágenes del PUT principal
+   */
+  static async updateStatus(req, res) {
+    try {
+      const { id } = req.params;
+      const { status } = req.body;
+      const userId = req.user.id;
+
+      if (!id || !status) {
+        return res.status(400).json({ error: 'ID y estado son requeridos' });
+      }
+
+      // Normalización de ID y Estado
+      const productId = String(id).trim().toLowerCase();
+      const normalizedStatus = String(status).trim().toLowerCase();
+      
+      if (normalizedStatus !== 'activo' && normalizedStatus !== 'oculto') {
+        return res.status(400).json({ error: 'Estado inválido. Solo se permite activo u oculto.' });
+      }
+
+      const product = await ProductModel.findById(productId);
+      if (!product) {
+        return res.status(404).json({ error: 'Producto no encontrado' });
+      }
+
+      // Verificar permiso (dueño o admin)
+      const isOwner = String(product.seller_id).toLowerCase() === String(userId).toLowerCase();
+      if (!isOwner && req.user.role !== 'admin') {
+        return res.status(403).json({ error: 'No tienes permiso para cambiar el estado de este producto' });
+      }
+
+      const updated = await ProductModel.update(productId, { status: normalizedStatus });
+
+      if (!updated) {
+        return res.status(500).json({ error: 'Error al actualizar el estado en la base de datos' });
+      }
+
+      res.status(200).json({
+        message: `Estado actualizado a ${normalizedStatus}`,
+        data: updated
+      });
+    } catch (error) {
+      console.error('Error en updateStatus:', error);
+      res.status(500).json({ error: error.message });
+    }
+  }
+
+  /**
+   * GET /api/products/seller/me/stats
+   * Obtiene estadísticas reales del vendedor logueado
+   */
+  static async getSellerStats(req, res) {
+    try {
+      const userId = req.user.id;
+      const stats = await ProductModel.getSellerStats(userId);
+      res.status(200).json({
+        message: 'Estadísticas obtenidas exitosamente',
+        data: stats
+      });
+    } catch (error) {
+      res.status(500).json({ error: error.message });
+    }
+  }
+
+  /**
+   * ADMIN: GET /api/products/admin/list
+   * Obtiene todos los productos para gestión administrativa
+   */
+  static async adminGetAllProducts(req, res) {
+    try {
+      const { page = 1, limit = 50, status } = req.query;
+
+      const pageNum = Math.max(1, parseInt(page, 10));
+      const limitNum = Math.min(100, Math.max(1, parseInt(limit, 10)));
+      const offset = (pageNum - 1) * limitNum;
+
+      const { products, total } = await ProductModel.adminFindAll(limitNum, offset, status);
+
+      res.status(200).json({
+        message: 'Lista administrativa de productos obtenida',
+        data: {
+          products,
+          pagination: {
+            total,
+            page: pageNum,
+            limit: limitNum,
+            pages: Math.ceil(total / limitNum)
+          }
+        }
+      });
+    } catch (error) {
+      res.status(500).json({ error: error.message });
+    }
+  }
+
+  /**
+   * ADMIN: PATCH /api/products/admin/:id/status
+   * Punto de acceso para aprobación o bloqueo manual por Admin
+   */
+  static async adminUpdateStatus(req, res) {
+    try {
+      const { id } = req.params;
+      const { status, blocked_reason } = req.body;
+
+      if (!status) {
+        return res.status(400).json({ error: 'El nuevo estado es requerido' });
+      }
+
+      const validStatuses = ['activo', 'pendiente', 'bloqueado', 'oculto'];
+      if (!validStatuses.includes(status)) {
+        return res.status(400).json({ error: 'Estado no válido' });
+      }
+
+      const updates = { status };
+      if (status === 'bloqueado' && blocked_reason) {
+        updates.blocked_reason = blocked_reason;
+        updates.is_flagged = true;
+      } else if (status === 'activo') {
+        updates.is_flagged = false;
+        updates.blocked_reason = null;
+      }
+
+      const updated = await ProductModel.update(id, updates);
+
+      if (!updated) {
+        return res.status(404).json({ error: 'Producto no encontrado' });
+      }
+
+      res.status(200).json({
+        message: `Estado del producto actualizado a: ${status}`,
+        data: updated
       });
     } catch (error) {
       res.status(500).json({ error: error.message });

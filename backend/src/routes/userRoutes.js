@@ -1,96 +1,44 @@
 import express from 'express';
-import pool from '../config/db.js';
+import UserController from '../controllers/userController.js';
 import { authMiddleware, isAdmin } from '../middlewares/authMiddleware.js';
-import SessionModel from '../models/sessionModel.js';
-import UserModel from '../models/userModel.js';
-import SSEService from '../services/sseService.js';
+import { uploadAvatars } from '../middlewares/uploadMiddleware.js';
 
 const router = express.Router();
 
-// --- USER SECURE ROUTES ---
+// --- RUTAS PÚBLICAS ---
 
-// Get active sessions for the current user
-router.get('/sessions', authMiddleware, async (req, res) => {
-  console.log('[DEBUG /sessions] Entering handler. User ID:', req.user.id);
-  console.log('[DEBUG /sessions] SessionModel type:', typeof SessionModel);
-  console.log('[DEBUG /sessions] findActiveSessionsByUser type:', typeof SessionModel?.findActiveSessionsByUser);
-  
-  try {
-    const sessions = await SessionModel.findActiveSessionsByUser(req.user.id);
-    res.json(sessions);
-  } catch (error) {
-    console.error('[DATABASE ERROR /sessions]:', error);
-    res.status(500).json({ error: 'Internal server error fetching sessions' });
-  }
-});
+// Obtener información pública de un vendedor
+router.get('/seller/:id', UserController.getSellerInfo);
 
-// Get login logs for the current user
-router.get('/logs', authMiddleware, async (req, res) => {
-  try {
-    const query = 'SELECT * FROM login_logs WHERE user_id = $1 ORDER BY timestamp DESC LIMIT 50';
-    const { rows } = await pool.query(query, [req.user.id]);
-    res.json(rows);
-  } catch (error) {
-    res.status(500).json({ error: error.message });
-  }
-});
+// --- RUTAS PROTEGIDAS (USUARIO) ---
 
-// Logout specific session (Remote Logout)
-router.delete('/sessions/:token', authMiddleware, async (req, res) => {
-  try {
-    const { token } = req.params;
-    // Security check: ensure the session belongs to the user
-    const session = await SessionModel.findByToken(token);
-    if (!session || session.user_id !== req.user.id) {
-      return res.status(403).json({ error: 'Permission denied' });
-    }
-    await SessionModel.deleteSession(token);
-    res.json({ message: 'Session closed successfully' });
-  } catch (error) {
-    res.status(500).json({ error: error.message });
-  }
-});
+// Actualización general del perfil (nombre)
+router.put('/profile', authMiddleware, UserController.updateProfile);
 
-// --- ADMIN ROUTES ---
+// Actualizar avatar (foto de perfil)
+router.post('/profile/avatar', authMiddleware, uploadAvatars.single('avatar'), UserController.updateAvatar);
 
-// List all users
-router.get('/admin/users', authMiddleware, isAdmin, async (req, res) => {
-  try {
-    const query = `
-      SELECT u.id, u.name, u.email, u.is_verified, u.is_banned, u.role_id, r.name as role_name, u.created_at 
-      FROM users u 
-      JOIN roles r ON u.role_id = r.id 
-      ORDER BY u.created_at DESC
-    `;
-    const { rows } = await pool.query(query);
-    res.json(rows);
-  } catch (error) {
-    res.status(500).json({ error: error.message });
-  }
-});
+// Cambiar contraseña
+router.put('/change-password', authMiddleware, UserController.changePassword);
 
-// Ban/Unban user
-router.patch('/admin/users/:id/status', authMiddleware, isAdmin, async (req, res) => {
-  try {
-    const { id } = req.params;
-    const { isBanned } = req.body;
-    
-    if (id === req.user.id) {
-      return res.status(400).json({ error: 'Cannot ban yourself' });
-    }
+// Actualizar perfil de vendedor (nombre y bio)
+router.put('/seller-profile', authMiddleware, UserController.updateSellerProfile);
 
-    const updatedUser = await UserModel.banUser(id, isBanned);
-    
-    // If banning, close all sessions and notify in real-time
-    if (isBanned) {
-      await SessionModel.deleteByUser(id);
-      SSEService.sendToUser(id, { type: 'ACCOUNT_BANNED' });
-    }
+// Obtener sesiones activas
+router.get('/sessions', authMiddleware, UserController.getSessions);
 
-    res.json({ message: `User ${isBanned ? 'banned' : 'unbanned'} successfully`, user: updatedUser });
-  } catch (error) {
-    res.status(500).json({ error: error.message });
-  }
-});
+// Obtener logs de inicio de sesión
+router.get('/logs', authMiddleware, UserController.getLogs);
+
+// Cerrar sesión específica (Cierre remoto)
+router.delete('/sessions/:token', authMiddleware, UserController.remoteLogout);
+
+// --- RUTAS DE ADMINISTRADOR ---
+
+// Listar todos los usuarios
+router.get('/admin/users', authMiddleware, isAdmin, UserController.adminListUsers);
+
+// Banear/Desbanear usuario
+router.patch('/admin/users/:id/status', authMiddleware, isAdmin, UserController.adminToggleUserStatus);
 
 export default router;

@@ -37,7 +37,8 @@ class ReviewModel {
       SELECT
         r.*,
         u.name as user_name,
-        u.email as user_email
+        u.email as user_email,
+        u.avatar_url as user_avatar
       FROM reviews r
       LEFT JOIN users u ON r.user_id = u.id
       WHERE r.product_id = $1
@@ -102,6 +103,7 @@ class ReviewModel {
       SELECT
         r.*,
         u.name as user_name,
+        u.avatar_url as user_avatar,
         p.title as product_title
       FROM reviews r
       LEFT JOIN users u ON r.user_id = u.id
@@ -225,7 +227,8 @@ class ReviewModel {
     const query = `
       SELECT
         r.*,
-        u.name as user_name
+        u.name as user_name,
+        u.avatar_url as user_avatar
       FROM reviews r
       LEFT JOIN users u ON r.user_id = u.id
       WHERE r.product_id = $1
@@ -244,10 +247,20 @@ class ReviewModel {
    * @param {string} userId - ID del usuario
    * @returns {boolean}
    */
-  static async canReview(productId, userId) {
-    // Un usuario solo puede dejar 1 reseña por producto (UNIQUE constraint)
-    const existing = await this.findByProductAndUser(productId, userId);
-    return !existing;
+  /**
+   * Verifica si el usuario tiene una compra completada del producto
+   */
+  static async hasCompletedPurchase(productId, userId) {
+    const query = `
+      SELECT COUNT(*) as count
+      FROM order_items oi
+      JOIN orders o ON oi.order_id = o.id
+      WHERE oi.product_id = $1 
+        AND o.user_id = $2
+        AND o.status = 'Envío completado'
+    `;
+    const { rows } = await pool.query(query, [productId, userId]);
+    return parseInt(rows[0].count, 10) > 0;
   }
 }
 

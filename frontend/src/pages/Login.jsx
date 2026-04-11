@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { useLocation, Link, useNavigate } from 'react-router-dom';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faEnvelope, faLock, faArrowRight, faSpinner } from '@fortawesome/free-solid-svg-icons';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -14,6 +14,9 @@ const Login = () => {
 
   const { login } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
+
+  const from = location.state?.from || '/';
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -23,7 +26,7 @@ const Login = () => {
     try {
       const data = await loginUser({ email, password });
       login(data.user, data.token);
-      navigate('/');
+      navigate(from, { replace: true });
     } catch (err) {
       if (err.message === 'EMAIL_NOT_VERIFIED') {
         navigate('/pending-verification', { state: { email } });

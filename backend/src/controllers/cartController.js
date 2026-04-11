@@ -44,12 +44,27 @@ class CartController {
       // Obtener o crear carrito del usuario
       const cart = await CartModel.getCart(userId);
       
-      // Verificar que el producto existe
-      const productQuery = `SELECT * FROM products WHERE id = $1 AND deleted_at IS NULL`;
+      // Verificar que el producto existe y tiene stock
+      const productQuery = `SELECT * FROM products WHERE id = $1 AND status = 'activo'`;
       const { rows: products } = await pool.query(productQuery, [product_id]);
       
       if (products.length === 0) {
-        return res.status(404).json({ error: 'Producto no encontrado' });
+        return res.status(404).json({ error: 'Producto no encontrado o no disponible' });
+      }
+
+      const product = products[0];
+      
+      // Verificar si ya existe en el carrito para sumar la cantidad
+      const checkCartQuery = `SELECT quantity FROM cart_items WHERE cart_id = $1 AND product_id = $2`;
+      const { rows: existingItems } = await pool.query(checkCartQuery, [cart.id, product_id]);
+      
+      const currentInCart = existingItems.length > 0 ? existingItems[0].quantity : 0;
+      const totalRequested = currentInCart + quantity;
+
+      if (totalRequested > product.stock) {
+        return res.status(400).json({ 
+          error: `No hay suficiente stock. Disponible: ${product.stock}, Ya en carrito: ${currentInCart}` 
+        });
       }
       
       const item = await CartModel.addItemToCart(
@@ -95,6 +110,21 @@ class CartController {
       if (items.length === 0) {
         return res.status(404).json({ 
           error: 'Item no encontrado o no pertenece a tu carrito' 
+        });
+      }
+
+      // Verificar stock antes de actualizar
+      const productQuery = `
+        SELECT p.stock, p.title 
+        FROM products p
+        JOIN cart_items ci ON p.id = ci.product_id
+        WHERE ci.id = $1
+      `;
+      const { rows: products } = await pool.query(productQuery, [id]);
+      
+      if (products.length > 0 && quantity > products[0].stock) {
+        return res.status(400).json({ 
+          error: `No hay suficiente stock para "${products[0].title}". Disponible: ${products[0].stock}` 
         });
       }
 

@@ -209,6 +209,14 @@ class ReviewController {
         });
       }
 
+      // 1. Verificar si tiene compra completada
+      const hasPurchased = await ReviewModel.hasCompletedPurchase(product_id, userId);
+      if (!hasPurchased) {
+        return res.status(403).json({
+          error: 'Solo puedes calificar productos que hayas comprado y recibido (Envío completado).'
+        });
+      }
+
       // Crear reseña
       const review = await ReviewModel.create(
         product_id,

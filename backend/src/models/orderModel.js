@@ -20,10 +20,40 @@ class OrderModel {
   }
 
   /**
-   * Obtiene una orden por su ID
+   * Obtiene una orden por su ID con todos sus detalles (items, productos, vendedor)
    * @param {string} orderId - ID de la orden
-   * @returns {object} Datos de la orden
+   * @returns {object} Datos detallados de la orden
    */
+  static async getOrderWithDetails(orderId) {
+    const orderQuery = `
+      SELECT o.*, u.name as buyer_name, u.email as buyer_email
+      FROM orders o
+      JOIN users u ON o.user_id = u.id
+      WHERE o.id = $1
+    `;
+    const itemsQuery = `
+      SELECT oi.*, p.title as product_title, p.price as current_price,
+             (SELECT image_url FROM product_images WHERE product_id = p.id AND is_primary = true LIMIT 1) as image_url,
+             s.name as seller_name, s.email as seller_email
+      FROM order_items oi
+      JOIN products p ON oi.product_id = p.id
+      JOIN users s ON p.seller_id = s.id
+      WHERE oi.order_id = $1
+    `;
+    
+    const [orderRes, itemsRes] = await Promise.all([
+      pool.query(orderQuery, [orderId]),
+      pool.query(itemsQuery, [orderId])
+    ]);
+
+    if (orderRes.rows.length === 0) return null;
+
+    return {
+      ...orderRes.rows[0],
+      items: itemsRes.rows
+    };
+  }
+
   static async findById(orderId) {
     const query = `
       SELECT * FROM orders
@@ -73,7 +103,15 @@ class OrderModel {
    * @returns {object} Orden actualizada
    */
   static async updateStatus(orderId, newStatus) {
-    const validStatuses = ['pendiente', 'confirmado', 'cancelado'];
+    const validStatuses = [
+      'pendiente', 
+      'confirmado', 
+      'cancelado', 
+      'Pendiente de verificación', 
+      'Pendiente de pago', 
+      'Aceptado',
+      'Envío completado'
+    ];
     
     if (!validStatuses.includes(newStatus)) {
       throw new Error(`Estado inválido. Debe ser uno de: ${validStatuses.join(', ')}`);
@@ -96,7 +134,15 @@ class OrderModel {
    * @returns {array} Array de órdenes con ese estado
    */
   static async findByStatus(status, limit = 20) {
-    const validStatuses = ['pendiente', 'confirmado', 'cancelado'];
+    const validStatuses = [
+      'pendiente', 
+      'confirmado', 
+      'cancelado', 
+      'Pendiente de verificación', 
+      'Pendiente de pago', 
+      'Aceptado',
+      'Envío completado'
+    ];
     
     if (!validStatuses.includes(status)) {
       throw new Error(`Estado inválido. Debe ser uno de: ${validStatuses.join(', ')}`);
@@ -124,6 +170,8 @@ class OrderModel {
         COUNT(CASE WHEN status = 'confirmado' THEN 1 END) as confirmadas,
         COUNT(CASE WHEN status = 'pendiente' THEN 1 END) as pendientes,
         COUNT(CASE WHEN status = 'cancelado' THEN 1 END) as canceladas,
+        COUNT(CASE WHEN status = 'Aceptado' THEN 1 END) as aceptadas,
+        COUNT(CASE WHEN status = 'Envío completado' THEN 1 END) as completadas,
         SUM(total_price) as total_gastado
       FROM orders
       WHERE user_id = $1
@@ -134,6 +182,8 @@ class OrderModel {
       confirmadas: parseInt(rows[0].confirmadas || 0, 10),
       pendientes: parseInt(rows[0].pendientes || 0, 10),
       canceladas: parseInt(rows[0].canceladas || 0, 10),
+      aceptadas: parseInt(rows[0].aceptadas || 0, 10),
+      completadas: parseInt(rows[0].completadas || 0, 10),
       total_gastado: parseFloat(rows[0].total_gastado || 0)
     };
   }
@@ -183,22 +233,54 @@ class OrderModel {
    */
   static async deleteOrder(orderId) {
     const order = await this.findById(orderId);
+    if (!order) return false;
     
-    if (!order) {
-      throw new Error('Orden no encontrada');
-    }
-    
-    if (order.status !== 'cancelado') {
-      throw new Error(`Solo puedes eliminar órdenes canceladas. Estado actual: "${order.status}"`);
+    // Solo permitir eliminar si ya está cancelada o rechazada
+    if (order.status !== 'cancelado' && !order.status.toLowerCase().includes('rechazado')) {
+      throw new Error('Solo se pueden eliminar órdenes canceladas o rechazadas');
     }
 
+    const { rowCount } = await pool.query('DELETE FROM orders WHERE id = $1', [orderId]);
+    return rowCount > 0;
+  }
+
+  /**
+   * Obtiene todos los ítems vendidos por un vendedor específico
+   * @param {string} sellerId - ID del vendedor
+   * @returns {array} Array de ítems vendidos con info del comprador
+   */
+  static async findSalesBySellerId(sellerId) {
     const query = `
-      DELETE FROM orders
-      WHERE id = $1
-      RETURNING *
+      SELECT 
+        oi.*, 
+        o.status as order_status, 
+        o.created_at,
+        o.shipping_info,
+        p.title as product_title, 
+        u.name as buyer_name,
+        u.email as buyer_email,
+        pm.payment_method
+      FROM order_items oi
+      JOIN orders o ON oi.order_id = o.id
+      JOIN products p ON oi.product_id = p.id
+      JOIN users u ON o.user_id = u.id
+      LEFT JOIN payments pm ON o.id = pm.order_id
+      WHERE p.seller_id = $1
+      ORDER BY o.created_at DESC
     `;
-    const { rows } = await pool.query(query, [orderId]);
-    return rows.length > 0;
+    const { rows } = await pool.query(query, [sellerId]);
+    return rows;
+  }
+
+  /**
+   * Cuenta cuántas veces se ha vendido un producto específico
+   * @param {string} productId - ID del producto
+   * @returns {number} Cantidad de ventas
+   */
+  static async countSalesByProductId(productId) {
+    const query = 'SELECT COUNT(*)::integer as count FROM order_items WHERE product_id = $1';
+    const { rows } = await pool.query(query, [productId]);
+    return rows[0].count;
   }
 }
 

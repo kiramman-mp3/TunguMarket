@@ -60,3 +60,11 @@ export const updateUserStatus = async (id, isBanned) => {
   });
   return handleResponse(response);
 };
+export const updateSellerProfile = async (data) => {
+  const response = await fetch(`${API_URL}/profile`, {
+    method: 'PUT',
+    headers: getHeaders(),
+    body: JSON.stringify(data),
+  });
+  return handleResponse(response);
+};

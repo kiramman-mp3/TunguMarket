@@ -49,6 +49,33 @@ const testUsers = [
     role_id: 2,
     is_verified: true,
     is_banned: true
+  },
+  {
+    name: 'Vendedor Quero',
+    email: 'vendedor@quero.com',
+    password: 'password123',
+    birthDate: '1988-03-12',
+    role_id: 2,
+    is_verified: true,
+    is_banned: false
+  },
+  {
+    name: 'Comprador Ambato',
+    email: 'comprador@ambato.com',
+    password: 'password123',
+    birthDate: '1992-07-25',
+    role_id: 2,
+    is_verified: true,
+    is_banned: false
+  },
+  {
+    name: 'Prueba Tungurahua',
+    email: 'test@tungurahua.com',
+    password: 'password123',
+    birthDate: '2000-01-01',
+    role_id: 2,
+    is_verified: true,
+    is_banned: false
   }
 ];
 

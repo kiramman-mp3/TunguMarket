@@ -114,6 +114,70 @@ class UserModel {
     const { rows } = await pool.query(query, values);
     return rows[0];
   }
+
+  static async updateSellerProfile(id, { seller_name, seller_bio }) {
+    const query = `
+      UPDATE users 
+      SET seller_name = $1, seller_bio = $2, updated_at = CURRENT_TIMESTAMP 
+      WHERE id = $3 
+      RETURNING id, name, email, seller_name, seller_bio, avatar_url
+    `;
+    const { rows } = await pool.query(query, [seller_name, seller_bio, id]);
+    return rows[0];
+  }
+
+  static async updateProfile(id, { name, avatar_url }) {
+    const fields = [];
+    const values = [];
+    let paramCount = 1;
+
+    if (name) {
+      fields.push(`name = $${paramCount}`);
+      values.push(name);
+      paramCount++;
+    }
+
+    if (avatar_url) {
+      fields.push(`avatar_url = $${paramCount}`);
+      values.push(avatar_url);
+      paramCount++;
+    }
+
+    if (fields.length === 0) return null;
+
+    values.push(id);
+    const query = `
+      UPDATE users 
+      SET ${fields.join(', ')}, updated_at = CURRENT_TIMESTAMP 
+      WHERE id = $${paramCount} 
+      RETURNING id, name, email, avatar_url, seller_name, seller_bio
+    `;
+    const { rows } = await pool.query(query, values);
+    return rows[0];
+  }
+
+  static async findSellerById(id) {
+    const query = 'SELECT id, name, seller_name, seller_bio, avatar_url, created_at, role_id FROM users WHERE id = $1';
+    const { rows } = await pool.query(query, [id]);
+    return rows[0];
+  }
+
+  static async listAllUsers() {
+    const query = `
+      SELECT u.id, u.name, u.email, u.is_verified, u.is_banned, u.role_id, r.name as role_name, u.created_at 
+      FROM users u 
+      JOIN roles r ON u.role_id = r.id 
+      ORDER BY u.created_at DESC
+    `;
+    const { rows } = await pool.query(query);
+    return rows;
+  }
+
+  static async getLoginLogs(userId, limit = 50) {
+    const query = 'SELECT * FROM login_logs WHERE user_id = $1 ORDER BY created_at DESC LIMIT $2';
+    const { rows } = await pool.query(query, [userId, limit]);
+    return rows;
+  }
 }
 
 export default UserModel;

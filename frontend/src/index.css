@@ -53,3 +53,324 @@
   50% { transform: translateY(-15px); }
   100% { transform: translateY(0px); }
 }
+
+/* ============================================================
+   ACCESSIBILITY WIDGET STYLES
+   ============================================================ */
+
+/* Widget Base Styles (always visible regardless of mode) */
+.accessibility-fab {
+  border: 3px solid rgba(255,255,255,0.3);
+}
+
+.accessibility-panel {
+  background: white;
+  border: 1px solid #e2e8f0;
+}
+
+.accessibility-panel-header {
+  background: #1e3a8a;
+  color: white;
+}
+
+.accessibility-option {
+  color: #334155;
+}
+
+.accessibility-option:hover {
+  background: #f1f5f9;
+}
+
+.accessibility-option.active {
+  background: #eff6ff;
+  color: #1e3a8a;
+}
+
+.accessibility-toggle {
+  background: #cbd5e1;
+}
+
+.accessibility-toggle.active {
+  background: #3b82f6;
+}
+
+.accessibility-reset {
+  color: #ef4444;
+  background: #fef2f2;
+}
+
+.accessibility-reset:hover {
+  background: #fee2e2;
+}
+
+/* ============================================================
+   DARK MODE
+   ============================================================ */
+html.dark-mode {
+  color-scheme: dark;
+}
+
+html.dark-mode body {
+  background-color: #0f172a !important;
+  color: #e2e8f0 !important;
+}
+
+/* Header & Navigation */
+html.dark-mode header {
+  background: rgba(15, 23, 42, 0.95) !important;
+  border-color: #1e293b !important;
+}
+
+html.dark-mode header a,
+html.dark-mode header button,
+html.dark-mode header span {
+  color: #e2e8f0 !important;
+}
+
+html.dark-mode header .text-brand-secondary {
+  color: #93c5fd !important;
+}
+
+/* Cards */
+html.dark-mode .glass-card,
+html.dark-mode .bg-white,
+html.dark-mode [class*="bg-white"] {
+  background-color: #1e293b !important;
+  border-color: #334155 !important;
+  color: #e2e8f0 !important;
+}
+
+html.dark-mode .bg-white\/80,
+html.dark-mode .bg-white\/90 {
+  background-color: rgba(30, 41, 59, 0.9) !important;
+}
+
+/* Text Colors Override */
+html.dark-mode .text-brand-secondary,
+html.dark-mode .text-gray-700,
+html.dark-mode .text-gray-800,
+html.dark-mode .text-gray-900 {
+  color: #e2e8f0 !important;
+}
+
+html.dark-mode .text-gray-500,
+html.dark-mode .text-gray-600 {
+  color: #94a3b8 !important;
+}
+
+html.dark-mode .text-gray-400 {
+  color: #64748b !important;
+}
+
+/* Backgrounds */
+html.dark-mode .bg-brand-light,
+html.dark-mode .bg-gray-50,
+html.dark-mode .bg-gray-100 {
+  background-color: #1e293b !important;
+}
+
+html.dark-mode .bg-gray-50\/50 {
+  background-color: rgba(30, 41, 59, 0.5) !important;
+}
+
+/* Inputs */
+html.dark-mode input,
+html.dark-mode textarea,
+html.dark-mode select {
+  background-color: #0f172a !important;
+  border-color: #334155 !important;
+  color: #e2e8f0 !important;
+}
+
+html.dark-mode input::placeholder,
+html.dark-mode textarea::placeholder {
+  color: #475569 !important;
+}
+
+/* Borders */
+html.dark-mode .border-gray-100,
+html.dark-mode .border-gray-200,
+html.dark-mode .border-white\/40 {
+  border-color: #334155 !important;
+}
+
+/* Shadows for dark mode */
+html.dark-mode .shadow-premium,
+html.dark-mode .shadow-2xl,
+html.dark-mode .shadow-lg,
+html.dark-mode .shadow-md {
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.4) !important;
+}
+
+/* Sidebar (Shop) */
+html.dark-mode aside[class*="bg-"] {
+  background-color: #0c1631 !important;
+}
+
+/* Dropdown menu */
+html.dark-mode .accessibility-panel {
+  background: #1e293b !important;
+  border-color: #334155 !important;
+}
+
+html.dark-mode .accessibility-option {
+  color: #e2e8f0 !important;
+}
+
+html.dark-mode .accessibility-option:hover {
+  background: #334155 !important;
+}
+
+html.dark-mode .accessibility-option.active {
+  background: rgba(59, 130, 246, 0.15) !important;
+  color: #93c5fd !important;
+}
+
+html.dark-mode .accessibility-toggle {
+  background: #475569 !important;
+}
+
+html.dark-mode .accessibility-reset {
+  background: rgba(239, 68, 68, 0.1) !important;
+  color: #f87171 !important;
+}
+
+/* Profile dropdown darkmode */
+html.dark-mode [class*="bg-gray-100/50"],
+html.dark-mode [class*="bg-gray-50"] {
+  background-color: #1e293b !important;
+}
+
+/* ============================================================
+   HIGH CONTRAST MODE
+   ============================================================ */
+html.high-contrast body {
+  background-color: #000000 !important;
+  color: #ffffff !important;
+}
+
+html.high-contrast header {
+  background: #000000 !important;
+  border-bottom: 3px solid #fbbf24 !important;
+}
+
+html.high-contrast .glass-card,
+html.high-contrast .bg-white,
+html.high-contrast [class*="bg-white"] {
+  background-color: #000000 !important;
+  border: 2px solid #ffffff !important;
+  color: #ffffff !important;
+}
+
+html.high-contrast .text-brand-secondary,
+html.high-contrast .text-gray-700,
+html.high-contrast .text-gray-800,
+html.high-contrast .text-gray-900,
+html.high-contrast .text-gray-600,
+html.high-contrast .text-gray-500,
+html.high-contrast .text-gray-400 {
+  color: #ffffff !important;
+}
+
+html.high-contrast .text-brand-primary {
+  color: #fbbf24 !important;
+}
+
+html.high-contrast a {
+  text-decoration: underline !important;
+}
+
+html.high-contrast .btn-primary {
+  background: #fbbf24 !important;
+  color: #000000 !important;
+  border: 2px solid #ffffff !important;
+  font-weight: 900 !important;
+}
+
+html.high-contrast .btn-outline {
+  border: 2px solid #ffffff !important;
+  color: #ffffff !important;
+  background: transparent !important;
+}
+
+html.high-contrast input,
+html.high-contrast textarea,
+html.high-contrast select {
+  background-color: #000000 !important;
+  border: 2px solid #ffffff !important;
+  color: #ffffff !important;
+}
+
+html.high-contrast .bg-brand-light,
+html.high-contrast .bg-gray-50,
+html.high-contrast .bg-gray-100 {
+  background-color: #111111 !important;
+}
+
+html.high-contrast .border-gray-100,
+html.high-contrast .border-gray-200 {
+  border-color: #ffffff !important;
+}
+
+/* High contrast sidebar */
+html.high-contrast aside[class*="bg-"] {
+  background-color: #000000 !important;
+  border-right: 3px solid #fbbf24 !important;
+}
+
+/* High contrast widget panel */
+html.high-contrast .accessibility-panel {
+  background: #000000 !important;
+  border: 2px solid #ffffff !important;
+}
+
+html.high-contrast .accessibility-panel-header {
+  background: #1e3a8a !important;
+  border-bottom: 2px solid #fbbf24 !important;
+}
+
+html.high-contrast .accessibility-option {
+  color: #ffffff !important;
+  border: 1px solid #333 !important;
+}
+
+html.high-contrast .accessibility-option:hover {
+  background: #222 !important;
+}
+
+html.high-contrast .accessibility-option.active {
+  background: rgba(251, 191, 36, 0.15) !important;
+  border-color: #fbbf24 !important;
+  color: #fbbf24 !important;
+}
+
+html.high-contrast img {
+  border: 1px solid #444 !important;
+}
+
+/* ============================================================
+   BOLD TEXT MODE
+   ============================================================ */
+html.bold-text * {
+  font-weight: bold !important;
+}
+
+html.bold-text h1, html.bold-text h2, html.bold-text h3,
+html.bold-text h4, html.bold-text h5, html.bold-text h6,
+html.bold-text .font-black {
+  font-weight: 900 !important;
+}
+
+html.bold-text p, html.bold-text span, html.bold-text a, html.bold-text li,
+html.bold-text label, html.bold-text input, html.bold-text textarea,
+html.bold-text button, html.bold-text td, html.bold-text th {
+  font-weight: 700 !important;
+}
+
+html.bold-text .text-xs,
+html.bold-text .text-\[10px\],
+html.bold-text .text-\[11px\],
+html.bold-text .text-\[9px\] {
+  font-size: 0.8rem !important;
+}
+

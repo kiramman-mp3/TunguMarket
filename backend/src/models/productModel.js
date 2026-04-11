@@ -7,11 +7,11 @@ class ProductModel {
    * @returns {object} Producto creado
    */
   static async create(productData) {
-    const { seller_id, category_id, title, description, price, stock = 1 } = productData;
+    const { seller_id, category_id, title, description, price, stock = 1, status = 'pendiente', is_flagged = false, blocked_reason = null } = productData;
 
     const query = `
-      INSERT INTO products (seller_id, category_id, title, description, price, stock, status)
-      VALUES ($1, $2, $3, $4, $5, $6, 'activo')
+      INSERT INTO products (seller_id, category_id, title, description, price, stock, status, is_flagged, blocked_reason)
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
       RETURNING *
     `;
 
@@ -21,7 +21,10 @@ class ProductModel {
       title,
       description,
       price,
-      stock
+      stock,
+      status,
+      is_flagged,
+      blocked_reason
     ]);
 
     return rows[0];
@@ -34,16 +37,22 @@ class ProductModel {
    * @returns {object} {products, total}
    */
   static async findAll(limit = 20, offset = 0) {
-    const countQuery = `SELECT COUNT(*)::integer as count FROM products WHERE status = 'activo'`;
+    const countQuery = `
+      SELECT COUNT(*)::integer as count FROM products p
+      JOIN users u ON p.seller_id = u.id
+      WHERE p.status = 'activo' AND u.blocked_for_debt = false
+    `;
     const dataQuery = `
       SELECT
         p.*,
         c.name as category_name,
-        u.name as seller_name
+        COALESCE(u.seller_name, u.name) as seller_name,
+        u.avatar_url as seller_avatar,
+        (SELECT image_url FROM product_images WHERE product_id = p.id AND is_primary = true LIMIT 1) as primary_image
       FROM products p
       LEFT JOIN categories c ON p.category_id = c.id
-      LEFT JOIN users u ON p.seller_id = u.id
-      WHERE p.status = 'activo'
+      JOIN users u ON p.seller_id = u.id
+      WHERE p.status = 'activo' AND u.blocked_for_debt = false
       ORDER BY p.created_at DESC
       LIMIT $1 OFFSET $2
     `;
@@ -68,18 +77,21 @@ class ProductModel {
    */
   static async findByCategory(categoryId, limit = 20, offset = 0) {
     const countQuery = `
-      SELECT COUNT(*)::integer as count FROM products
-      WHERE category_id = $1 AND status = 'activo'
+      SELECT COUNT(*)::integer as count FROM products p
+      JOIN users u ON p.seller_id = u.id
+      WHERE p.category_id = $1 AND p.status = 'activo' AND u.blocked_for_debt = false
     `;
     const dataQuery = `
       SELECT
         p.*,
         c.name as category_name,
-        u.name as seller_name
+        COALESCE(u.seller_name, u.name) as seller_name,
+        u.avatar_url as seller_avatar,
+        (SELECT image_url FROM product_images WHERE product_id = p.id AND is_primary = true LIMIT 1) as primary_image
       FROM products p
       LEFT JOIN categories c ON p.category_id = c.id
-      LEFT JOIN users u ON p.seller_id = u.id
-      WHERE p.category_id = $1 AND p.status = 'activo'
+      JOIN users u ON p.seller_id = u.id
+      WHERE p.category_id = $1 AND p.status = 'activo' AND u.blocked_for_debt = false
       ORDER BY p.created_at DESC
       LIMIT $2 OFFSET $3
     `;
@@ -110,10 +122,17 @@ class ProductModel {
     const dataQuery = `
       SELECT
         p.*,
-        c.name as category_name
+        c.name as category_name,
+        COALESCE(u.seller_name, u.name) as seller_name,
+        u.avatar_url as seller_avatar,
+        COUNT(oi.id)::integer as sales_count,
+        (SELECT image_url FROM product_images WHERE product_id = p.id AND is_primary = true LIMIT 1) as primary_image
       FROM products p
       LEFT JOIN categories c ON p.category_id = c.id
+      JOIN users u ON p.seller_id = u.id
+      LEFT JOIN order_items oi ON p.id = oi.product_id
       WHERE p.seller_id = $1
+      GROUP BY p.id, c.name, u.seller_name, u.name, u.avatar_url
       ORDER BY p.created_at DESC
       LIMIT $2 OFFSET $3
     `;
@@ -139,15 +158,22 @@ class ProductModel {
       SELECT
         p.*,
         c.name as category_name,
-        u.name as seller_name,
-        u.email as seller_email
+        COALESCE(u.seller_name, u.name) as seller_name,
+        u.email as seller_email,
+        u.avatar_url as seller_avatar
       FROM products p
       LEFT JOIN categories c ON p.category_id = c.id
-      LEFT JOIN users u ON p.seller_id = u.id
-      WHERE p.id = $1
+      JOIN users u ON p.seller_id = u.id
+      WHERE p.id = $1 AND u.blocked_for_debt = false
     `;
 
     const { rows } = await pool.query(query, [id]);
+    
+    // Increment views asynchronously
+    if (rows[0]) {
+      pool.query('UPDATE products SET views = views + 1 WHERE id = $1', [id]).catch(console.error);
+    }
+
     return rows[0] || null;
   }
 
@@ -158,7 +184,7 @@ class ProductModel {
    * @returns {object} Producto actualizado
    */
   static async update(id, updates = {}) {
-    const allowedFields = ['title', 'description', 'price', 'stock', 'status', 'is_flagged', 'blocked_reason'];
+    const allowedFields = ['title', 'description', 'price', 'stock', 'status', 'is_flagged', 'blocked_reason', 'category_id'];
     const fields = [];
     const values = [];
     let paramCount = 1;
@@ -218,38 +244,84 @@ class ProductModel {
   }
 
   /**
-   * Busca productos por título o descripción
+   * Busca productos por término y filtros avanzados
    * @param {string} searchTerm - Término de búsqueda
    * @param {number} limit - Límite
    * @param {number} offset - Desplazamiento
+   * @param {object} filters - Filtros extras
    * @returns {object} {products, total}
    */
-  static async search(searchTerm, limit = 20, offset = 0) {
+  static async search(searchTerm, limit = 20, offset = 0, filters = {}, isAdmin = false) {
+    const { category_id, minPrice, maxPrice, minRating } = filters;
     const searchPattern = `%${searchTerm}%`;
 
-    const countQuery = `
-      SELECT COUNT(*)::integer as count FROM products
-      WHERE status = 'activo'
-        AND (title ILIKE $1 OR description ILIKE $1)
-    `;
+    // Admin ve todos los productos, usuarios normales solo los activos
+    const statusFilter = isAdmin ? '' : "p.status = 'activo' AND";
 
-    const dataQuery = `
+    let countQuery = `
+      SELECT COUNT(*)::integer as count FROM products p
+      JOIN users u ON p.seller_id = u.id
+      WHERE ${statusFilter} u.blocked_for_debt = false
+    `;
+    let dataQuery = `
       SELECT
         p.*,
         c.name as category_name,
-        u.name as seller_name
+        COALESCE(u.seller_name, u.name) as seller_name,
+        u.avatar_url as seller_avatar,
+        (SELECT image_url FROM product_images WHERE product_id = p.id AND is_primary = true LIMIT 1) as primary_image
       FROM products p
       LEFT JOIN categories c ON p.category_id = c.id
-      LEFT JOIN users u ON p.seller_id = u.id
-      WHERE p.status = 'activo'
-        AND (p.title ILIKE $1 OR p.description ILIKE $1)
-      ORDER BY p.created_at DESC
-      LIMIT $2 OFFSET $3
+      JOIN users u ON p.seller_id = u.id
+      WHERE ${statusFilter} u.blocked_for_debt = false
     `;
 
+    const queryParams = [];
+    let paramCount = 1;
+
+    if (searchTerm && searchTerm.trim() !== '') {
+      countQuery += ` AND (p.title ILIKE $${paramCount} OR p.description ILIKE $${paramCount})`;
+      dataQuery += ` AND (p.title ILIKE $${paramCount} OR p.description ILIKE $${paramCount})`;
+      queryParams.push(searchPattern);
+      paramCount++;
+    }
+
+    if (category_id) {
+      countQuery += ` AND p.category_id = $${paramCount}`;
+      dataQuery += ` AND p.category_id = $${paramCount}`;
+      queryParams.push(category_id);
+      paramCount++;
+    }
+
+    if (minPrice !== undefined && maxPrice !== undefined) {
+      countQuery += ` AND p.price BETWEEN $${paramCount} AND $${paramCount + 1}`;
+      dataQuery += ` AND p.price BETWEEN $${paramCount} AND $${paramCount + 1}`;
+      queryParams.push(minPrice, maxPrice);
+      paramCount += 2;
+    } else if (minPrice !== undefined) {
+      countQuery += ` AND p.price >= $${paramCount}`;
+      dataQuery += ` AND p.price >= $${paramCount}`;
+      queryParams.push(minPrice);
+      paramCount++;
+    } else if (maxPrice !== undefined) {
+      countQuery += ` AND p.price <= $${paramCount}`;
+      dataQuery += ` AND p.price <= $${paramCount}`;
+      queryParams.push(maxPrice);
+      paramCount++;
+    }
+
+    if (minRating !== undefined) {
+      countQuery += ` AND p.average_rating >= $${paramCount}`;
+      dataQuery += ` AND p.average_rating >= $${paramCount}`;
+      queryParams.push(minRating);
+      paramCount++;
+    }
+
+    dataQuery += ` ORDER BY p.created_at DESC LIMIT $${paramCount} OFFSET $${paramCount + 1}`;
+
     const [countResult, dataResult] = await Promise.all([
-      pool.query(countQuery, [searchPattern]),
-      pool.query(dataQuery, [searchPattern, limit, offset])
+      pool.query(countQuery, queryParams),
+      pool.query(dataQuery, [...queryParams, limit, offset])
     ]);
 
     return {
@@ -268,7 +340,9 @@ class ProductModel {
       SELECT
         p.*,
         c.name as category_name,
-        u.name as seller_name
+        COALESCE(u.seller_name, u.name) as seller_name,
+        u.avatar_url as seller_avatar,
+        (SELECT image_url FROM product_images WHERE product_id = p.id AND is_primary = true LIMIT 1) as primary_image
       FROM products p
       LEFT JOIN categories c ON p.category_id = c.id
       LEFT JOIN users u ON p.seller_id = u.id
@@ -279,6 +353,70 @@ class ProductModel {
 
     const { rows } = await pool.query(query, [limit]);
     return rows;
+  }
+
+  /**
+   * Obtiene estadísticas agregadas para un vendedor
+   */
+  static async getSellerStats(sellerId) {
+    const query = `
+      SELECT 
+        COUNT(*) as total_products,
+        COALESCE(SUM(views), 0) as total_views,
+        COALESCE(AVG(average_rating), 0) as avg_rating,
+        (
+          SELECT COALESCE(SUM(oi.quantity), 0)
+          FROM order_items oi
+          JOIN products p2 ON oi.product_id = p2.id
+          WHERE p2.seller_id = $1
+        ) as total_sales
+      FROM products
+      WHERE seller_id = $1 AND status = 'activo'
+    `;
+    const { rows } = await pool.query(query, [sellerId]);
+    return {
+      activeProducts: parseInt(rows[0].total_products || 0, 10),
+      totalSales: parseInt(rows[0].total_sales || 0, 10),
+      totalViews: parseInt(rows[0].total_views || 0, 10),
+      avgRating: parseFloat(rows[0].avg_rating || 0).toFixed(1)
+    };
+  }
+
+  /**
+   * Obtiene todos los productos para administración con filtros
+   */
+  static async adminFindAll(limit = 20, offset = 0, status = null) {
+    let countQuery = `SELECT COUNT(*)::integer as count FROM products`;
+    let dataQuery = `
+      SELECT
+        p.*,
+        c.name as category_name,
+        COALESCE(u.seller_name, u.name) as seller_name,
+        u.avatar_url as seller_avatar,
+        (SELECT image_url FROM product_images WHERE product_id = p.id AND is_primary = true LIMIT 1) as primary_image
+      FROM products p
+      LEFT JOIN categories c ON p.category_id = c.id
+      JOIN users u ON p.seller_id = u.id
+    `;
+    
+    const queryParams = [];
+    if (status) {
+      countQuery += ` WHERE status = $1`;
+      dataQuery += ` WHERE p.status = $1`;
+      queryParams.push(status);
+    }
+    
+    dataQuery += ` ORDER BY p.created_at DESC LIMIT $${queryParams.length + 1} OFFSET $${queryParams.length + 2}`;
+    
+    const [countResult, dataResult] = await Promise.all([
+      pool.query(countQuery, queryParams),
+      pool.query(dataQuery, [...queryParams, limit, offset])
+    ]);
+
+    return {
+      products: dataResult.rows,
+      total: countResult.rows[0].count
+    };
   }
 }
 

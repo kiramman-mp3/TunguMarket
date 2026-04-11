@@ -1,6 +1,11 @@
 import OrderModel from '../models/orderModel.js';
 import CartModel from '../models/cartModel.js';
+import NotificationModel from '../models/notificationModel.js';
+import SSEService from '../services/sseService.js';
+import EmailService from '../services/emailService.js';
 import paymentValidator from '../services/paymentValidator.js';
+import AddressModel from '../models/addressModel.js';
+import WalletModel from '../models/walletModel.js';
 import pool from '../config/db.js';
 
 class OrderController {
@@ -54,14 +59,16 @@ class OrderController {
         return res.status(400).json({ error: 'ID de orden requerido' });
       }
 
-      const order = await OrderModel.findById(id);
+      const order = await OrderModel.getOrderWithDetails(id);
 
       if (!order) {
         return res.status(404).json({ error: 'Orden no encontrada' });
       }
 
-      // Verificar que la orden pertenece al usuario
-      if (order.user_id !== userId && req.user.role !== 'admin') {
+      // Verificar que la orden pertenece al usuario O el usuario es vendedor de algún item
+      const isSeller = order.items.some(item => item.seller_id === userId);
+      
+      if (order.user_id !== userId && req.user.role !== 'admin' && !isSeller) {
         return res.status(403).json({ error: 'No tienes permiso para ver esta orden' });
       }
 
@@ -80,46 +87,170 @@ class OrderController {
    * Crea una nueva orden desde el carrito del usuario
    */
   static async checkout(req, res) {
+    const client = await pool.connect();
     try {
+      await client.query('BEGIN');
       const userId = req.user.id;
-      const { payment_method } = req.body;
+      const { payment_method, address_id } = req.body;
 
-      // Validar método de pago
       if (!payment_method) {
         return res.status(400).json({ error: 'Método de pago requerido' });
       }
 
-      // Obtener carrito del usuario
-      const cart = await CartModel.getCart(userId);
-
-      if (!cart) {
-        return res.status(404).json({ error: 'Carrito no encontrado' });
+      if (!address_id) {
+        return res.status(400).json({ error: 'Dirección de envío requerida' });
       }
 
-      // Verificar que el carrito tenga items
-      if (cart.total_price <= 0) {
+      // Validar que el usuario no esté bloqueado por deuda
+      const userCheck = await client.query('SELECT blocked_for_debt FROM users WHERE id = $1', [userId]);
+      if (userCheck.rows[0]?.blocked_for_debt) {
+        await client.query('ROLLBACK');
+        return res.status(403).json({ error: 'Tu cuenta está suspendida por saldo negativo. Debes pagar tu saldo pendiente para comprar.' });
+      }
+
+      // 0. Obtener info de la dirección
+      const address = await AddressModel.findById(address_id);
+      if (!address || address.user_id !== userId) {
+        return res.status(404).json({ error: 'Dirección de envío no válida' });
+      }
+
+      const shippingInfo = {
+        city: address.city,
+        main_street: address.main_street,
+        secondary_street: address.secondary_street,
+        neighborhood: address.neighborhood,
+        house_number: address.house_number,
+        postal_code: address.postal_code
+      };
+
+      // 1. Obtener carrito e items
+      const cartResult = await client.query('SELECT * FROM carts WHERE user_id = $1', [userId]);
+      const cart = cartResult.rows[0];
+
+      const itemsResult = await client.query('SELECT * FROM cart_items WHERE cart_id = $1', [cart.id]);
+      const cartItems = itemsResult.rows;
+
+      if (cartItems.length === 0) {
+        await client.query('ROLLBACK');
         return res.status(400).json({ error: 'El carrito está vacío' });
       }
 
-      // Crear la orden
-      const order = await OrderModel.createOrder(userId, cart.total_price, 'pendiente');
+      // Validar que ninguno de los vendedores de los productos esté bloqueado por deuda
+      const productIds = cartItems.map(item => item.product_id);
+      const sellersCheck = await client.query(`
+        SELECT u.id, u.name, u.blocked_for_debt 
+        FROM products p 
+        JOIN users u ON p.seller_id = u.id 
+        WHERE p.id = ANY($1) AND u.blocked_for_debt = true
+      `, [productIds]);
 
-      // Guardar detalles del carrito en relación a la orden (opcional, para auditoría)
-      // Por ahora solo movemos el carrito al estado de "checkout"
+      if (sellersCheck.rows.length > 0) {
+        const blockedNames = sellersCheck.rows.map(s => s.name).join(', ');
+        await client.query('ROLLBACK');
+        return res.status(403).json({ 
+          error: `No se puede procesar la compra. Los siguientes vendedores están temporalmente suspendidos: ${blockedNames}` 
+        });
+      }
+
+      // 2. Definir estado inicial según método de pago
+      let orderStatus = 'pendiente';
+      if (payment_method === 'tarjeta') orderStatus = 'Aceptado';
+      else if (payment_method === 'efectivo') orderStatus = 'Aceptado';
+      else if (payment_method === 'transferencia') orderStatus = 'Pendiente de verificación';
+
+      // 3. Crear la Orden con información de envío
+      const orderQuery = `
+        INSERT INTO orders (user_id, total_price, status, shipping_info)
+        VALUES ($1, $2, $3, $4)
+        RETURNING *
+      `;
+      const { rows: orderRows } = await client.query(orderQuery, [userId, cart.total_price, orderStatus, JSON.stringify(shippingInfo)]);
+      const order = orderRows[0];
+
+      // 4. Mover items a order_items y reducir stock
+      for (const item of cartItems) {
+        // Migrar item
+        await client.query(
+          `INSERT INTO order_items (order_id, product_id, quantity, price_at_purchase) 
+           VALUES ($1, $2, $3, $4)`,
+          [order.id, item.product_id, item.quantity, item.price_at_purchase]
+        );
+
+        // Reducir stock
+        await client.query(
+          'UPDATE products SET stock = stock - $1 WHERE id = $2',
+          [item.quantity, item.product_id]
+        );
+      }
+
+      // 5. Preparar notificaciones a los vendedores ANTES de limpiar carrito
+      const sellersResult = await client.query(`
+        SELECT DISTINCT p.seller_id, u.email, u.name as seller_name, p.title
+        FROM cart_items ci
+        JOIN products p ON ci.product_id = p.id
+        JOIN users u ON p.seller_id = u.id
+        WHERE ci.cart_id = $1
+      `, [cart.id]);
+
+      // 6. Registrar el Pago
+      let paymentStatus = 'pendiente';
+      if (payment_method === 'tarjeta') paymentStatus = 'completado';
+      
+      let receiptUrl = null;
+      if (payment_method === 'transferencia' && req.file) {
+        const baseUrl = process.env.BACKEND_URL || `${req.protocol}://${req.get('host')}`;
+        receiptUrl = `${baseUrl}/uploads/payments/${req.file.filename}`;
+      }
+
+      await client.query(
+        `INSERT INTO payments (order_id, user_id, amount, payment_method, status, receipt_url)
+         VALUES ($1, $2, $3, $4, $5, $6)`,
+        [order.id, userId, cart.total_price, payment_method, paymentStatus, receiptUrl]
+      );
+
+      await client.query('DELETE FROM cart_items WHERE cart_id = $1', [cart.id]);
+      await client.query('UPDATE carts SET total_price = 0 WHERE id = $1', [cart.id]);
+
+      await client.query('COMMIT');
+
+      // 8. Enviar notificaciones (fuera de la transacción de escritura)
+      try {
+        for (const seller of sellersResult.rows) {
+          const title = 'Nueva venta recibida';
+          const message = `Has recibido una nueva orden para tu producto: ${seller.title}`;
+          
+          await NotificationModel.create({
+            userId: seller.seller_id,
+            title,
+            message,
+            type: 'sale'
+          });
+
+          SSEService.sendToUser(seller.seller_id, {
+            type: 'NOTIFICATION',
+            title,
+            message
+          });
+
+          EmailService.sendNewSaleEmail(seller.email, seller.seller_name, seller.title, req.user.name).catch(console.error);
+        }
+      } catch (notifyError) {
+        console.error('Error al notificar vendedores:', notifyError);
+      }
 
       res.status(201).json({
-        message: 'Orden creada exitosamente. Pendiente de confirmación de pago.',
-        order,
-        payment_info: {
-          order_id: order.id,
-          amount: order.total_price,
-          method: payment_method,
-          status: 'pendiente'
-        }
+        message: 'Orden procesada exitosamente',
+        order_id: order.id,
+        status: order.status,
+        total: order.total_price
       });
 
     } catch (error) {
+      await client.query('ROLLBACK');
+      console.error('Checkout error:', error);
       res.status(500).json({ error: error.message });
+    } finally {
+      client.release();
     }
   }
 
@@ -149,12 +280,6 @@ class OrderController {
 
       // Confirmar la orden
       const confirmedOrder = await OrderModel.confirmOrder(id);
-
-      // Limpiar carrito después de confirmar
-      const cart = await CartModel.getCart(userId);
-      if (cart) {
-        await CartModel.clearCart(cart.id);
-      }
 
       res.status(200).json({
         message: 'Orden confirmada exitosamente',
@@ -479,6 +604,19 @@ class OrderController {
       // Confirmar la orden
       const updatedOrder = await OrderModel.confirmOrder(payment.order_id);
 
+      // Notificar al comprador
+      try {
+        const buyerResult = await pool.query('SELECT name, email FROM users WHERE id = $1', [order.user_id]);
+        const buyer = buyerResult.rows[0];
+        
+        const title = 'Pago Confirmado';
+        const message = `Tu pago para la orden #${order.id} ha sido confirmado.`;
+        
+        await NotificationModel.create({ userId: order.user_id, title, message, type: 'payment' });
+        SSEService.sendToUser(order.user_id, { type: 'NOTIFICATION', title, message });
+        EmailService.sendPaymentConfirmedEmail(buyer.email, buyer.name, order.id, order.total_price).catch(console.error);
+      } catch (e) { console.error('Error al notificar comprador:', e); }
+
       res.status(200).json({
         message: 'Pago aprobado y orden confirmada',
         data: {
@@ -584,6 +722,137 @@ class OrderController {
 
     } catch (error) {
       console.error('Error rejecting payment:', error);
+      res.status(500).json({ error: error.message });
+    }
+  }
+
+  /**
+   * GET /api/orders/seller/sales
+   * Obtiene las ventas realizadas por el vendedor
+   */
+  static async getSellerSales(req, res) {
+    try {
+      const sellerId = req.user.id;
+      const sales = await OrderModel.findSalesBySellerId(sellerId);
+      res.status(200).json({ data: sales });
+    } catch (error) {
+      res.status(500).json({ error: error.message });
+    }
+  }
+
+  /**
+   * PUT /api/orders/seller/status/:itemId
+   * Permitir al vendedor marcar un ítem como enviado
+   */
+  static async updateSellerItemStatus(req, res) {
+    try {
+      const sellerId = req.user.id;
+      const { itemId } = req.params;
+      const { status } = req.body; // 'Envío completado'
+
+      if (status !== 'Envío completado') {
+        return res.status(400).json({ error: 'Estado no permitido para vendedores' });
+      }
+
+      // Verificar que el item pertenece a un producto del vendedor
+      const itemResult = await pool.query(`
+        SELECT oi.*, p.seller_id, o.user_id as buyer_id, p.title as product_title, pay.payment_method
+        FROM order_items oi
+        JOIN products p ON oi.product_id = p.id
+        JOIN orders o ON oi.order_id = o.id
+        LEFT JOIN payments pay ON o.id = pay.order_id
+        WHERE oi.id = $1
+      `, [itemId]);
+
+      if (itemResult.rows.length === 0) {
+        return res.status(404).json({ error: 'Ítem no encontrado' });
+      }
+
+      const item = itemResult.rows[0];
+
+      if (item.seller_id !== sellerId) {
+        return res.status(403).json({ error: 'No tienes permiso sobre este ítem' });
+      }
+
+      if (item.status === 'Envío completado') {
+        return res.status(400).json({ error: 'Este ítem ya ha sido marcado como entregado.' });
+      }
+
+      // 1. Actualizar estado del ítem
+      await pool.query('UPDATE order_items SET status = $1 WHERE id = $2', [status, itemId]);
+
+      // 2. Transaccionar Billetera (Uber-style)
+      const grossEarnings = parseFloat(item.price_at_purchase) * item.quantity;
+      const commission = grossEarnings * 0.05;
+      const netEarnings = grossEarnings - commission;
+
+      if (item.payment_method === 'efectivo') {
+        // En efectivo, deduce la comisión del saldo
+        await pool.query('UPDATE users SET balance = balance - $1 WHERE id = $2', [commission, sellerId]);
+        
+        await WalletModel.createTransaction(
+          sellerId,
+          item.order_id,
+          'debt_commission',
+          commission * -1, // Monto deducido de la cuenta
+          commission,
+          `Comisión deducida por entrega en Efectivo (${item.product_title})`
+        );
+
+        // Notificación interna indicando que se ha descontado el saldo
+        await NotificationModel.create({
+          userId: sellerId,
+          title: 'Venta en Efectivo Completa',
+          message: `Has entregado "${item.product_title}". Revisa tu saldo, se ha descontado $${commission.toFixed(2)} por comisión de uso de TunguMarket.`,
+          type: 'info'
+        });
+
+      } else {
+        // En tarjeta/transferencia, abona el porcentaje al saldo
+        await pool.query('UPDATE users SET balance = balance + $1 WHERE id = $2', [netEarnings, sellerId]);
+        
+        await WalletModel.createTransaction(
+          sellerId,
+          item.order_id,
+          'earning',
+          netEarnings,
+          commission,
+          `Ganancia por entrega (${item.product_title})`
+        );
+      }
+
+      // 3. Notificar al comprador
+      const buyerResult = await pool.query('SELECT name, email FROM users WHERE id = $1', [item.buyer_id]);
+      const buyer = buyerResult.rows[0];
+
+      const title = '¡Tu pedido ha sido entregado!';
+      const message = `El vendedor ha marcado tu producto "${item.product_title}" como "Envío completado". ¡Ya puedes calificar tu compra!`;
+      
+      await NotificationModel.create({ userId: item.buyer_id, title, message, type: 'shipping' });
+      SSEService.sendToUser(item.buyer_id, { type: 'NOTIFICATION', title, message });
+      EmailService.sendOrderShippedEmail(buyer.email, buyer.name, item.order_id).catch(console.error);
+
+      // 4. Propagación de estado: ¿Están todos los ítems de la orden completados?
+      const allItemsResult = await pool.query(
+        'SELECT status FROM order_items WHERE order_id = $1',
+        [item.order_id]
+      );
+      
+      const allCompleted = allItemsResult.rows.every(row => row.status === 'Envío completado');
+      
+      if (allCompleted) {
+        await pool.query(
+          'UPDATE orders SET status = $1, updated_at = CURRENT_TIMESTAMP WHERE id = $2',
+          ['Envío completado', item.order_id]
+        );
+      }
+
+      res.status(200).json({ 
+        message: 'Item marcado como completado y comprador notificado',
+        orderCompleted: allCompleted
+      });
+
+    } catch (error) {
       res.status(500).json({ error: error.message });
     }
   }

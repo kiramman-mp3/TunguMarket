@@ -32,14 +32,25 @@ class CartModel {
         c.total_price,
         c.created_at,
         c.updated_at,
-        json_agg(json_build_object(
-          'id', ci.id,
-          'product_id', ci.product_id,
-          'quantity', ci.quantity,
-          'price_at_purchase', ci.price_at_purchase
-        )) as items
+        COALESCE(json_agg(
+          json_build_object(
+            'id', ci.id,
+            'product_id', ci.product_id,
+            'quantity', ci.quantity,
+            'price_at_purchase', ci.price_at_purchase,
+            'title', p.title,
+            'image_url', (
+              SELECT image_url FROM product_images 
+              WHERE product_id = p.id 
+              ORDER BY is_primary DESC, display_order ASC 
+              LIMIT 1
+            ),
+            'stock', p.stock
+          )
+        ) FILTER (WHERE ci.id IS NOT NULL), '[]') as items
       FROM carts c
       LEFT JOIN cart_items ci ON c.id = ci.cart_id
+      LEFT JOIN products p ON ci.product_id = p.id
       WHERE c.id = $1
       GROUP BY c.id, c.user_id, c.total_price, c.created_at, c.updated_at
     `;
@@ -58,11 +69,11 @@ class CartModel {
     if (existing.length > 0) {
       const updateQuery = `
         UPDATE cart_items 
-        SET quantity = quantity + $1
+        SET quantity = quantity + $1, price_at_purchase = $4
         WHERE cart_id = $2 AND product_id = $3
         RETURNING *
       `;
-      const result = await pool.query(updateQuery, [quantity, cartId, productId]);
+      const result = await pool.query(updateQuery, [quantity, cartId, productId, priceAtPurchase]);
       await this.updateCartTotal(cartId); 
       return result.rows[0];
     }

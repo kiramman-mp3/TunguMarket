@@ -9,27 +9,61 @@ import ForgotPassword from './pages/ForgotPassword';
 import ResetPassword from './pages/ResetPassword';
 import Profile from './pages/Profile';
 import AdminPanel from './pages/AdminPanel';
+import Shop from './pages/Shop';
+import ProductDetails from './pages/ProductDetails';
+import Sell from './pages/Sell';
+import EditProduct from './pages/EditProduct';
+import SellerProfile from './pages/SellerProfile';
+import MyProducts from './pages/MyProducts';
 
 import { AuthProvider } from './context/AuthContext';
+import { CartProvider, useCart } from './context/CartContext';
+import { ThemeProvider } from './context/ThemeContext';
+import Cart from './pages/Cart';
+import Checkout from './pages/Checkout';
+import LoginPromptModal from './components/LoginPromptModal';
+import AccessibilityWidget from './components/AccessibilityWidget';
+
+function AppContent() {
+  const { isLoginPromptOpen, closeLoginPrompt } = useCart();
+  
+  return (
+    <Router>
+      <Layout>
+        <Routes>
+          <Route path="/" element={<Home />} />
+          <Route path="/login" element={<Login />} />
+          <Route path="/register" element={<Register />} />
+          <Route path="/pending-verification" element={<PendingVerification />} />
+          <Route path="/forgot-password" element={<ForgotPassword />} />
+          <Route path="/reset-password" element={<ResetPassword />} />
+          <Route path="/profile" element={<Profile />} />
+          <Route path="/admin" element={<AdminPanel />} />
+          <Route path="/shop" element={<Shop />} />
+          <Route path="/product/:id" element={<ProductDetails />} />
+          <Route path="/sell" element={<Sell />} />
+          <Route path="/edit-product/:id" element={<EditProduct />} />
+          <Route path="/cart" element={<Cart />} />
+          <Route path="/checkout" element={<Checkout />} />
+          <Route path="/seller/:id" element={<SellerProfile />} />
+          <Route path="/my-products" element={<MyProducts />} />
+        </Routes>
+      </Layout>
+      <AccessibilityWidget />
+      <LoginPromptModal isOpen={isLoginPromptOpen} onClose={closeLoginPrompt} />
+    </Router>
+  );
+}
 
 function App() {
   return (
-    <AuthProvider>
-      <Router>
-        <Layout>
-          <Routes>
-            <Route path="/" element={<Home />} />
-            <Route path="/login" element={<Login />} />
-            <Route path="/register" element={<Register />} />
-            <Route path="/pending-verification" element={<PendingVerification />} />
-            <Route path="/forgot-password" element={<ForgotPassword />} />
-            <Route path="/reset-password" element={<ResetPassword />} />
-            <Route path="/profile" element={<Profile />} />
-            <Route path="/admin" element={<AdminPanel />} />
-          </Routes>
-        </Layout>
-      </Router>
-    </AuthProvider>
+    <ThemeProvider>
+      <AuthProvider>
+        <CartProvider>
+          <AppContent />
+        </CartProvider>
+      </AuthProvider>
+    </ThemeProvider>
   );
 }
 
