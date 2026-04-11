@@ -7,11 +7,11 @@ class ProductModel {
    * @returns {object} Producto creado
    */
   static async create(productData) {
-    const { seller_id, category_id, title, description, price, stock = 1 } = productData;
+    const { seller_id, category_id, title, description, price, stock = 1, status = 'pendiente', is_flagged = false, blocked_reason = null } = productData;
 
     const query = `
-      INSERT INTO products (seller_id, category_id, title, description, price, stock, status)
-      VALUES ($1, $2, $3, $4, $5, $6, 'activo')
+      INSERT INTO products (seller_id, category_id, title, description, price, stock, status, is_flagged, blocked_reason)
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
       RETURNING *
     `;
 
@@ -21,7 +21,10 @@ class ProductModel {
       title,
       description,
       price,
-      stock
+      stock,
+      status,
+      is_flagged,
+      blocked_reason
     ]);
 
     return rows[0];
@@ -373,6 +376,43 @@ class ProductModel {
       totalSales: parseInt(rows[0].total_sales || 0, 10),
       totalViews: parseInt(rows[0].total_views || 0, 10),
       avgRating: parseFloat(rows[0].avg_rating || 0).toFixed(1)
+    };
+  }
+
+  /**
+   * Obtiene todos los productos para administración con filtros
+   */
+  static async adminFindAll(limit = 20, offset = 0, status = null) {
+    let countQuery = `SELECT COUNT(*)::integer as count FROM products`;
+    let dataQuery = `
+      SELECT
+        p.*,
+        c.name as category_name,
+        COALESCE(u.seller_name, u.name) as seller_name,
+        u.avatar_url as seller_avatar,
+        (SELECT image_url FROM product_images WHERE product_id = p.id AND is_primary = true LIMIT 1) as primary_image
+      FROM products p
+      LEFT JOIN categories c ON p.category_id = c.id
+      JOIN users u ON p.seller_id = u.id
+    `;
+    
+    const queryParams = [];
+    if (status) {
+      countQuery += ` WHERE status = $1`;
+      dataQuery += ` WHERE p.status = $1`;
+      queryParams.push(status);
+    }
+    
+    dataQuery += ` ORDER BY p.created_at DESC LIMIT $${queryParams.length + 1} OFFSET $${queryParams.length + 2}`;
+    
+    const [countResult, dataResult] = await Promise.all([
+      pool.query(countQuery, queryParams),
+      pool.query(dataQuery, [...queryParams, limit, offset])
+    ]);
+
+    return {
+      products: dataResult.rows,
+      total: countResult.rows[0].count
     };
   }
 }

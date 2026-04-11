@@ -228,6 +228,9 @@ class ProductController {
         productData.status = 'bloqueado';
         productData.is_flagged = true;
         productData.blocked_reason = ForbiddenKeywordService.generateBlockReason(detection.flaggedKeywords);
+      } else {
+        // REQUERIMIENTO: Todos los productos nuevos deben ser aprobados antes de publicación
+        productData.status = 'pendiente';
       }
 
       const product = await ProductModel.create(productData);
@@ -675,6 +678,79 @@ class ProductController {
       res.status(200).json({
         message: 'Estadísticas obtenidas exitosamente',
         data: stats
+      });
+    } catch (error) {
+      res.status(500).json({ error: error.message });
+    }
+  }
+
+  /**
+   * ADMIN: GET /api/products/admin/list
+   * Obtiene todos los productos para gestión administrativa
+   */
+  static async adminGetAllProducts(req, res) {
+    try {
+      const { page = 1, limit = 50, status } = req.query;
+
+      const pageNum = Math.max(1, parseInt(page, 10));
+      const limitNum = Math.min(100, Math.max(1, parseInt(limit, 10)));
+      const offset = (pageNum - 1) * limitNum;
+
+      const { products, total } = await ProductModel.adminFindAll(limitNum, offset, status);
+
+      res.status(200).json({
+        message: 'Lista administrativa de productos obtenida',
+        data: {
+          products,
+          pagination: {
+            total,
+            page: pageNum,
+            limit: limitNum,
+            pages: Math.ceil(total / limitNum)
+          }
+        }
+      });
+    } catch (error) {
+      res.status(500).json({ error: error.message });
+    }
+  }
+
+  /**
+   * ADMIN: PATCH /api/products/admin/:id/status
+   * Punto de acceso para aprobación o bloqueo manual por Admin
+   */
+  static async adminUpdateStatus(req, res) {
+    try {
+      const { id } = req.params;
+      const { status, blocked_reason } = req.body;
+
+      if (!status) {
+        return res.status(400).json({ error: 'El nuevo estado es requerido' });
+      }
+
+      const validStatuses = ['activo', 'pendiente', 'bloqueado', 'oculto'];
+      if (!validStatuses.includes(status)) {
+        return res.status(400).json({ error: 'Estado no válido' });
+      }
+
+      const updates = { status };
+      if (status === 'bloqueado' && blocked_reason) {
+        updates.blocked_reason = blocked_reason;
+        updates.is_flagged = true;
+      } else if (status === 'activo') {
+        updates.is_flagged = false;
+        updates.blocked_reason = null;
+      }
+
+      const updated = await ProductModel.update(id, updates);
+
+      if (!updated) {
+        return res.status(404).json({ error: 'Producto no encontrado' });
+      }
+
+      res.status(200).json({
+        message: `Estado del producto actualizado a: ${status}`,
+        data: updated
       });
     } catch (error) {
       res.status(500).json({ error: error.message });

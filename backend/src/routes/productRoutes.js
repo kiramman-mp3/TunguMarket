@@ -1,6 +1,6 @@
 import express from 'express';
 import ProductController from '../controllers/productController.js';
-import { authMiddleware, optionalAuthMiddleware } from '../middlewares/authMiddleware.js';
+import { authMiddleware, optionalAuthMiddleware, isAdmin } from '../middlewares/authMiddleware.js';
 import upload from '../middlewares/uploadMiddleware.js';
 
 const router = express.Router();
@@ -23,6 +23,14 @@ router.get('/seller/:sellerId', ProductController.getSellerProducts);
 // GET estadísticas reales del vendedor logueado (auth)
 router.get('/stats/me', authMiddleware, ProductController.getSellerStats);
 
+// --- ADMIN ONLY ROUTES (ANTES de /:id para evitar conflictos) ---
+// GET lista administrativa (solo admin)
+router.get('/admin/list', authMiddleware, isAdmin, ProductController.adminGetAllProducts);
+
+// PATCH actualizar estado estilo admin (solo admin)
+router.patch('/admin/:id/status', authMiddleware, isAdmin, ProductController.adminUpdateStatus);
+
+// --- RUTAS PARAMETRIZADAS (/:id) ---
 // GET detalles completos de un producto (público con auth opcional para ver ocultos)
 router.get('/:id', optionalAuthMiddleware, ProductController.getProductById);
 
@@ -51,3 +59,4 @@ router.delete('/:id/images/:imageId', authMiddleware, ProductController.deletePr
 router.patch('/:id/images/:imageId/primary', authMiddleware, ProductController.setPrimaryImage);
 
 export default router;
+

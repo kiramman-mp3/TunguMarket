@@ -91,6 +91,17 @@ const Header = () => {
           {/* Actions - Right */}
           <div className="flex items-center gap-2 sm:gap-4 ml-auto">
             
+            {/* Admin Panel Button (Desktop Only) */}
+            {user && isAdmin && (
+              <Link 
+                to="/admin" 
+                className="hidden lg:flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-bold bg-brand-secondary text-white hover:bg-brand-secondary/90 transition-all shadow-sm"
+              >
+                <FontAwesomeIcon icon={faShieldAlt} />
+                Panel Admin
+              </Link>
+            )}
+
             {/* Vender (Desktop Only) */}
             {user && !isAdmin && (
               <Link 

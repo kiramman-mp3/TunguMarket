@@ -353,26 +353,43 @@ const MyProducts = () => {
                   initial={{ opacity: 0, scale: 0.9 }}
                   animate={{ opacity: 1, scale: 1 }}
                   exit={{ opacity: 0, scale: 0.9 }}
-                  className="glass-card overflow-hidden group hover:shadow-2xl transition-all duration-300 flex flex-col"
+                  className={`glass-card overflow-hidden group hover:shadow-2xl transition-all duration-300 flex flex-col ${
+                    product.is_flagged ? 'ring-2 ring-red-500/50 bg-red-50/30' : ''
+                  }`}
                 >
                   <div className="relative aspect-video overflow-hidden">
                     <img 
                       src={product.primary_image || 'https://via.placeholder.com/400x300?text=No+Image'} 
                       alt={product.title} 
-                      className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700"
+                      className={`w-full h-full object-cover group-hover:scale-110 transition-transform duration-700 ${product.is_flagged ? 'grayscale opacity-60' : ''}`}
                     />
-                    <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity flex items-end p-4">
-                       <p className="text-white text-xs font-bold">Publicado el {new Date(product.created_at).toLocaleDateString()}</p>
-                    </div>
+                    
+                    {/* Overlay de producto peligroso */}
+                    {product.is_flagged && (
+                      <div className="absolute inset-0 bg-red-900/70 flex flex-col items-center justify-center text-center p-4">
+                        <FontAwesomeIcon icon={faExclamationCircle} className="text-red-300 text-4xl mb-2" />
+                        <p className="text-white text-xs font-black uppercase tracking-widest">Producto Peligroso</p>
+                        <p className="text-red-200 text-[10px] font-bold mt-1">Bloqueado Automáticamente</p>
+                      </div>
+                    )}
+
+                    {!product.is_flagged && (
+                      <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity flex items-end p-4">
+                         <p className="text-white text-xs font-bold">Publicado el {new Date(product.created_at).toLocaleDateString()}</p>
+                      </div>
+                    )}
+
                     <div className="absolute top-4 right-4 flex flex-col items-end gap-2">
                       <div className="bg-white/90 backdrop-blur px-3 py-1 rounded-full text-[10px] font-black uppercase text-brand-secondary shadow-lg">
                         Stock: {product.stock}
                       </div>
                       {product.status !== 'activo' && (
                         <div className={`px-3 py-1 rounded-full text-[10px] font-black uppercase shadow-lg ${
-                          product.status === 'oculto' ? 'bg-orange-500 text-white' : 'bg-red-500 text-white'
+                          product.status === 'oculto' ? 'bg-orange-500 text-white' : 
+                          product.status === 'pendiente' ? 'bg-amber-500 text-white' : 
+                          'bg-red-500 text-white'
                         }`}>
-                          {product.status}
+                          {product.status === 'pendiente' ? 'Pendiente' : product.is_flagged ? 'Peligroso' : product.status}
                         </div>
                       )}
                     </div>
@@ -380,47 +397,63 @@ const MyProducts = () => {
 
                   <div className="p-6 space-y-4 flex-1 flex flex-col">
                     <div>
-                      <h3 className="text-lg font-black text-brand-secondary uppercase tracking-tight truncate line-clamp-1">{product.title}</h3>
-                      <p className="text-2xl font-black text-brand-primary mt-1">${parseFloat(product.price).toFixed(2)}</p>
+                      <h3 className={`text-lg font-black uppercase tracking-tight truncate line-clamp-1 ${product.is_flagged ? 'text-red-600' : 'text-brand-secondary'}`}>{product.title}</h3>
+                      <p className={`text-2xl font-black mt-1 ${product.is_flagged ? 'text-red-400' : 'text-brand-primary'}`}>${parseFloat(product.price).toFixed(2)}</p>
+                      {product.is_flagged && product.blocked_reason && (
+                        <p className="text-[11px] text-red-500 font-bold mt-2 bg-red-50 px-3 py-1.5 rounded-lg border border-red-100">
+                          ⚠️ {product.blocked_reason}
+                        </p>
+                      )}
                     </div>
 
                     <div className="flex gap-2 pt-4 mt-auto">
-                      <Link 
-                        to={`/product/${product.id}`}
-                        className="flex-[1.5] bg-gray-50 text-gray-500 py-3 rounded-xl flex items-center justify-center hover:bg-brand-light hover:text-brand-secondary transition-all text-[10px] font-black uppercase tracking-tight"
-                        title="Ver detalle del producto"
-                      >
-                         Ver más
-                      </Link>
-                      <Link 
-                        to={`/edit-product/${product.id}`}
-                        className="flex-1 bg-brand-primary/10 text-brand-secondary py-3 rounded-xl flex items-center justify-center hover:bg-brand-primary hover:text-brand-secondary transition-all"
-                        title="Editar"
-                      >
-                         <FontAwesomeIcon icon={faEdit} />
-                      </Link>
-                      
-                      {(Number(product.sales_count) > 0 || product.status === 'oculto' || product.status === 'bloqueado') ? (
-                        <button 
-                          onClick={() => handleToggleVisibility(product.id, product.status)}
-                          className={`flex-1 py-3 rounded-xl flex items-center justify-center transition-all ${
-                            product.status === 'activo' 
-                            ? 'bg-orange-50 text-orange-500 hover:bg-orange-500 hover:text-white' 
-                            : 'bg-green-50 text-green-500 hover:bg-green-500 hover:text-white'
-                          }`}
-                          title={product.status === 'activo' ? 'Ocultar (tiene ventas)' : 'Volver a mostrar'}
-                          disabled={product.status === 'bloqueado'}
-                        >
-                          <FontAwesomeIcon icon={product.status === 'activo' ? faEyeSlash : faEye} />
-                        </button>
+                      {product.is_flagged ? (
+                        /* Producto peligroso: sin acciones */
+                        <div className="w-full bg-red-100 text-red-500 py-3 rounded-xl flex items-center justify-center gap-2 text-[10px] font-black uppercase tracking-tight cursor-not-allowed">
+                          <FontAwesomeIcon icon={faExclamationCircle} />
+                          Acciones no disponibles
+                        </div>
                       ) : (
-                        <button 
-                          onClick={() => handleDelete(product.id, product.title)}
-                          className="flex-1 bg-red-50 text-red-500 py-3 rounded-xl flex items-center justify-center hover:bg-red-500 hover:text-white transition-all"
-                          title="Eliminar permanentemente"
-                        >
-                          <FontAwesomeIcon icon={faTrash} />
-                        </button>
+                        /* Producto normal: acciones completas */
+                        <>
+                          <Link 
+                            to={`/product/${product.id}`}
+                            className="flex-[1.5] bg-gray-50 text-gray-500 py-3 rounded-xl flex items-center justify-center hover:bg-brand-light hover:text-brand-secondary transition-all text-[10px] font-black uppercase tracking-tight"
+                            title="Ver detalle del producto"
+                          >
+                             Ver más
+                          </Link>
+                          <Link 
+                            to={`/edit-product/${product.id}`}
+                            className="flex-1 bg-brand-primary/10 text-brand-secondary py-3 rounded-xl flex items-center justify-center hover:bg-brand-primary hover:text-brand-secondary transition-all"
+                            title="Editar"
+                          >
+                             <FontAwesomeIcon icon={faEdit} />
+                          </Link>
+                          
+                          {(Number(product.sales_count) > 0 || product.status === 'oculto' || product.status === 'bloqueado') ? (
+                            <button 
+                              onClick={() => handleToggleVisibility(product.id, product.status)}
+                              className={`flex-1 py-3 rounded-xl flex items-center justify-center transition-all ${
+                                product.status === 'activo' 
+                                ? 'bg-orange-50 text-orange-500 hover:bg-orange-500 hover:text-white' 
+                                : 'bg-green-50 text-green-500 hover:bg-green-500 hover:text-white'
+                              }`}
+                              title={product.status === 'activo' ? 'Ocultar (tiene ventas)' : 'Volver a mostrar'}
+                              disabled={product.status === 'bloqueado'}
+                            >
+                              <FontAwesomeIcon icon={product.status === 'activo' ? faEyeSlash : faEye} />
+                            </button>
+                          ) : (
+                            <button 
+                              onClick={() => handleDelete(product.id, product.title)}
+                              className="flex-1 bg-red-50 text-red-500 py-3 rounded-xl flex items-center justify-center hover:bg-red-500 hover:text-white transition-all"
+                              title="Eliminar permanentemente"
+                            >
+                              <FontAwesomeIcon icon={faTrash} />
+                            </button>
+                          )}
+                        </>
                       )}
                     </div>
                   </div>

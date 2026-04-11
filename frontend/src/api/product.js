@@ -180,3 +180,33 @@ export const updateProductStatus = async (id, status) => {
   });
   return handleResponse(response);
 };
+
+/**
+ * ADMIN: Obtiene todos los productos del sistema
+ */
+export const getAdminProducts = async (page = 1, limit = 50, status = null) => {
+  const token = localStorage.getItem('tungu_token');
+  let url = `${API_URL}/admin/list?page=${page}&limit=${limit}`;
+  if (status) url += `&status=${status}`;
+  
+  const response = await fetch(url, {
+    headers: { 'Authorization': `Bearer ${token}` }
+  });
+  return handleResponse(response);
+};
+
+/**
+ * ADMIN: Actualiza estado de aprobación/bloqueo
+ */
+export const adminUpdateProductStatus = async (productId, status, reason = null) => {
+  const token = localStorage.getItem('tungu_token');
+  const response = await fetch(`${API_URL}/admin/${productId}/status`, {
+    method: 'PATCH',
+    headers: {
+      'Authorization': `Bearer ${token}`,
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify({ status, blocked_reason: reason })
+  });
+  return handleResponse(response);
+};

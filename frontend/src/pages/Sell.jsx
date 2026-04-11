@@ -263,7 +263,7 @@ const Sell = () => {
                     className="flex items-center gap-3 p-4 bg-green-50 text-green-600 rounded-xl text-sm font-bold border border-green-100"
                   >
                     <FontAwesomeIcon icon={faCheckCircle} />
-                    ¡Producto publicado con éxito! Redirigiendo...
+                    ¡Producto enviado! Pendiente de aprobación por un administrador.
                   </motion.div>
                 )}
               </AnimatePresence>
