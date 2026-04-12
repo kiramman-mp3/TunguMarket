@@ -13,7 +13,7 @@ const handleResponse = async (response) => {
 
 // Seller Withdrawals
 export const getMyWithdrawals = async () => {
-  const response = await fetch(`${API_URL}/withdrawals/my-withdrawals`, { headers: getHeaders() });
+  const response = await fetch(`${API_URL}/withdrawals`, { headers: getHeaders() });
   return handleResponse(response);
 };
 
@@ -21,7 +21,7 @@ export const createWithdrawal = async (amount, bankAccountId) => {
   const response = await fetch(`${API_URL}/withdrawals`, {
     method: 'POST',
     headers: getHeaders(),
-    body: JSON.stringify({ monto: amount, bank_account_id: bankAccountId })
+    body: JSON.stringify({ amount, bank_account_id: bankAccountId })
   });
   return handleResponse(response);
 };

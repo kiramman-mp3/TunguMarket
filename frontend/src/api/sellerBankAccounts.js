@@ -13,12 +13,12 @@ const handleResponse = async (response) => {
 
 // Seller Bank Accounts
 export const getMyBankAccounts = async () => {
-  const response = await fetch(`${API_URL}/seller-bank-accounts`, { headers: getHeaders() });
+  const response = await fetch(`${API_URL}/seller/bank-accounts`, { headers: getHeaders() });
   return handleResponse(response);
 };
 
 export const createBankAccount = async (data) => {
-  const response = await fetch(`${API_URL}/seller-bank-accounts`, {
+  const response = await fetch(`${API_URL}/seller/bank-accounts`, {
     method: 'POST',
     headers: getHeaders(),
     body: JSON.stringify(data)
@@ -27,7 +27,7 @@ export const createBankAccount = async (data) => {
 };
 
 export const updateBankAccount = async (id, data) => {
-  const response = await fetch(`${API_URL}/seller-bank-accounts/${id}`, {
+  const response = await fetch(`${API_URL}/seller/bank-accounts/${id}`, {
     method: 'PUT',
     headers: getHeaders(),
     body: JSON.stringify(data)
@@ -36,7 +36,7 @@ export const updateBankAccount = async (id, data) => {
 };
 
 export const setDefaultBankAccount = async (id) => {
-  const response = await fetch(`${API_URL}/seller-bank-accounts/${id}/default`, {
+  const response = await fetch(`${API_URL}/seller/bank-accounts/${id}/default`, {
     method: 'PATCH',
     headers: getHeaders()
   });
@@ -44,7 +44,7 @@ export const setDefaultBankAccount = async (id) => {
 };
 
 export const deleteBankAccount = async (id) => {
-  const response = await fetch(`${API_URL}/seller-bank-accounts/${id}`, {
+  const response = await fetch(`${API_URL}/seller/bank-accounts/${id}`, {
     method: 'DELETE',
     headers: getHeaders()
   });

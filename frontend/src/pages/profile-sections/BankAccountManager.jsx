@@ -12,6 +12,30 @@ import {
   deleteBankAccount
 } from '../../api/sellerBankAccounts';
 
+// Lista de bancos ecuatorianos
+const ECUADORIAN_BANKS = [
+  'Banco del Pichincha',
+  'Banco de Guayaquil',
+  'Banco Pacífico',
+  'Banco Bolivariano',
+  'Banco Comercial de Manabí',
+  'Banco Azteca',
+  'Banco Amazonas',
+  'Mutualista Pichincha',
+  'Cooperativa JEP',
+  'Banco Rumiñahui',
+  'Banco de Crédito',
+  'Banco Internacional',
+  'Scotiabank',
+  'Citibank',
+  'BBVA Ecuador',
+  'Banco Promerica',
+  'Banco Finterra',
+  'Banco del Barrio',
+  'BanCoppel',
+  'Otro'
+];
+
 const BankAccountManager = () => {
   const [accounts, setAccounts] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -23,10 +47,10 @@ const BankAccountManager = () => {
   const [formData, setFormData] = useState({
     banco: '',
     numero_cuenta: '',
-    tipo_cuenta: 'ahorros',
-    titular_cuenta: '',
-    cedula_operador: '',
-    notas: ''
+    tipo_cuenta: 'Ahorros',
+    titular: '',
+    cedula_ruc: '',
+    email_titular: ''
   });
 
   useEffect(() => {
@@ -63,10 +87,10 @@ const BankAccountManager = () => {
     setFormData({
       banco: '',
       numero_cuenta: '',
-      tipo_cuenta: 'ahorros',
-      titular_cuenta: '',
-      cedula_operador: '',
-      notas: ''
+      tipo_cuenta: 'Ahorros',
+      titular: '',
+      cedula_ruc: '',
+      email_titular: ''
     });
     setEditingId(null);
     setShowForm(false);
@@ -75,14 +99,26 @@ const BankAccountManager = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     
-    if (!formData.banco.trim() || !formData.numero_cuenta.trim() || !formData.titular_cuenta.trim() || !formData.cedula_operador.trim()) {
+    if (!formData.banco.trim() || !formData.numero_cuenta.trim() || !formData.titular.trim() || !formData.cedula_ruc.trim() || !formData.email_titular.trim()) {
       alert('Completa todos los campos requeridos');
       return;
     }
 
-    // Validate Ecuadorian ID (10 digits)
-    if (formData.cedula_operador.length !== 10 || !/^\d+$/.test(formData.cedula_operador)) {
-      alert('La cédula debe tener exactamente 10 dígitos');
+    // Validar número de cuenta (mínimo 10 dígitos)
+    if (formData.numero_cuenta.length < 10 || !/^\d+$/.test(formData.numero_cuenta)) {
+      alert('El número de cuenta debe tener al menos 10 dígitos numéricos');
+      return;
+    }
+
+    // Validar Cédula/RUC (10-13 dígitos)
+    if (!/^\d{10,13}$/.test(formData.cedula_ruc)) {
+      alert('La cédula/RUC debe tener entre 10 y 13 dígitos');
+      return;
+    }
+
+    // Validar email
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email_titular)) {
+      alert('Ingresa un email válido');
       return;
     }
 
@@ -115,9 +151,9 @@ const BankAccountManager = () => {
       banco: account.banco,
       numero_cuenta: account.numero_cuenta,
       tipo_cuenta: account.tipo_cuenta,
-      titular_cuenta: account.titular_cuenta,
-      cedula_operador: account.cedula_operador,
-      notas: account.notas || ''
+      titular: account.titular,
+      cedula_ruc: account.cedula_ruc,
+      email_titular: account.email_titular || ''
     });
     setEditingId(account.id);
     setShowForm(true);
@@ -182,77 +218,92 @@ const BankAccountManager = () => {
             initial={{ opacity: 0, height: 0 }}
             animate={{ opacity: 1, height: 'auto' }}
             exit={{ opacity: 0, height: 0 }}
-            className="glass-card p-6 space-y-4 bg-brand-primary/5 border-brand-primary/20"
+            className="glass-card p-6 bg-brand-primary/5 border-brand-primary/20 max-h-[85vh] overflow-y-auto"
           >
-            <h4 className="font-bold text-brand-secondary">
+            <h4 className="font-bold text-brand-secondary mb-4 sticky top-0 bg-brand-primary/5 py-2">
               {editingId ? 'Editar Cuenta' : 'Nueva Cuenta Bancaria'}
             </h4>
             <form onSubmit={handleSubmit} className="space-y-4">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-sm font-bold text-gray-700 mb-1">Banco</label>
-                  <input
-                    type="text"
+                  <label className="block text-sm font-bold text-gray-700 mb-1">Banco *</label>
+                  <select
                     value={formData.banco}
                     onChange={(e) => setFormData({ ...formData, banco: e.target.value })}
-                    placeholder="Ej: Banco del Pichincha"
                     className="input-field w-full"
-                  />
+                    required
+                  >
+                    <option value="">Selecciona un banco</option>
+                    {ECUADORIAN_BANKS.map((bank) => (
+                      <option key={bank} value={bank}>
+                        {bank}
+                      </option>
+                    ))}
+                  </select>
                 </div>
                 <div>
-                  <label className="block text-sm font-bold text-gray-700 mb-1">Número de Cuenta</label>
+                  <label className="block text-sm font-bold text-gray-700 mb-1">Número de Cuenta *</label>
                   <input
                     type="text"
                     value={formData.numero_cuenta}
-                    onChange={(e) => setFormData({ ...formData, numero_cuenta: e.target.value })}
-                    placeholder="Ej: 1234567890"
-                    className="input-field w-full"
+                    onChange={(e) => setFormData({ ...formData, numero_cuenta: e.target.value.replace(/\D/g, '') })}
+                    placeholder="Ej: 1234567890 (mín. 10 dígitos)"
+                    className="input-field w-full font-mono"
+                    required
+                    pattern="\d{10,}"
                   />
+                  <p className="text-xs text-gray-500 mt-1">Mínimo 10 dígitos numéricos</p>
                 </div>
                 <div>
-                  <label className="block text-sm font-bold text-gray-700 mb-1">Tipo de Cuenta</label>
+                  <label className="block text-sm font-bold text-gray-700 mb-1">Tipo de Cuenta *</label>
                   <select
                     value={formData.tipo_cuenta}
                     onChange={(e) => setFormData({ ...formData, tipo_cuenta: e.target.value })}
                     className="input-field w-full"
                   >
-                    <option value="ahorros">Ahorros</option>
-                    <option value="corriente">Corriente</option>
+                    <option value="Ahorros">Ahorros</option>
+                    <option value="Corriente">Corriente</option>
                   </select>
                 </div>
                 <div>
-                  <label className="block text-sm font-bold text-gray-700 mb-1">Titular</label>
+                  <label className="block text-sm font-bold text-gray-700 mb-1">Titular *</label>
                   <input
                     type="text"
-                    value={formData.titular_cuenta}
-                    onChange={(e) => setFormData({ ...formData, titular_cuenta: e.target.value })}
+                    value={formData.titular}
+                    onChange={(e) => setFormData({ ...formData, titular: e.target.value })}
                     placeholder="Tu nombre completo"
                     className="input-field w-full"
+                    required
                   />
                 </div>
-                <div className="md:col-span-2">
-                  <label className="block text-sm font-bold text-gray-700 mb-1">Cédula (10 dígitos)</label>
+                <div>
+                  <label className="block text-sm font-bold text-gray-700 mb-1">Cédula/RUC (10-13 dígitos) *</label>
                   <input
                     type="text"
-                    value={formData.cedula_operador}
-                    onChange={(e) => setFormData({ ...formData, cedula_operador: e.target.value.slice(0, 10) })}
+                    value={formData.cedula_ruc}
+                    onChange={(e) => setFormData({ ...formData, cedula_ruc: e.target.value.slice(0, 13).replace(/\D/g, '') })}
                     placeholder="Ej: 1234567890"
-                    maxLength="10"
+                    maxLength="13"
                     className="input-field w-full font-mono"
+                    required
+                    pattern="\d{10,13}"
                   />
+                  <p className="text-xs text-gray-500 mt-1">Entre 10 y 13 dígitos numéricos</p>
                 </div>
-                <div className="md:col-span-2">
-                  <label className="block text-sm font-bold text-gray-700 mb-1">Notas (Opcional)</label>
-                  <textarea
-                    value={formData.notas}
-                    onChange={(e) => setFormData({ ...formData, notas: e.target.value })}
-                    placeholder="Ej: Cuenta para retiros grandes"
-                    className="input-field w-full resize-none h-20"
+                <div>
+                  <label className="block text-sm font-bold text-gray-700 mb-1">Email Titular *</label>
+                  <input
+                    type="email"
+                    value={formData.email_titular}
+                    onChange={(e) => setFormData({ ...formData, email_titular: e.target.value })}
+                    placeholder="tu@email.com"
+                    className="input-field w-full"
+                    required
                   />
                 </div>
               </div>
 
-              <div className="flex gap-3 pt-4 border-t border-gray-200">
+              <div className="flex gap-3 pt-4 border-t border-gray-200 sticky bottom-0 bg-brand-primary/5 py-4 -mx-6 px-6">
                 <button
                   type="submit"
                   disabled={submitting}
@@ -305,7 +356,7 @@ const BankAccountManager = () => {
                     </div>
                     <p className="text-sm text-gray-600 font-mono mb-2">{account.numero_cuenta}</p>
                     <p className="text-xs text-gray-500">
-                      <span className="font-bold">{account.titular_cuenta}</span> • 
+                      <span className="font-bold">{account.titular}</span> • 
                       <span className="capitalize ml-1">{account.tipo_cuenta}</span>
                     </p>
                   </div>
@@ -338,11 +389,6 @@ const BankAccountManager = () => {
                 </div>
               </div>
 
-              {account.notas && (
-                <p className="text-xs text-gray-500 mt-3 pt-3 border-t border-gray-100 italic">
-                  {account.notas}
-                </p>
-              )}
             </motion.div>
           ))}
         </div>

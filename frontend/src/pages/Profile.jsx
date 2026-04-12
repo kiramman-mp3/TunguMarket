@@ -69,7 +69,7 @@ const Profile = () => {
       case 'wallet': return <WalletView />;
       case 'addresses': return <AddressManager />;
       case 'bank-accounts': return <BankAccountManager />;
-      case 'withdrawals': return <SellerWithdrawals />;
+      case 'withdrawals': return <SellerWithdrawals onNavigateTo={setActiveTab} />;
       default: return null;
     }
   };
@@ -180,9 +180,9 @@ const Profile = () => {
           >
             <div className="absolute inset-0 bg-brand-secondary/40 backdrop-blur-sm lg:hidden" onClick={() => setIsSidebarOpen(false)} />
             
-            <div className="relative w-72 lg:w-full bg-white h-full lg:h-fit min-h-[calc(100vh-15rem)] lg:rounded-[2rem] shadow-2xl lg:shadow-xl lg:border border-gray-100 flex flex-col p-6 overflow-hidden">
+            <div className="relative w-72 lg:w-full bg-white h-full lg:h-fit max-h-[85vh] lg:max-h-none lg:rounded-[2rem] shadow-2xl lg:shadow-xl lg:border border-gray-100 flex flex-col p-6 overflow-y-auto lg:overflow-visible">
                {/* User Brief */}
-               <div className="text-center mb-8 pb-8 border-b border-gray-50 px-2">
+               <div className="text-center mb-8 pb-8 border-b border-gray-50 px-2 flex-shrink-0">
                   <div className="w-24 h-24 mx-auto mb-4 relative">
                     <div className="w-full h-full bg-brand-primary/20 rounded-[2rem] flex items-center justify-center text-brand-secondary text-4xl font-bold overflow-hidden border-4 border-white shadow-lg">
                       {user?.avatar_url ? (
@@ -198,30 +198,30 @@ const Profile = () => {
                   </p>
                </div>
 
-               {/* Nav Links */}
-               <nav className="space-y-2 flex-1">
+               {/* Nav Links - Scrollable */}
+               <nav className="space-y-2 flex-1 overflow-y-auto pr-2 lg:pr-0">
                   {tabs.map(tab => (
                     <button
                       key={tab.id}
                       onClick={() => { setActiveTab(tab.id); setIsSidebarOpen(false); }}
                       className={`
-                        w-full flex items-center gap-4 px-5 py-4 rounded-2xl transition-all duration-300 font-bold text-sm
+                        w-full flex items-center gap-4 px-5 py-4 rounded-2xl transition-all duration-300 font-bold text-sm whitespace-nowrap lg:whitespace-normal
                         ${activeTab === tab.id 
                           ? 'bg-brand-primary text-brand-secondary shadow-lg shadow-brand-primary/20' 
                           : 'text-gray-400 hover:bg-gray-50 hover:text-brand-secondary'
                         }
                       `}
                     >
-                      <FontAwesomeIcon icon={tab.icon} className="w-5" />
-                      {tab.label}
+                      <FontAwesomeIcon icon={tab.icon} className="w-5 flex-shrink-0" />
+                      <span className="overflow-hidden text-ellipsis">{tab.label}</span>
                     </button>
                   ))}
                </nav>
 
-               {/* Logout */}
+               {/* Logout - Sticky Bottom */}
                <button 
                 onClick={logout}
-                className="mt-8 pt-8 border-t border-gray-50 w-full flex items-center gap-4 px-5 py-4 rounded-2xl text-red-400 hover:bg-red-50 transition-all font-bold text-sm"
+                className="mt-8 pt-8 border-t border-gray-50 w-full flex items-center gap-4 px-5 py-4 rounded-2xl text-red-400 hover:bg-red-50 transition-all font-bold text-sm flex-shrink-0 -mx-6 px-6"
                >
                  <FontAwesomeIcon icon={faSignOutAlt} className="w-5" />
                  Cerrar Sesión
