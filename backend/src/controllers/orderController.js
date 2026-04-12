@@ -610,12 +610,46 @@ class OrderController {
         const buyer = buyerResult.rows[0];
         
         const title = 'Pago Confirmado';
-        const message = `Tu pago para la orden #${order.id} ha sido confirmado.`;
+        const message = `Tu pago para la orden #${order.id} ha sido confirmado. El vendedor pronto preparará tu pedido.`;
         
         await NotificationModel.create({ userId: order.user_id, title, message, type: 'payment' });
         SSEService.sendToUser(order.user_id, { type: 'NOTIFICATION', title, message });
         EmailService.sendPaymentConfirmedEmail(buyer.email, buyer.name, order.id, order.total_price).catch(console.error);
       } catch (e) { console.error('Error al notificar comprador:', e); }
+
+      // Notificar a vendedores que el pago fue aprobado
+      try {
+        const itemsResult = await pool.query(`
+          SELECT DISTINCT p.seller_id
+          FROM order_items oi
+          JOIN products p ON oi.product_id = p.id
+          WHERE oi.order_id = $1
+        `, [payment.order_id]);
+
+        for (const row of itemsResult.rows) {
+          const sellerId = row.seller_id;
+          const sellerResult = await pool.query(
+            'SELECT name, email FROM users WHERE id = $1',
+            [sellerId]
+          );
+          const seller = sellerResult.rows[0];
+
+          if (seller) {
+            const vendorTitle = 'Pago Confirmado';
+            const vendorMessage = `El pago de la orden #${order.id} ha sido confirmado. Prepara los productos para envío.`;
+            
+            await NotificationModel.create({
+              userId: sellerId,
+              title: vendorTitle,
+              message: vendorMessage,
+              type: 'payment'
+            });
+            SSEService.sendToUser(sellerId, { type: 'NOTIFICATION', title: vendorTitle, message: vendorMessage });
+          }
+        }
+      } catch (walletError) {
+        console.error('Error al notificar a vendedores:', walletError);
+      }
 
       res.status(200).json({
         message: 'Pago aprobado y orden confirmada',
@@ -690,6 +724,8 @@ class OrderController {
         return res.status(404).json({ error: 'Orden asociada no encontrada' });
       }
 
+      const order = orderResult.rows[0];
+
       // Actualizar pago a rechazado
       const updatePaymentResult = await pool.query(
         `UPDATE payments 
@@ -702,6 +738,19 @@ class OrderController {
       const rejectedPayment = updatePaymentResult.rows[0];
 
       // La orden permanece en estado "pendiente" para que el usuario pueda reintentarlo
+
+      // Notificar al comprador
+      try {
+        const buyerResult = await pool.query('SELECT name, email FROM users WHERE id = $1', [order.user_id]);
+        const buyer = buyerResult.rows[0];
+        
+        const title = 'Pago Rechazado';
+        const message = `Tu pago para la orden #${order.id} ha sido rechazado. Motivo: ${rejectionReason || 'Sin especificar'}. Por favor, reenvía el comprobante.`;
+        
+        await NotificationModel.create({ userId: order.user_id, title, message, type: 'payment' });
+        SSEService.sendToUser(order.user_id, { type: 'NOTIFICATION', title, message });
+        EmailService.sendPaymentRejectedEmail?.(buyer.email, buyer.name, order.id, rejectionReason).catch(console.error);
+      } catch (e) { console.error('Error al notificar comprador del rechazo:', e); }
 
       res.status(200).json({
         message: 'Pago rechazado. El usuario puede reintentarlo.',
