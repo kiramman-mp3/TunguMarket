@@ -5,7 +5,10 @@ import {
   faCheckCircle, faTimesCircle, faChevronDown, faClock,
   faUser, faMoneyBillWave, faCalendarAlt, faMapPin
 } from '@fortawesome/free-solid-svg-icons';
-import { getAdminPendingWithdrawals, getAdminAllWithdrawals, approveWithdrawal, rejectWithdrawal } from '../api/withdrawals';
+import { getAdminPendingWithdrawals, getAdminAllWithdrawals, approveWithdrawal, rejectWithdrawal, markTransferred } from '../api/withdrawals';
+import Toast from '../components/Toast';
+import ConfirmModal from '../components/ConfirmModal';
+import { useToast } from '../hooks/useToast';
 
 const AdminWithdrawals = () => {
   const [withdrawals, setWithdrawals] = useState([]);
@@ -17,6 +20,10 @@ const AdminWithdrawals = () => {
   const [rejectReason, setRejectReason] = useState('');
   const [processingId, setProcessingId] = useState(null);
   const [transferDetails, setTransferDetails] = useState({});
+  const [showApproveConfirm, setShowApproveConfirm] = useState(false);
+  const [showRejectConfirm, setShowRejectConfirm] = useState(false);
+  const [selectedWithdrawalId, setSelectedWithdrawalId] = useState(null);
+  const { message, type, closeToast, success, error: showError } = useToast();
 
   useEffect(() => {
     fetchWithdrawals();
@@ -57,42 +64,58 @@ const AdminWithdrawals = () => {
     }
   };
 
-  const handleApprove = async (withdrawalId) => {
-    if (!window.confirm('¿Confirmar aprobación de este retiro?')) return;
-    
+  const handleApprove = (withdrawalId) => {
+    setSelectedWithdrawalId(withdrawalId);
+    setShowApproveConfirm(true);
+  };
+
+  const confirmApprove = async () => {
+    if (!selectedWithdrawalId) return;
     try {
-      setProcessingId(withdrawalId);
-      await approveWithdrawal(withdrawalId, 'Aprobado por administrador');
+      setProcessingId(selectedWithdrawalId);
+      await approveWithdrawal(selectedWithdrawalId, 'Aprobado por administrador');
       setWithdrawals(withdrawals.map(w => 
-        w.id === withdrawalId ? { ...w, estado: 'aprobado' } : w
+        w.id === selectedWithdrawalId ? { ...w, status: 'aprobado' } : w
       ));
+      success('Retiro aprobado');
       setExpandedPayment(null);
+      setShowApproveConfirm(false);
+      setSelectedWithdrawalId(null);
     } catch (err) {
-      setError(err.message || 'Error al aprobar retiro');
+      showError(err.message || 'Error al aprobar retiro');
     } finally {
       setProcessingId(null);
     }
   };
 
-  const handleReject = async (withdrawalId) => {
+  const handleReject = (withdrawalId) => {
     if (!rejectReason.trim()) {
-      alert('Ingresa un motivo para rechazar el retiro');
+      showError('Ingresa un motivo para rechazar el retiro');
       return;
     }
-    
-    if (!window.confirm('¿Confirmar rechazo de este retiro?')) return;
+    setSelectedWithdrawalId(withdrawalId);
+    setShowRejectConfirm(true);
+  };
+
+  const confirmReject = async () => {
+    if (!selectedWithdrawalId) return;
     
     try {
-      setProcessingId(withdrawalId);
-      await rejectWithdrawal(withdrawalId, rejectReason);
+      setProcessingId(selectedWithdrawalId);
+      await rejectWithdrawal(selectedWithdrawalId, rejectReason);
       setWithdrawals(withdrawals.map(w => 
-        w.id === withdrawalId ? { ...w, estado: 'rechazado' } : w
+        w.id === selectedWithdrawalId ? { ...w, status: 'rechazado' } : w
       ));
+      success('Retiro rechazado');
+      setRejectingId(null);
+      setRejectReason('');
+      setShowRejectConfirm(false);
+      setSelectedWithdrawalId(null);
       setRejectingId(null);
       setRejectReason('');
       setExpandedPayment(null);
     } catch (err) {
-      setError(err.message || 'Error al rechazar retiro');
+      showError(err.message || 'Error al rechazar retiro');
     } finally {
       setProcessingId(null);
     }
@@ -156,6 +179,32 @@ const AdminWithdrawals = () => {
 
   return (
     <div className="space-y-6">
+      <Toast message={message} type={type} onClose={closeToast} />
+      <ConfirmModal
+        isOpen={showApproveConfirm}
+        title="¿Aprobar retiro?"
+        message="Confirma que deseas aprobar este retiro. El dinero será procesado en la próxima transferencia."
+        confirmText="Aprobar"
+        cancelText="Cancelar"
+        onConfirm={confirmApprove}
+        onCancel={() => {
+          setShowApproveConfirm(false);
+          setSelectedWithdrawalId(null);
+        }}
+      />
+      <ConfirmModal
+        isOpen={showRejectConfirm}
+        title="¿Rechazar retiro?"
+        message={`Se rechazará este retiro con el motivo: "${rejectReason}"`}
+        confirmText="Rechazar"
+        cancelText="Cancelar"
+        onConfirm={confirmReject}
+        onCancel={() => {
+          setShowRejectConfirm(false);
+          setSelectedWithdrawalId(null);
+        }}
+        isDangerous={true}
+      />
       {/* View Mode Tabs */}
       <div className="flex gap-3 border-b border-gray-200 pb-4">
         <button
@@ -212,7 +261,7 @@ const AdminWithdrawals = () => {
               key={withdrawal.id}
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
-              className={`border rounded-2xl overflow-hidden transition-all ${getStatusColor(withdrawal.estado)}`}
+              className={`border rounded-2xl overflow-hidden transition-all ${getStatusColor(withdrawal.status)}`}
             >
               <button
                 onClick={() =>
@@ -223,7 +272,7 @@ const AdminWithdrawals = () => {
                 <div className="flex items-center gap-4 flex-1 text-left">
                   <div className="w-10 h-10 rounded-xl bg-white/30 flex items-center justify-center">
                     <FontAwesomeIcon
-                      icon={getStatusIcon(withdrawal.estado)}
+                      icon={getStatusIcon(withdrawal.status)}
                       className="text-lg"
                     />
                   </div>
@@ -238,8 +287,8 @@ const AdminWithdrawals = () => {
                     </div>
                   </div>
                   <div className="text-right">
-                    <div className="font-bold text-lg">${withdrawal.monto.toFixed(2)}</div>
-                    <div className="text-xs opacity-70">{getStatusLabel(withdrawal.estado)}</div>
+                    <div className="font-bold text-lg">${(parseFloat(withdrawal.amount) || 0).toFixed(2)}</div>
+                    <div className="text-xs opacity-70">{getStatusLabel(withdrawal.status)}</div>
                   </div>
                 </div>
                 <FontAwesomeIcon
@@ -265,7 +314,7 @@ const AdminWithdrawals = () => {
                     </div>
                     <div>
                       <p className="text-xs opacity-70 uppercase font-bold">Monto Solicitado</p>
-                      <p className="font-bold text-lg mt-1">${withdrawal.monto.toFixed(2)}</p>
+                      <p className="font-bold text-lg mt-1">${(parseFloat(withdrawal.amount) || 0).toFixed(2)}</p>
                     </div>
                     <div>
                       <p className="text-xs opacity-70 uppercase font-bold">Cuenta Bancaria</p>
@@ -276,11 +325,11 @@ const AdminWithdrawals = () => {
                     </div>
                     <div>
                       <p className="text-xs opacity-70 uppercase font-bold">Titular</p>
-                      <p className="font-bold mt-1">{withdrawal.titular_cuenta}</p>
+                      <p className="font-bold mt-1">{withdrawal.titular}</p>
                     </div>
                     <div>
                       <p className="text-xs opacity-70 uppercase font-bold">Cédula</p>
-                      <p className="font-bold mt-1 font-mono">{withdrawal.cedula_operador}</p>
+                      <p className="font-bold mt-1 font-mono">{withdrawal.cedula_ruc}</p>
                     </div>
                     <div>
                       <p className="text-xs opacity-70 uppercase font-bold">Tipo Cuenta</p>
@@ -295,16 +344,16 @@ const AdminWithdrawals = () => {
                     </div>
                   )}
 
-                  {withdrawal.estado === 'rechazado' && withdrawal.motivo_rechazo && (
+                  {withdrawal.status === 'rechazado' && withdrawal.validation_notes && (
                     <div className="bg-red-100/30 p-3 rounded-xl border border-red-200/30">
                       <p className="text-xs opacity-70 uppercase font-bold text-red-700">
                         Motivo Rechazo
                       </p>
-                      <p className="text-sm mt-1 italic text-red-700">{withdrawal.motivo_rechazo}</p>
+                      <p className="text-sm mt-1 italic text-red-700">{withdrawal.validation_notes}</p>
                     </div>
                   )}
 
-                  {withdrawal.estado === 'aprobado' && !withdrawal.transfer_number && (
+                  {withdrawal.status === 'aprobado' && !withdrawal.transfer_number && (
                     <div className="space-y-3 pt-4 border-t border-current/20 bg-green-100/20 p-4 rounded-xl">
                       <div>
                         <label className="text-xs opacity-70 uppercase font-bold block mb-2">
@@ -325,31 +374,22 @@ const AdminWithdrawals = () => {
                         onClick={async () => {
                           const transferNo = transferDetails[withdrawal.id]?.number;
                           if (!transferNo?.trim()) {
-                            alert('Ingresa el número de transacción');
+                            showError('Ingresa el número de transacción');
                             return;
                           }
                           try {
                             setProcessingId(withdrawal.id);
-                            const response = await fetch(`http://localhost:5000/api/withdrawals/${withdrawal.id}/mark-transferred`, {
-                              method: 'PATCH',
-                              headers: {
-                                'Content-Type': 'application/json',
-                                'Authorization': `Bearer ${localStorage.getItem('tungu_token')}`
-                              },
-                              body: JSON.stringify({ transfer_number: transferNo })
-                            });
-                            const data = await response.json();
-                            if (!response.ok) throw new Error(data.error || 'Error al marcar transferencia');
+                            await markTransferred(withdrawal.id, transferNo);
                             
                             setWithdrawals(withdrawals.map(w => 
                               w.id === withdrawal.id 
-                                ? { ...w, estado: 'transferido', transfer_number: transferNo }
+                                ? { ...w, status: 'transferido', transfer_number: transferNo }
                                 : w
                             ));
                             setTransferDetails({ ...transferDetails, [withdrawal.id]: {} });
-                            alert('✓ Transferencia marcada como realizada');
+                            success('Transferencia marcada como realizada');
                           } catch (err) {
-                            setError(err.message || 'Error al marcar transferencia');
+                            showError(err.message || 'Error al marcar transferencia');
                           } finally {
                             setProcessingId(null);
                           }
@@ -369,7 +409,7 @@ const AdminWithdrawals = () => {
                     </div>
                   )}
 
-                  {withdrawal.estado === 'pendiente' && (
+                  {withdrawal.status === 'pendiente' && (
                     <div className="space-y-3 pt-4 border-t border-current/20">
                       <div>
                         <label className="text-xs opacity-70 uppercase font-bold block mb-2">

@@ -18,6 +18,8 @@ import { useCart } from '../context/CartContext';
 import CreditCardForm from '../components/CreditCardForm';
 import { useAuth } from '../context/AuthContext';
 import { getAddresses, createAddress } from '../api/address';
+import Toast from '../components/Toast';
+import { useToast } from '../hooks/useToast';
 
 const Checkout = () => {
   const navigate = useNavigate();
@@ -32,6 +34,7 @@ const Checkout = () => {
   const [selectedAddressId, setSelectedAddressId] = useState(null);
   const [showAddressForm, setShowAddressForm] = useState(false);
   const [newAddress, setNewAddress] = useState({ city: 'Ambato', main_street: '', secondary_street: '', neighborhood: '', house_number: '', postal_code: '' });
+  const { message, type, closeToast, error: showError } = useToast();
 
   React.useEffect(() => {
     fetchAddresses();
@@ -57,7 +60,7 @@ const Checkout = () => {
       setSelectedAddressId(data.data.id);
       setShowAddressForm(false);
     } catch (err) {
-      alert(err.message);
+      showError(err.message);
     }
   };
 
@@ -103,7 +106,7 @@ const Checkout = () => {
       clearCart();
 
     } catch (err) {
-      alert(err.message);
+      showError(err.message);
     } finally {
       setLoading(false);
     }
@@ -183,6 +186,7 @@ const Checkout = () => {
 
   return (
     <div className="min-h-screen bg-brand-light/20 pt-24 pb-20">
+      <Toast message={message} type={type} onClose={closeToast} />
       <div className="max-w-6xl mx-auto px-4 grid grid-cols-1 lg:grid-cols-12 gap-12">
 
         {/* Left Side: Order Summary & Selection */}

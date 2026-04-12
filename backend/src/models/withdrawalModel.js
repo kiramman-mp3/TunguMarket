@@ -63,7 +63,7 @@ class WithdrawalModel {
    */
   static async findPending() {
     const query = `
-      SELECT w.*, sba.banco, sba.tipo_cuenta, sba.numero_cuenta, sba.titular,
+      SELECT w.*, sba.banco, sba.tipo_cuenta, sba.numero_cuenta, sba.titular, sba.cedula_ruc, sba.email_titular,
              u.email as user_email, u.name as user_name, u.id as user_id
       FROM withdrawals w
       LEFT JOIN seller_bank_accounts sba ON w.bank_account_id = sba.id
@@ -80,7 +80,7 @@ class WithdrawalModel {
    */
   static async findByStatus(status) {
     const query = `
-      SELECT w.*, sba.banco, sba.tipo_cuenta, sba.numero_cuenta, sba.titular,
+      SELECT w.*, sba.banco, sba.tipo_cuenta, sba.numero_cuenta, sba.titular, sba.cedula_ruc, sba.email_titular,
              u.email as user_email, u.name as user_name, u.id as user_id
       FROM withdrawals w
       LEFT JOIN seller_bank_accounts sba ON w.bank_account_id = sba.id
@@ -97,7 +97,7 @@ class WithdrawalModel {
    */
   static async findWithFilters(filters = {}) {
     let query = `
-      SELECT w.*, sba.banco, sba.tipo_cuenta, sba.numero_cuenta, sba.titular,
+      SELECT w.*, sba.banco, sba.tipo_cuenta, sba.numero_cuenta, sba.titular, sba.cedula_ruc, sba.email_titular,
              u.email as user_email, u.name as user_name, u.id as user_id
       FROM withdrawals w
       LEFT JOIN seller_bank_accounts sba ON w.bank_account_id = sba.id

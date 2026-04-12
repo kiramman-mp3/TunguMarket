@@ -5,6 +5,9 @@ import {
   faCheckCircle, faTimesCircle, faChevronDown, faClock,
   faUser, faFileImage, faCalendarAlt, faEye, faCheck, faTimes
 } from '@fortawesome/free-solid-svg-icons';
+import Toast from '../components/Toast';
+import ConfirmModal from '../components/ConfirmModal';
+import { useToast } from '../hooks/useToast';
 
 const AdminPaymentVerification = () => {
   const [payments, setPayments] = useState([]);
@@ -14,6 +17,11 @@ const AdminPaymentVerification = () => {
   const [statusFilter, setStatusFilter] = useState('pendiente');
   const [previewImage, setPreviewImage] = useState(null);
   const [processingId, setProcessingId] = useState(null);
+  const [showApproveConfirm, setShowApproveConfirm] = useState(false);
+  const [showRejectConfirm, setShowRejectConfirm] = useState(false);
+  const [selectedPaymentId, setSelectedPaymentId] = useState(null);
+  const [rejectReason, setRejectReason] = useState('');
+  const { message, type, closeToast, success, error: showError } = useToast();
 
   useEffect(() => {
     const token = localStorage.getItem('tungu_token');
@@ -62,13 +70,18 @@ const AdminPaymentVerification = () => {
     }
   };
 
-  const handleApprovePayment = async (paymentId, orderId) => {
-    if (!window.confirm('¿Confirmar que el pago es válido?')) return;
+  const handleApprovePayment = (paymentId) => {
+    setSelectedPaymentId(paymentId);
+    setShowApproveConfirm(true);
+  };
+
+  const confirmApprovePayment = async () => {
+    if (!selectedPaymentId) return;
     
     try {
-      setProcessingId(paymentId);
+      setProcessingId(selectedPaymentId);
       const response = await fetch(
-        `http://localhost:5000/api/orders/admin/payments/${paymentId}/approve`,
+        `http://localhost:5000/api/orders/admin/payments/${selectedPaymentId}/approve`,
         {
           method: 'PATCH',
           headers: {
@@ -82,48 +95,57 @@ const AdminPaymentVerification = () => {
       if (!response.ok) throw new Error(data.error || 'Error al aprobar pago');
       
       setPayments(payments.map(p => 
-        p.id === paymentId ? { ...p, status: 'aprobado' } : p
+        p.id === selectedPaymentId ? { ...p, status: 'aprobado' } : p
       ));
-      alert('✓ Pago aprobado - Orden confirmada');
+      success('Pago aprobado - Orden confirmada');
       setExpandedPayment(null);
+      setShowApproveConfirm(false);
+      setSelectedPaymentId(null);
     } catch (err) {
-      setError(err.message || 'Error al aprobar pago');
+      showError(err.message || 'Error al aprobar pago');
     } finally {
       setProcessingId(null);
     }
   };
 
-  const handleRejectPayment = async (paymentId, reason) => {
-    if (!reason?.trim()) {
-      alert('Ingresa un motivo para rechazar el pago');
+  const handleRejectPayment = (paymentId) => {
+    if (!rejectReason?.trim()) {
+      showError('Ingresa un motivo para rechazar el pago');
       return;
     }
-    
-    if (!window.confirm('¿Confirmar rechazo del pago?')) return;
+    setSelectedPaymentId(paymentId);
+    setShowRejectConfirm(true);
+  };
+
+  const confirmRejectPayment = async () => {
+    if (!selectedPaymentId) return;
     
     try {
-      setProcessingId(paymentId);
+      setProcessingId(selectedPaymentId);
       const response = await fetch(
-        `http://localhost:5000/api/orders/admin/payments/${paymentId}/reject`,
+        `http://localhost:5000/api/orders/admin/payments/${selectedPaymentId}/reject`,
         {
           method: 'PATCH',
           headers: {
             'Content-Type': 'application/json',
             'Authorization': `Bearer ${localStorage.getItem('tungu_token')}`
           },
-          body: JSON.stringify({ rejection_reason: reason })
+          body: JSON.stringify({ rejection_reason: rejectReason })
         }
       );
       const data = await response.json();
       if (!response.ok) throw new Error(data.error || 'Error al rechazar pago');
       
       setPayments(payments.map(p => 
-        p.id === paymentId ? { ...p, status: 'rechazado' } : p
+        p.id === selectedPaymentId ? { ...p, status: 'rechazado' } : p
       ));
-      alert('✗ Pago rechazado - Cliente deberá realizar nueva transferencia');
+      success('Pago rechazado - Cliente deberá realizar nueva transferencia');
       setExpandedPayment(null);
+      setRejectReason('');
+      setShowRejectConfirm(false);
+      setSelectedPaymentId(null);
     } catch (err) {
-      setError(err.message || 'Error al rechazar pago');
+      showError(err.message || 'Error al rechazar pago');
     } finally {
       setProcessingId(null);
     }
@@ -181,6 +203,32 @@ const AdminPaymentVerification = () => {
 
   return (
     <div className="space-y-6">
+      <Toast message={message} type={type} onClose={closeToast} />
+      <ConfirmModal
+        isOpen={showApproveConfirm}
+        title="¿Aprobar pago?"
+        message="Confirma que este comprobante de pago es válido. Se confirmará la orden del cliente."
+        confirmText="Aprobar"
+        cancelText="Cancelar"
+        onConfirm={confirmApprovePayment}
+        onCancel={() => {
+          setShowApproveConfirm(false);
+          setSelectedPaymentId(null);
+        }}
+      />
+      <ConfirmModal
+        isOpen={showRejectConfirm}
+        title="¿Rechazar pago?"
+        message={`Se rechazará el pago con el motivo: "${rejectReason}". El cliente deberá realizar una nueva transferencia.`}
+        confirmText="Rechazar"
+        cancelText="Cancelar"
+        onConfirm={confirmRejectPayment}
+        onCancel={() => {
+          setShowRejectConfirm(false);
+          setSelectedPaymentId(null);
+        }}
+        isDangerous={true}
+      />
       {/* Status Filter */}
       <div className="flex gap-3 border-b border-gray-200 pb-4 flex-wrap">
         <button
@@ -344,24 +392,42 @@ const AdminPaymentVerification = () => {
                       </div>
                       <div className="flex gap-3">
                         <button
-                          onClick={() => handleApprovePayment(payment.id, payment.order_id)}
+                          onClick={() => handleApprovePayment(payment.id)}
                           disabled={processingId === payment.id}
                           className="flex-1 bg-green-600 hover:bg-green-700 disabled:bg-gray-400 text-white font-bold py-2 px-4 rounded-xl transition-all flex items-center justify-center gap-2"
                         >
                           <FontAwesomeIcon icon={faCheck} />
                           {processingId === payment.id ? 'Procesando...' : 'Aprobar Pago'}
                         </button>
-                        <button
-                          onClick={() => {
-                            const reason = prompt('¿Por qué rechazar este pago?');
-                            if (reason) handleRejectPayment(payment.id, reason);
-                          }}
-                          disabled={processingId === payment.id}
-                          className="flex-1 bg-red-600 hover:bg-red-700 disabled:bg-gray-400 text-white font-bold py-2 px-4 rounded-xl transition-all flex items-center justify-center gap-2"
-                        >
-                          <FontAwesomeIcon icon={faTimes} />
-                          {processingId === payment.id ? 'Procesando...' : 'Rechazar'}
-                        </button>
+                        {expandedPayment === payment.id && (
+                          <div className="flex gap-2 items-end">
+                            <input
+                              type="text"
+                              placeholder="Motivo del rechazo"
+                              value={rejectReason}
+                              onChange={(e) => setRejectReason(e.target.value)}
+                              className="flex-1 px-3 py-2 bg-white/50 border border-red-200 rounded-xl text-sm"
+                            />
+                            <button
+                              onClick={() => handleRejectPayment(payment.id)}
+                              disabled={processingId === payment.id}
+                              className="bg-red-600 hover:bg-red-700 disabled:bg-gray-400 text-white font-bold py-2 px-4 rounded-xl transition-all flex items-center gap-2"
+                            >
+                              <FontAwesomeIcon icon={faTimes} />
+                              {processingId === payment.id ? 'Procesando...' : 'Rechazar'}
+                            </button>
+                          </div>
+                        )}
+                        {expandedPayment !== payment.id && (
+                          <button
+                            onClick={() => handleRejectPayment(payment.id)}
+                            disabled={processingId === payment.id}
+                            className="flex-1 bg-red-600 hover:bg-red-700 disabled:bg-gray-400 text-white font-bold py-2 px-4 rounded-xl transition-all flex items-center justify-center gap-2"
+                          >
+                            <FontAwesomeIcon icon={faTimes} />
+                            {processingId === payment.id ? 'Procesando...' : 'Rechazar'}
+                          </button>
+                        )}
                       </div>
                     </div>
                   )}

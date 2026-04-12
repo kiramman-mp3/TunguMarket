@@ -37,4 +37,7 @@ router.put('/admin/:id/approve', authenticateToken, isAdmin, WithdrawalControlle
 // Rechazar retiro
 router.put('/admin/:id/reject', authenticateToken, isAdmin, WithdrawalController.rejectWithdrawal);
 
+// Marcar como transferido
+router.put('/admin/:id/mark-transferred', authenticateToken, isAdmin, WithdrawalController.markTransferred);
+
 export default router;

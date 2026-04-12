@@ -11,6 +11,9 @@ import {
   setDefaultBankAccount,
   deleteBankAccount
 } from '../../api/sellerBankAccounts';
+import Toast from '../../components/Toast';
+import ConfirmModal from '../../components/ConfirmModal';
+import { useToast } from '../../hooks/useToast';
 
 // Lista de bancos ecuatorianos
 const ECUADORIAN_BANKS = [
@@ -43,6 +46,9 @@ const BankAccountManager = () => {
   const [showForm, setShowForm] = useState(false);
   const [editingId, setEditingId] = useState(null);
   const [submitting, setSubmitting] = useState(false);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [selectedAccountId, setSelectedAccountId] = useState(null);
+  const { message, type, closeToast, success, error: showError } = useToast();
 
   const [formData, setFormData] = useState({
     banco: '',
@@ -100,25 +106,25 @@ const BankAccountManager = () => {
     e.preventDefault();
     
     if (!formData.banco.trim() || !formData.numero_cuenta.trim() || !formData.titular.trim() || !formData.cedula_ruc.trim() || !formData.email_titular.trim()) {
-      alert('Completa todos los campos requeridos');
+      showError('Completa todos los campos requeridos');
       return;
     }
 
     // Validar número de cuenta (mínimo 10 dígitos)
     if (formData.numero_cuenta.length < 10 || !/^\d+$/.test(formData.numero_cuenta)) {
-      alert('El número de cuenta debe tener al menos 10 dígitos numéricos');
+      showError('El número de cuenta debe tener al menos 10 dígitos numéricos');
       return;
     }
 
     // Validar Cédula/RUC (10-13 dígitos)
     if (!/^\d{10,13}$/.test(formData.cedula_ruc)) {
-      alert('La cédula/RUC debe tener entre 10 y 13 dígitos');
+      showError('La cédula/RUC debe tener entre 10 y 13 dígitos');
       return;
     }
 
     // Validar email
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email_titular)) {
-      alert('Ingresa un email válido');
+      showError('Ingresa un email válido');
       return;
     }
 
@@ -138,7 +144,7 @@ const BankAccountManager = () => {
         setAccounts([...accounts, newAccount]);
       }
       handleReset();
-      alert(editingId ? 'Cuenta actualizada' : 'Cuenta creada');
+      success(editingId ? 'Cuenta actualizada' : 'Cuenta creada');
     } catch (err) {
       setError(err.message || 'Error al guardar cuenta');
     } finally {
@@ -159,13 +165,21 @@ const BankAccountManager = () => {
     setShowForm(true);
   };
 
-  const handleDelete = async (id) => {
-    if (!window.confirm('¿Eliminar esta cuenta bancaria?')) return;
+  const handleDelete = (id) => {
+    setSelectedAccountId(id);
+    setShowDeleteConfirm(true);
+  };
+
+  const confirmDelete = async () => {
+    if (!selectedAccountId) return;
     try {
-      await deleteBankAccount(id);
-      setAccounts(accounts.filter(a => a.id !== id));
+      await deleteBankAccount(selectedAccountId);
+      setAccounts(accounts.filter(a => a.id !== selectedAccountId));
+      success('Cuenta bancaria eliminada');
+      setShowDeleteConfirm(false);
+      setSelectedAccountId(null);
     } catch (err) {
-      setError(err.message || 'Error al eliminar cuenta');
+      showError(err.message || 'Error al eliminar cuenta');
     }
   };
 
@@ -188,6 +202,21 @@ const BankAccountManager = () => {
 
   return (
     <div className="space-y-6">
+      <Toast message={message} type={type} onClose={closeToast} />
+      <ConfirmModal
+        isOpen={showDeleteConfirm}
+        title="¿Eliminar esta cuenta bancaria?"
+        message="Esta acción no se puede deshacer. La cuenta será eliminada permanentemente."
+        confirmText="Eliminar"
+        cancelText="Cancelar"
+        onConfirm={confirmDelete}
+        onCancel={() => {
+          setShowDeleteConfirm(false);
+          setSelectedAccountId(null);
+        }}
+        isDangerous={true}
+      />
+      
       {error && (
         <motion.div
           initial={{ opacity: 0, y: -10 }}

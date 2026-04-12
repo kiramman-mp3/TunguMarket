@@ -22,6 +22,7 @@ import {
 } from '@fortawesome/free-solid-svg-icons';
 import { useAuth } from '../context/AuthContext';
 import { getSessions, getLogs, deleteSession } from '../api/user';
+import { getWalletSummary } from '../api/wallet';
 import EditProfile from './profile-sections/EditProfile';
 
 // Profile Sections
@@ -40,6 +41,15 @@ const Profile = () => {
   const [activeTab, setActiveTab] = useState('dashboard');
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [walletBalance, setWalletBalance] = useState(user?.balance || 0);
+
+  useEffect(() => {
+    if (activeTab === 'dashboard') {
+      getWalletSummary()
+        .then(res => setWalletBalance(res.data?.balance || 0))
+        .catch(err => console.error('Error fetching wallet:', err));
+    }
+  }, [activeTab]);
 
   const tabs = [
     { id: 'dashboard', label: 'Dashboard', icon: faChartLine },
@@ -90,7 +100,7 @@ const Profile = () => {
             </div>
             <span className="text-[10px] bg-white px-2 py-1 rounded-full font-bold text-brand-secondary shadow-sm">SALDO DISPONIBLE</span>
           </div>
-          <p className="text-4xl font-extrabold text-brand-secondary tracking-tight">${user?.balance || '0.00'}</p>
+          <p className="text-4xl font-extrabold text-brand-secondary tracking-tight">${walletBalance.toFixed(2)}</p>
           <button 
             onClick={() => setActiveTab('wallet')}
             className="mt-6 text-sm font-bold text-brand-secondary hover:text-brand-primary transition-colors flex items-center gap-2"

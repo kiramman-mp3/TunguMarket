@@ -52,8 +52,8 @@ export const getAdminAllWithdrawals = async (filters = {}) => {
 };
 
 export const approveWithdrawal = async (id, validationNotes = '') => {
-  const response = await fetch(`${API_URL}/withdrawals/${id}/approve`, {
-    method: 'PATCH',
+  const response = await fetch(`${API_URL}/withdrawals/admin/${id}/approve`, {
+    method: 'PUT',
     headers: getHeaders(),
     body: JSON.stringify({ validation_notes: validationNotes })
   });
@@ -61,10 +61,19 @@ export const approveWithdrawal = async (id, validationNotes = '') => {
 };
 
 export const rejectWithdrawal = async (id, reason) => {
-  const response = await fetch(`${API_URL}/withdrawals/${id}/reject`, {
-    method: 'PATCH',
+  const response = await fetch(`${API_URL}/withdrawals/admin/${id}/reject`, {
+    method: 'PUT',
     headers: getHeaders(),
-    body: JSON.stringify({ motivo_rechazo: reason })
+    body: JSON.stringify({ reason })
+  });
+  return handleResponse(response);
+};
+
+export const markTransferred = async (id, transferNumber) => {
+  const response = await fetch(`${API_URL}/withdrawals/admin/${id}/mark-transferred`, {
+    method: 'PUT',
+    headers: getHeaders(),
+    body: JSON.stringify({ transfer_number: transferNumber })
   });
   return handleResponse(response);
 };

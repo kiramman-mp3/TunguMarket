@@ -172,7 +172,7 @@ const SellerWithdrawals = ({ onNavigateTo }) => {
                     />
                   </div>
                   <div>
-                    <p className="font-bold text-gray-900">${withdrawal.amount?.toFixed(2) || '0.00'}</p>
+                    <p className="font-bold text-gray-900">${(parseFloat(withdrawal.amount) || 0).toFixed(2)}</p>
                     <p className="text-xs text-gray-500">
                       {new Date(withdrawal.created_at).toLocaleDateString('es-ES', {
                         year: 'numeric',
@@ -220,7 +220,7 @@ const SellerWithdrawals = ({ onNavigateTo }) => {
             <div className="space-y-5">
               <div className="bg-gray-50 p-4 rounded-xl">
                 <p className="text-xs uppercase text-gray-400 font-bold mb-1">Monto</p>
-                <p className="text-3xl font-bold text-brand-secondary">${selectedWithdrawal.amount?.toFixed(2) || '0.00'}</p>
+                <p className="text-3xl font-bold text-brand-secondary">${(parseFloat(selectedWithdrawal.amount) || 0).toFixed(2)}</p>
               </div>
 
               <div>
@@ -241,10 +241,10 @@ const SellerWithdrawals = ({ onNavigateTo }) => {
                 })}</p>
               </div>
 
-              {selectedWithdrawal.status?.toLowerCase() === 'rechazado' && selectedWithdrawal.razon_rechazo && (
+              {selectedWithdrawal.status?.toLowerCase() === 'rechazado' && selectedWithdrawal.validation_notes && (
                 <div className="bg-red-50 border border-red-200 rounded-xl p-4">
                   <p className="text-xs uppercase text-red-400 font-bold mb-1">Razón del Rechazo</p>
-                  <p className="text-red-700 text-sm">{selectedWithdrawal.razon_rechazo}</p>
+                  <p className="text-red-700 text-sm">{selectedWithdrawal.validation_notes}</p>
                 </div>
               )}
 

@@ -395,6 +395,62 @@ class WithdrawalController {
       client.release();
     }
   }
+
+  // Admin: Marcar retiro como transferido
+  static async markTransferred(req, res) {
+    const client = await pool.connect();
+    try {
+      const { id } = req.params;
+      const { transfer_number } = req.body;
+
+      if (!transfer_number || transfer_number.trim() === '') {
+        return res.status(400).json({ error: 'Número de transferencia es obligatorio' });
+      }
+
+      // Obtener detalles del retiro
+      const withdrawalResult = await client.query(
+        'SELECT * FROM withdrawals WHERE id = $1',
+        [id]
+      );
+
+      if (withdrawalResult.rows.length === 0) {
+        return res.status(404).json({ error: 'Retiro no encontrado' });
+      }
+
+      const withdrawal = withdrawalResult.rows[0];
+
+      // Validar que está aprobado
+      if (withdrawal.status !== 'aprobado') {
+        return res.status(400).json({ error: `Solo retiros aprobados pueden marcarse como transferidos. Estado actual: ${withdrawal.status}` });
+      }
+
+      // Actualizar withdrawal
+      const updateResult = await client.query(
+        `UPDATE withdrawals
+         SET status = 'transferido', transfer_number = $1, updated_at = NOW()
+         WHERE id = $2
+         RETURNING *`,
+        [transfer_number, id]
+      );
+
+      const transferredWithdrawal = updateResult.rows[0];
+
+      res.status(200).json({
+        message: 'Transferencia marcada como realizada',
+        data: {
+          id: transferredWithdrawal.id,
+          status: transferredWithdrawal.status,
+          transfer_number: transferredWithdrawal.transfer_number,
+          updated_at: transferredWithdrawal.updated_at
+        }
+      });
+
+    } catch (error) {
+      res.status(500).json({ error: error.message });
+    } finally {
+      client.release();
+    }
+  }
 }
 
 export default WithdrawalController;

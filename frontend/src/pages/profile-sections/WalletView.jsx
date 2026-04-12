@@ -18,10 +18,18 @@ const WalletView = () => {
   const [loading, setLoading] = useState(true);
   const [requesting, setRequesting] = useState(false);
   const [error, setError] = useState('');
+  const [successMessage, setSuccessMessage] = useState('');
 
   useEffect(() => {
     fetchData();
   }, []);
+
+  useEffect(() => {
+    if (successMessage) {
+      const timer = setTimeout(() => setSuccessMessage(''), 3000);
+      return () => clearTimeout(timer);
+    }
+  }, [successMessage]);
 
   const fetchData = async () => {
     setLoading(true);
@@ -71,8 +79,9 @@ const WalletView = () => {
     setRequesting(true);
     try {
       await createWithdrawal(numAmount, bankAccountId);
-      alert('Solicitud de retiro enviada con éxito');
+      setSuccessMessage('Solicitud de retiro enviada con éxito');
       setAmount('');
+      setError('');
       fetchData();
     } catch (e) { 
       setError(e.message || 'Error en la solicitud');
@@ -139,9 +148,25 @@ const WalletView = () => {
           ) : (
             <form onSubmit={handleWithdraw} className="space-y-4">
               {error && (
-                <div className="bg-red-50 border border-red-200 text-red-700 p-3 rounded-xl text-sm font-bold">
+                <motion.div
+                  initial={{ opacity: 0, y: -10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -10 }}
+                  className="bg-red-50 border border-red-200 text-red-700 p-3 rounded-xl text-sm font-bold"
+                >
                   {error}
-                </div>
+                </motion.div>
+              )}
+
+              {successMessage && (
+                <motion.div
+                  initial={{ opacity: 0, y: -10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -10 }}
+                  className="bg-green-50 border border-green-200 text-green-700 p-3 rounded-xl text-sm font-bold"
+                >
+                  ✓ {successMessage}
+                </motion.div>
               )}
               
               <div>
