@@ -16,7 +16,9 @@ import {
   faHistory,
   faMapMarkerAlt,
   faUserEdit,
-  faChartLine
+  faChartLine,
+  faBank,
+  faMoneyBillWave
 } from '@fortawesome/free-solid-svg-icons';
 import { useAuth } from '../context/AuthContext';
 import { getSessions, getLogs, deleteSession } from '../api/user';
@@ -29,6 +31,8 @@ import Wishlist from './profile-sections/Wishlist';
 import NotificationPanel from './profile-sections/NotificationPanel';
 import WalletView from './profile-sections/WalletView';
 import AddressManager from './profile-sections/AddressManager';
+import BankAccountManager from './profile-sections/BankAccountManager';
+import SellerWithdrawals from './profile-sections/SellerWithdrawals';
 import LoadingScreen from '../components/LoadingScreen';
 
 const Profile = () => {
@@ -46,6 +50,10 @@ const Profile = () => {
     { id: 'notifications', label: 'Notificaciones', icon: faBell },
     { id: 'wallet', label: 'Billetera', icon: faWallet },
     { id: 'addresses', label: 'Direcciones', icon: faMapMarkerAlt },
+    ...(user?.role !== 'admin' ? [
+      { id: 'bank-accounts', label: 'Cuentas Bancarias', icon: faBank },
+      { id: 'withdrawals', label: 'Mis Retiros', icon: faMoneyBillWave },
+    ] : []),
   ];
 
   // Eliminada lógica de fetching de actividad para limpiar el componente
@@ -60,6 +68,8 @@ const Profile = () => {
       case 'notifications': return <NotificationPanel />;
       case 'wallet': return <WalletView />;
       case 'addresses': return <AddressManager />;
+      case 'bank-accounts': return <BankAccountManager />;
+      case 'withdrawals': return <SellerWithdrawals />;
       default: return null;
     }
   };
