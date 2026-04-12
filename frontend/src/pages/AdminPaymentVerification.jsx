@@ -43,8 +43,9 @@ const AdminPaymentVerification = () => {
       setLoading(true);
       setError('');
       
+      // Fetch all payments (not just pending)
       const response = await fetch(
-        `http://localhost:5000/api/orders/admin/payments/pending`,
+        `http://localhost:5000/api/orders/admin/payments`,
         {
           headers: {
             'Authorization': `Bearer ${localStorage.getItem('tungu_token')}`
@@ -67,13 +68,16 @@ const AdminPaymentVerification = () => {
       
       setPayments(paymentsArray);
     } catch (err) {
-      console.error('Error loadingpayments:', err);
+      console.error('Error loading payments:', err);
       setError(err.message || 'Error al cargar comprobantes de pago');
       setPayments([]);
     } finally {
       setLoading(false);
     }
   };
+
+  // Filter payments by current status filter
+  const filteredPayments = payments.filter(p => p.status === statusFilter);
 
   const handleApprovePayment = (paymentId) => {
     setSelectedPaymentId(paymentId);
@@ -325,7 +329,7 @@ const AdminPaymentVerification = () => {
         </motion.div>
       )}
 
-      {payments.length === 0 ? (
+      {filteredPayments.length === 0 ? (
         <div className="text-center py-12">
           <FontAwesomeIcon icon={faFileImage} className="text-4xl text-gray-300 mb-4" />
           <p className="text-gray-500 font-medium">
@@ -334,7 +338,7 @@ const AdminPaymentVerification = () => {
         </div>
       ) : (
         <div className="space-y-3">
-          {payments.filter(p => p.status === statusFilter).map((payment) => (
+          {filteredPayments.map((payment) => (
             <motion.div
               key={payment.id}
               initial={{ opacity: 0, y: 10 }}
