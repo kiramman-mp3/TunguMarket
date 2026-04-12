@@ -1,6 +1,7 @@
 import WithdrawalModel from '../models/withdrawalModel.js';
 import UserModel from '../models/userModel.js';
 import SellerBankAccountModel from '../models/sellerBankAccountModel.js';
+import NotificationModel from '../models/notificationModel.js';
 import pool from '../config/db.js';
 import SSEService from '../services/sseService.js';
 import EmailService from '../services/emailService.js';
@@ -281,20 +282,45 @@ class WithdrawalController {
 
       // Notificaciones (fuera de transacción)
       try {
-        // Notificar al vendedor
-        const vendorNotification = {
-          type: 'withdrawal_approved',
-          user_id: userId,
-          withdrawal_id: id,
-          amount: withdrawal.amount,
-          message: `Tu retiro de $${withdrawal.amount} ha sido aprobado`
-        };
+        // Obtener datos de la cuenta bancaria
+        const bankAccountResult = await client.query(
+          'SELECT banco, numero_cuenta, titular FROM seller_bank_accounts WHERE id = $1',
+          [withdrawal.bank_account_id]
+        );
+        const bankAccount = bankAccountResult.rows[0];
 
-        await SSEService.sendToUser(userId, vendorNotification);
+        // Obtener nombre del usuario
+        const userNameResult = await client.query(
+          'SELECT name FROM users WHERE id = $1',
+          [userId]
+        );
+        const userName = userNameResult.rows[0]?.name || 'Usuario';
+
+        // Mensaje detallado con información de la transacción
+        const title = '✓ Retiro Aprobado';
+        const message = `Tu retiro de $${withdrawal.amount} ha sido aprobado.
+Banco: ${bankAccount?.banco || 'N/A'}
+Titular: ${bankAccount?.titular || 'N/A'}
+Número: ${bankAccount?.numero_cuenta || 'N/A'}`;
+
+        // Guardar en notificaciones
+        await NotificationModel.create({
+          userId: userId,
+          title: title,
+          message: message,
+          type: 'withdrawal'
+        });
+
+        // Notificar vía SSE
+        await SSEService.sendToUser(userId, {
+          type: 'NOTIFICATION',
+          title: title,
+          message: message
+        });
 
         // Email al vendedor
         // const vendorData = await UserModel.findById(userId);
-        // await EmailService.sendWithdrawalApprovedEmail(vendorData, withdrawal);
+        // await EmailService.sendWithdrawalApprovedEmail(vendorData, withdrawal, bankAccount);
       } catch (notifError) {
         console.error('Error al notificar al vendedor:', notifError.message);
       }
@@ -371,16 +397,35 @@ class WithdrawalController {
 
       // Notificación al vendedor (fuera de transacción)
       try {
-        const vendorNotification = {
-          type: 'withdrawal_rejected',
-          user_id: userId,
-          withdrawal_id: id,
-          amount: withdrawal.amount,
-          reason: reason,
-          message: `Tu solicitud de retiro de $${withdrawal.amount} ha sido rechazada`
-        };
+        // Obtener nombre del usuario
+        const userNameResult = await client.query(
+          'SELECT name FROM users WHERE id = $1',
+          [userId]
+        );
+        const userName = userNameResult.rows[0]?.name || 'Usuario';
 
-        await SSEService.sendToUser(userId, vendorNotification);
+        // Mensaje detallado con motivo del rechazo
+        const title = '✗ Retiro Rechazado';
+        const message = `Tu solicitud de retiro de $${withdrawal.amount} ha sido rechazada.
+
+Motivo: ${reason || 'No especificado'}
+
+Por favor revisa los datos de tu cuenta bancaria e intenta nuevamente.`;
+
+        // Guardar en notificaciones
+        await NotificationModel.create({
+          userId: userId,
+          title: title,
+          message: message,
+          type: 'withdrawal'
+        });
+
+        // Notificar vía SSE
+        await SSEService.sendToUser(userId, {
+          type: 'NOTIFICATION',
+          title: title,
+          message: message
+        });
 
         // Email al vendedor con motivo
         // const vendorData = await UserModel.findById(userId);

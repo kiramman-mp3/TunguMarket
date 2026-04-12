@@ -3,7 +3,8 @@ import { motion } from 'framer-motion';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import {
   faCheckCircle, faTimesCircle, faChevronDown, faClock,
-  faUser, faFileImage, faCalendarAlt, faEye, faCheck, faTimes
+  faUser, faFileImage, faCalendarAlt, faEye, faCheck, faTimes,
+  faMagnifyingGlassPlus, faMagnifyingGlassMinus, faArrowRotateRight
 } from '@fortawesome/free-solid-svg-icons';
 import Toast from '../components/Toast';
 import ConfirmModal from '../components/ConfirmModal';
@@ -16,6 +17,10 @@ const AdminPaymentVerification = () => {
   const [expandedPayment, setExpandedPayment] = useState(null);
   const [statusFilter, setStatusFilter] = useState('pendiente');
   const [previewImage, setPreviewImage] = useState(null);
+  const [imageZoom, setImageZoom] = useState(1);
+  const [imagePan, setImagePan] = useState({ x: 0, y: 0 });
+  const [isPanning, setIsPanning] = useState(false);
+  const [panStart, setPanStart] = useState({ x: 0, y: 0 });
   const [processingId, setProcessingId] = useState(null);
   const [showApproveConfirm, setShowApproveConfirm] = useState(false);
   const [showRejectConfirm, setShowRejectConfirm] = useState(false);
@@ -190,6 +195,50 @@ const AdminPaymentVerification = () => {
     }
   };
 
+  const handleImageZoom = (direction) => {
+    const zoomStep = 0.2;
+    let newZoom = imageZoom + (direction === 'in' ? zoomStep : -zoomStep);
+    newZoom = Math.max(1, Math.min(3, newZoom)); // Entre 1x y 3x
+    setImageZoom(newZoom);
+  };
+
+  const handleImageWheel = (e) => {
+    const zoomStep = 0.1;
+    let newZoom = imageZoom + (e.deltaY > 0 ? -zoomStep : zoomStep);
+    newZoom = Math.max(1, Math.min(3, newZoom));
+    setImageZoom(newZoom);
+  };
+
+  const handleMouseDown = (e) => {
+    if (imageZoom > 1) {
+      setIsPanning(true);
+      setPanStart({ x: e.clientX - imagePan.x, y: e.clientY - imagePan.y });
+    }
+  };
+
+  const handleMouseMove = (e) => {
+    if (isPanning && imageZoom > 1) {
+      setImagePan({
+        x: e.clientX - panStart.x,
+        y: e.clientY - panStart.y
+      });
+    }
+  };
+
+  const handleMouseUp = () => {
+    setIsPanning(false);
+  };
+
+  const resetZoom = () => {
+    setImageZoom(1);
+    setImagePan({ x: 0, y: 0 });
+  };
+
+  const closePreview = () => {
+    setPreviewImage(null);
+    resetZoom();
+  };
+
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-[400px]">
@@ -362,15 +411,27 @@ const AdminPaymentVerification = () => {
                         <FontAwesomeIcon icon={faFileImage} />
                         Comprobante Subido
                       </p>
-                      <div className="relative bg-gray-100 rounded-xl overflow-hidden">
+                      <div 
+                        className="relative bg-gray-100 rounded-xl overflow-hidden cursor-pointer group"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setPreviewImage(payment.receipt_url);
+                          resetZoom();
+                        }}
+                      >
                         <img
                           src={payment.receipt_url}
                           alt="Comprobante"
-                          className="w-full h-64 object-cover cursor-pointer hover:opacity-75 transition-opacity"
-                          onClick={() => setPreviewImage(payment.receipt_url)}
+                          className="w-full h-64 object-cover group-hover:opacity-75 transition-opacity"
+                          draggable={false}
                         />
-                        <div className="absolute inset-0 bg-black/0 hover:bg-black/20 transition-colors flex items-center justify-center">
-                          <FontAwesomeIcon icon={faEye} className="text-white text-2xl opacity-0 hover:opacity-100" />
+                        <div className="absolute inset-0 bg-black/0 group-hover:bg-black/30 transition-colors flex items-center justify-center">
+                          <div className="text-center">
+                            <FontAwesomeIcon icon={faEye} className="text-white text-3xl opacity-0 group-hover:opacity-100 transition-opacity mb-2" />
+                            <p className="text-white text-xs opacity-0 group-hover:opacity-100 transition-opacity">
+                              Ampliar
+                            </p>
+                          </div>
                         </div>
                       </div>
                     </div>
@@ -445,21 +506,97 @@ const AdminPaymentVerification = () => {
         </div>
       )}
 
-      {/* Image Preview Modal */}
+      {/* Image Preview Modal con Zoom */}
       {previewImage && (
         <motion.div
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
-          className="fixed inset-0 bg-black/70 flex items-center justify-center p-4 z-50"
-          onClick={() => setPreviewImage(null)}
+          className="fixed inset-0 bg-black/80 flex items-center justify-center p-4 z-50"
+          onClick={closePreview}
+          onMouseMove={handleMouseMove}
+          onMouseUp={handleMouseUp}
+          onMouseLeave={handleMouseUp}
+          onWheel={handleImageWheel}
         >
-          <motion.img
-            src={previewImage}
-            alt="Vista completa"
-            className="max-w-2xl max-h-[90vh] object-contain rounded-2xl cursor-pointer"
-            onClick={(e) => e.stopPropagation()}
-          />
+          <div className="flex flex-col items-center gap-4 w-full h-full max-w-5xl">
+            {/* Controles de Zoom */}
+            <div className="flex gap-3 bg-black/50 px-4 py-3 rounded-xl items-center justify-center">
+              <button
+                onClick={() => handleImageZoom('out')}
+                disabled={imageZoom <= 1}
+                className="p-2 bg-white/20 hover:bg-white/30 disabled:opacity-50 text-white rounded-lg transition-all flex items-center gap-2"
+                title="Zoom out (rueda del ratón hacia abajo)"
+              >
+                <FontAwesomeIcon icon={faMagnifyingGlassMinus} />
+                <span className="text-sm font-bold">Zoom</span>
+              </button>
+              
+              <span className="text-white font-bold px-4 py-1 bg-white/10 rounded-lg min-w-20 text-center">
+                {(imageZoom * 100).toFixed(0)}%
+              </span>
+              
+              <button
+                onClick={() => handleImageZoom('in')}
+                disabled={imageZoom >= 3}
+                className="p-2 bg-white/20 hover:bg-white/30 disabled:opacity-50 text-white rounded-lg transition-all flex items-center gap-2"
+                title="Zoom in (rueda del ratón hacia arriba)"
+              >
+                <FontAwesomeIcon icon={faMagnifyingGlassPlus} />
+                <span className="text-sm font-bold">Acercar</span>
+              </button>
+
+              <div className="border-r border-white/20 h-8"></div>
+
+              <button
+                onClick={resetZoom}
+                disabled={imageZoom === 1 && imagePan.x === 0 && imagePan.y === 0}
+                className="p-2 bg-white/20 hover:bg-white/30 disabled:opacity-50 text-white rounded-lg transition-all"
+                title="Restablecer zoom"
+              >
+                <FontAwesomeIcon icon={faArrowRotateRight} />
+              </button>
+
+              <div className="border-r border-white/20 h-8"></div>
+
+              <button
+                onClick={closePreview}
+                className="p-2 bg-red-600 hover:bg-red-700 text-white rounded-lg transition-all font-bold"
+                title="Cerrar (Esc)"
+              >
+                <FontAwesomeIcon icon={faTimes} /> Cerrar
+              </button>
+            </div>
+
+            {/* Imagen con Zoom y Pan */}
+            <div
+              className="flex-1 overflow-hidden rounded-2xl bg-black/40 flex items-center justify-center w-full relative cursor-grab active:cursor-grabbing"
+              onClick={(e) => e.stopPropagation()}
+              style={{
+                cursor: imageZoom > 1 ? (isPanning ? 'grabbing' : 'grab') : 'default'
+              }}
+            >
+              <img
+                src={previewImage}
+                alt="Vista ampliada"
+                className="origin-center transition-transform duration-100"
+                style={{
+                  transform: `scale(${imageZoom}) translate(${imagePan.x / (imageZoom * 100)}px, ${imagePan.y / (imageZoom * 100)}px)`,
+                  maxWidth: '100%',
+                  maxHeight: '100%',
+                  userSelect: 'none'
+                }}
+                onMouseDown={handleMouseDown}
+                onClick={(e) => e.stopPropagation()}
+                draggable={false}
+              />
+            </div>
+
+            {/* Instrucciones */}
+            <div className="text-white text-xs text-center opacity-70 bg-black/50 px-4 py-2 rounded-xl">
+              💡 Usa la rueda del ratón para hacer zoom • Arrastra para mover • Haz clic para cerrar
+            </div>
+          </div>
         </motion.div>
       )}
     </div>
