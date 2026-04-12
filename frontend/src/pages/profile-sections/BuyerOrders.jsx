@@ -21,12 +21,26 @@ const BuyerOrders = () => {
 
   const getStatusColor = (status) => {
     switch(status.toLowerCase()) {
+      case 'pagado': return 'bg-green-100 text-green-700';
+      case 'pago_rechazado': return 'bg-red-100 text-red-700';
       case 'confirmado': return 'bg-green-100 text-green-700';
       case 'pendiente': return 'bg-amber-100 text-amber-700';
       case 'aceptado': return 'bg-blue-100 text-blue-700';
       case 'envío completado': return 'bg-green-100 text-green-700';
       default: return 'bg-gray-100 text-gray-700';
     }
+  };
+
+  const getStatusLabel = (status) => {
+    const statusMap = {
+      'pagado': 'Pagado',
+      'pago_rechazado': 'Pago Rechazado',
+      'confirmado': 'Confirmado',
+      'pendiente': 'Pendiente',
+      'aceptado': 'Aceptado',
+      'envío completado': 'Envío Completado'
+    };
+    return statusMap[status.toLowerCase()] || status;
   };
 
   const handleViewDetails = async (id) => {
@@ -68,7 +82,7 @@ const BuyerOrders = () => {
               </div>
               <div className="flex flex-col items-end gap-2">
                 <span className={`px-4 py-1.5 rounded-full text-xs font-bold uppercase ${getStatusColor(order.status)}`}>
-                  {order.status}
+                  {getStatusLabel(order.status)}
                 </span>
                 <button 
                   onClick={() => handleViewDetails(order.id)}

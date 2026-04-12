@@ -24,6 +24,9 @@ import { getSellerProducts, deleteProduct, getSellerStats, updateProduct, update
 import { getCategories } from '../api/category';
 import { updateSellerProfile } from '../api/user';
 import { useAuth } from '../context/AuthContext';
+import Toast from '../components/Toast';
+import ConfirmModal from '../components/ConfirmModal';
+import { useToast } from '../hooks/useToast';
 
 const MyProducts = () => {
   const { user, login } = useAuth();
@@ -34,6 +37,8 @@ const MyProducts = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('all');
   const [categories, setCategories] = useState([]);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [selectedProductId, setSelectedProductId] = useState(null);
   
   // Perfil de vendedor
   const [showSettings, setShowSettings] = useState(false);
@@ -42,6 +47,7 @@ const MyProducts = () => {
     seller_bio: ''
   });
   const [savingSettings, setSavingSettings] = useState(false);
+  const { message, type, closeToast, success, error: showError } = useToast();
 
   // Cargar datos iniciales del vendedor desde el usuario logueado
   useEffect(() => {
@@ -93,26 +99,35 @@ const MyProducts = () => {
     }
   };
 
-  const handleDelete = async (id, title) => {
-    if (window.confirm(`¿Estás seguro de que deseas eliminar permanentemente "${title}"? Esta acción no se puede deshacer.`)) {
-      try {
-        const res = await deleteProduct(id);
-        
-        // Si el servidor indica que el producto se ocultó en lugar de borrarse (por tener ventas)
-        if (res.hidden) {
-          setProducts(prev => prev.map(p => 
-            String(p.id).toLowerCase() === String(id).toLowerCase() 
-            ? { ...p, status: 'oculto' } 
-            : p
-          ));
-          alert('El producto tiene ventas registradas, por lo que ha sido ocultado en lugar de eliminado para declarar el historial.');
-        } else {
-          // Borrado físico exitoso
-          setProducts(prev => prev.filter(p => p.id !== id));
-        }
-      } catch (error) {
-        alert('Error al eliminar el producto: ' + error.message);
+  const handleDelete = (id, title) => {
+    setSelectedProductId({ id, title });
+    setShowDeleteConfirm(true);
+  };
+
+  const confirmDelete = async () => {
+    if (!selectedProductId) return;
+    const { id, title } = selectedProductId;
+    
+    try {
+      const res = await deleteProduct(id);
+      
+      // Si el servidor indica que el producto se ocultó en lugar de borrarse (por tener ventas)
+      if (res.hidden) {
+        setProducts(prev => prev.map(p => 
+          String(p.id).toLowerCase() === String(id).toLowerCase() 
+          ? { ...p, status: 'oculto' } 
+          : p
+        ));
+        showError('El producto tiene ventas registradas, por lo que ha sido ocultado en lugar de eliminado para declarar el historial.');
+      } else {
+        // Borrado físico exitoso
+        setProducts(prev => prev.filter(p => p.id !== id));
+        success('Producto eliminado');
       }
+      setShowDeleteConfirm(false);
+      setSelectedProductId(null);
+    } catch (error) {
+      showError('Error al eliminar el producto: ' + error.message);
     }
   };
 
@@ -143,7 +158,7 @@ const MyProducts = () => {
       }));
     } catch (error) {
       console.error('Visibility Toggle Error:', error);
-      alert('Error: ' + error.message);
+      showError('Error: ' + error.message);
     }
   };
 
@@ -152,14 +167,14 @@ const MyProducts = () => {
     setSavingSettings(true);
     try {
       const res = await updateSellerProfile(sellerData);
-      alert('Perfil de vendedor actualizado con éxito');
+      success('Perfil de vendedor actualizado con éxito');
       
       // Actualizar el contexto global para que los cambios se reflejen en toda la app
       if (res.user) {
         login(res.user, localStorage.getItem('tungu_token'));
       }
     } catch (error) {
-      alert(error.message);
+      showError(error.message);
     } finally {
       setSavingSettings(false);
     }
@@ -173,6 +188,20 @@ const MyProducts = () => {
 
   return (
     <div className="min-h-screen bg-brand-light/30 pt-24 pb-20">
+      <Toast message={message} type={type} onClose={closeToast} />
+      <ConfirmModal
+        isOpen={showDeleteConfirm}
+        title="¿Eliminar producto?"
+        message={selectedProductId ? `¿Estás seguro de que deseas eliminar permanentemente "${selectedProductId.title}"? Esta acción no se puede deshacer.` : ''}
+        confirmText="Eliminar"
+        cancelText="Cancelar"
+        onConfirm={confirmDelete}
+        onCancel={() => {
+          setShowDeleteConfirm(false);
+          setSelectedProductId(null);
+        }}
+        isDangerous={true}
+      />
       <div className="max-w-6xl mx-auto px-4">
         
         {/* Header Section */}

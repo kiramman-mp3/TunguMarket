@@ -12,6 +12,9 @@ import {
   faExclamationTriangle
 } from '@fortawesome/free-solid-svg-icons';
 import { getAddresses, createAddress, deleteAddress, setDefaultAddress } from '../../api/address';
+import Toast from '../../components/Toast';
+import ConfirmModal from '../../components/ConfirmModal';
+import { useToast } from '../../hooks/useToast';
 
 const CANTONES = [
   'Ambato', 'Baños de Agua Santa', 'Cevallos', 'Mocha', 
@@ -23,6 +26,9 @@ const AddressManager = () => {
   const [showModal, setShowModal] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [selectedAddressId, setSelectedAddressId] = useState(null);
+  const { message, type, closeToast, success, error: showError } = useToast();
   
   const [formData, setFormData] = useState({
     city: 'Ambato',
@@ -64,28 +70,38 @@ const AddressManager = () => {
         postal_code: '',
         is_default: false
       });
+      success('Dirección guardada');
       fetchAddresses();
     } catch (err) {
-      alert(err.message);
+      showError(err.message);
     }
   };
 
-  const handleDelete = async (id) => {
-    if (!window.confirm('¿Eliminar esta dirección?')) return;
+  const handleDelete = (id) => {
+    setSelectedAddressId(id);
+    setShowDeleteConfirm(true);
+  };
+
+  const confirmDelete = async () => {
+    if (!selectedAddressId) return;
     try {
-      await deleteAddress(id);
+      await deleteAddress(selectedAddressId);
+      success('Dirección eliminada');
+      setShowDeleteConfirm(false);
+      setSelectedAddressId(null);
       fetchAddresses();
     } catch (err) {
-      alert(err.message);
+      showError(err.message);
     }
   };
 
   const handleSetDefault = async (id) => {
     try {
       await setDefaultAddress(id);
+      success('Dirección predeterminada actualizada');
       fetchAddresses();
     } catch (err) {
-      alert(err.message);
+      showError(err.message);
     }
   };
 
@@ -93,6 +109,21 @@ const AddressManager = () => {
 
   return (
     <div className="space-y-6">
+      <Toast message={message} type={type} onClose={closeToast} />
+      <ConfirmModal
+        isOpen={showDeleteConfirm}
+        title="¿Eliminar esta dirección?"
+        message="Esta acción no se puede deshacer. La dirección será eliminada permanentemente."
+        confirmText="Eliminar"
+        cancelText="Cancelar"
+        onConfirm={confirmDelete}
+        onCancel={() => {
+          setShowDeleteConfirm(false);
+          setSelectedAddressId(null);
+        }}
+        isDangerous={true}
+      />
+      
       <div className="flex justify-between items-center">
         <div>
           <h2 className="text-2xl font-black text-brand-secondary">Mis Direcciones</h2>

@@ -7,11 +7,14 @@ import { useState } from 'react';
 
 import { useAuth } from '../context/AuthContext';
 import { useCart } from '../context/CartContext';
+import Toast from './Toast';
+import { useToast } from '../hooks/useToast';
 
 const ProductCard = ({ product }) => {
   const { user } = useAuth();
   const { addToCart } = useCart();
   const [added, setAdded] = useState(false);
+  const { message, type, closeToast, error: showError } = useToast();
   
   const handleAddToCart = async (e) => {
     e.preventDefault();
@@ -22,7 +25,7 @@ const ProductCard = ({ product }) => {
       setTimeout(() => setAdded(false), 2000);
     } catch (err) {
       console.error(err);
-      alert(err.message || 'No se pudo agregar al carrito');
+      showError(err.message || 'No se pudo agregar al carrito');
     }
   };
   

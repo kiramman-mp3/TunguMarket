@@ -12,10 +12,13 @@ import {
   faShoppingBasket
 } from '@fortawesome/free-solid-svg-icons';
 import { useCart } from '../context/CartContext';
+import Toast from '../components/Toast';
+import { useToast } from '../hooks/useToast';
 
 const Cart = () => {
   const navigate = useNavigate();
   const { cartItems, totalItems, totalPrice, updateQuantity, removeFromCart, clearCart, loading } = useCart();
+  const { message, type, closeToast, error: showError } = useToast();
 
   if (cartItems.length === 0) {
     return (
@@ -43,6 +46,7 @@ const Cart = () => {
 
   return (
     <div className="min-h-screen bg-brand-light/20 pt-24 pb-20">
+      <Toast message={message} type={type} onClose={closeToast} />
       <div className="max-w-6xl mx-auto px-4">
         
         {/* Header */}
@@ -100,7 +104,7 @@ const Cart = () => {
                           try {
                             await updateQuantity(item.id, item.quantity - 1);
                           } catch (err) {
-                            alert(err.message || 'Error al actualizar cantidad');
+                            showError(err.message || 'Error al actualizar cantidad');
                           }
                         }}
                         className="w-8 h-8 rounded-lg hover:bg-white transition-colors text-brand-secondary disabled:opacity-30"
@@ -114,7 +118,7 @@ const Cart = () => {
                           try {
                             await updateQuantity(item.id, item.quantity + 1);
                           } catch (err) {
-                            alert(err.message || 'Error al actualizar cantidad');
+                            showError(err.message || 'Error al actualizar cantidad');
                           }
                         }}
                         className="w-8 h-8 rounded-lg hover:bg-white transition-colors text-brand-secondary"

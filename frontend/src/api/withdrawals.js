@@ -1,4 +1,4 @@
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
+const API_URL = 'http://localhost:5000/api';
 
 const getHeaders = () => ({
   'Content-Type': 'application/json',
@@ -11,16 +11,84 @@ const handleResponse = async (response) => {
   return data;
 };
 
-export const getWithdrawals = async () => {
+// Seller Withdrawals
+export const getMyWithdrawals = async () => {
   const response = await fetch(`${API_URL}/withdrawals`, { headers: getHeaders() });
   return handleResponse(response);
 };
 
-export const requestWithdrawal = async (amount, bankInfo) => {
-  const response = await fetch(`${API_URL}/withdrawals/request`, {
+export const createWithdrawal = async (amount, bankAccountId) => {
+  const response = await fetch(`${API_URL}/withdrawals`, {
     method: 'POST',
     headers: getHeaders(),
-    body: JSON.stringify({ amount, bankInfo })
+    body: JSON.stringify({ amount, bank_account_id: bankAccountId })
+  });
+  return handleResponse(response);
+};
+
+export const getWalletTransactions = async (page = 1, limit = 10) => {
+  const response = await fetch(`${API_URL}/wallet/transactions?page=${page}&limit=${limit}`, {
+    headers: getHeaders()
+  });
+  return handleResponse(response);
+};
+
+// Admin Withdrawals
+export const getAdminPendingWithdrawals = async () => {
+  const response = await fetch(`${API_URL}/withdrawals/admin/pending`, { headers: getHeaders() });
+  return handleResponse(response);
+};
+
+export const getAdminAllWithdrawals = async (filters = {}) => {
+  const params = new URLSearchParams();
+  if (filters.status) params.append('estado', filters.status);
+  if (filters.startDate) params.append('start_date', filters.startDate);
+  if (filters.endDate) params.append('end_date', filters.endDate);
+  
+  const response = await fetch(`${API_URL}/withdrawals/admin/all?${params}`, {
+    headers: getHeaders()
+  });
+  return handleResponse(response);
+};
+
+export const approveWithdrawal = async (id, validationNotes = '') => {
+  const response = await fetch(`${API_URL}/withdrawals/admin/${id}/approve`, {
+    method: 'PUT',
+    headers: getHeaders(),
+    body: JSON.stringify({ validation_notes: validationNotes })
+  });
+  return handleResponse(response);
+};
+
+export const rejectWithdrawal = async (id, reason) => {
+  const response = await fetch(`${API_URL}/withdrawals/admin/${id}/reject`, {
+    method: 'PUT',
+    headers: getHeaders(),
+    body: JSON.stringify({ reason })
+  });
+  return handleResponse(response);
+};
+
+export const markTransferred = async (id, transferNumber) => {
+  const response = await fetch(`${API_URL}/withdrawals/admin/${id}/mark-transferred`, {
+    method: 'PUT',
+    headers: getHeaders(),
+    body: JSON.stringify({ transfer_number: transferNumber })
+  });
+  return handleResponse(response);
+};
+
+// Legacy support
+export const getWithdrawals = async () => {
+  return getMyWithdrawals();
+};
+
+export const requestWithdrawal = async (amount, bankInfo) => {
+  // This is a legacy function - use createWithdrawal instead
+  const response = await fetch(`${API_URL}/withdrawals`, {
+    method: 'POST',
+    headers: getHeaders(),
+    body: JSON.stringify({ monto: amount, bankInfo })
   });
   return handleResponse(response);
 };

@@ -5,10 +5,12 @@ import {
   faUsers, faBan, faUndo, faCheckCircle, faExclamationCircle, 
   faShieldAlt, faEnvelope, faUserShield, faCalendarAlt, 
   faBoxOpen, faTag, faStore, faCheck, faTimes, faTrashAlt,
-  faEye, faClock, faLock, faLockOpen
+  faEye, faClock, faLock, faLockOpen, faMoneyBillWave, faFileImage
 } from '@fortawesome/free-solid-svg-icons';
 import { getAdminUsers, updateUserStatus } from '../api/user';
 import { getAdminProducts, adminUpdateProductStatus, deleteProduct } from '../api/product';
+import AdminWithdrawals from './AdminWithdrawals';
+import AdminPaymentVerification from './AdminPaymentVerification';
 import LoadingScreen from '../components/LoadingScreen';
 
 const AdminPanel = () => {
@@ -109,6 +111,20 @@ const AdminPanel = () => {
             <FontAwesomeIcon icon={faBoxOpen} />
             Productos
           </button>
+          <button 
+            onClick={() => { setActiveTab('withdrawals'); setFilter(''); }}
+            className={`px-6 py-2.5 rounded-xl text-sm font-bold transition-all flex items-center gap-2 ${activeTab === 'withdrawals' ? 'bg-white text-brand-secondary shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}
+          >
+            <FontAwesomeIcon icon={faMoneyBillWave} />
+            Retiros
+          </button>
+          <button 
+            onClick={() => { setActiveTab('payments'); setFilter(''); }}
+            className={`px-6 py-2.5 rounded-xl text-sm font-bold transition-all flex items-center gap-2 ${activeTab === 'payments' ? 'bg-white text-brand-secondary shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}
+          >
+            <FontAwesomeIcon icon={faFileImage} />
+            Comprobantes
+          </button>
         </div>
       </motion.div>
 
@@ -117,7 +133,7 @@ const AdminPanel = () => {
         {/* Stats Column */}
         <div className="lg:col-span-1 space-y-6">
           <div className="glass-card p-6 bg-brand-primary/5 border-brand-primary/20">
-            <h3 className="text-xs font-bold text-brand-secondary uppercase tracking-widest mb-4 opacity-50">Resumen {activeTab === 'users' ? 'Usuarios' : 'Productos'}</h3>
+            <h3 className="text-xs font-bold text-brand-secondary uppercase tracking-widest mb-4 opacity-50">Resumen {activeTab === 'users' ? 'Usuarios' : activeTab === 'products' ? 'Productos' : activeTab === 'withdrawals' ? 'Retiros' : 'Comprobantes'}</h3>
             <div className="space-y-4">
               {activeTab === 'users' ? (
                 <>
@@ -130,6 +146,16 @@ const AdminPanel = () => {
                     <span className="font-bold text-red-600">{users.filter(u => u.is_banned).length}</span>
                   </div>
                 </>
+              ) : activeTab === 'withdrawals' ? (
+                <div className="flex flex-col gap-2 text-sm text-gray-600">
+                  <p className="font-medium">Gestión de retiros de vendedores</p>
+                  <p className="text-xs text-gray-500">Aprueba o rechaza solicitudes de retiro de fondos desde billeteras.</p>
+                </div>
+              ) : activeTab === 'payments' ? (
+                <div className="flex flex-col gap-2 text-sm text-gray-600">
+                  <p className="font-medium">Verificación de comprobantes</p>
+                  <p className="text-xs text-gray-500">Revisa y aprueba los comprobantes de transferencia de los clientes.</p>
+                </div>
               ) : (
                 <>
                   <div className="flex justify-between items-center">
@@ -145,9 +171,10 @@ const AdminPanel = () => {
             </div>
           </div>
           
-          <div className="glass-card p-6">
-            <h3 className="text-xs font-bold text-brand-secondary uppercase tracking-widest mb-4 opacity-50 text-center lg:text-left">Filtros</h3>
-            <div className="relative">
+          {activeTab !== 'withdrawals' && activeTab !== 'payments' && (
+            <div className="glass-card p-6">
+              <h3 className="text-xs font-bold text-brand-secondary uppercase tracking-widest mb-4 opacity-50 text-center lg:text-left">Filtros</h3>
+              <div className="relative">
               <input 
                 type="text" 
                 placeholder={activeTab === 'users' ? "Buscar por nombre o email..." : "Buscar por título o vendedor..."}
@@ -157,6 +184,7 @@ const AdminPanel = () => {
               />
             </div>
           </div>
+          )}
 
           {error && (
             <motion.div 
@@ -238,6 +266,10 @@ const AdminPanel = () => {
                     ))}
                   </tbody>
                 </table>
+              ) : activeTab === 'withdrawals' ? (
+                <AdminWithdrawals />
+              ) : activeTab === 'payments' ? (
+                <AdminPaymentVerification />
               ) : (
                 <table className="w-full text-left">
                   <thead>
