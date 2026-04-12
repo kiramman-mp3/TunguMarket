@@ -11,28 +11,37 @@ const AdminPaymentVerification = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [expandedPayment, setExpandedPayment] = useState(null);
-  const [statusFilter, setStatusFilter] = useState('pending');
+  const [statusFilter, setStatusFilter] = useState('pendiente');
   const [previewImage, setPreviewImage] = useState(null);
   const [processingId, setProcessingId] = useState(null);
 
   useEffect(() => {
-    fetchPayments();
-  }, [statusFilter]);
+    const token = localStorage.getItem('tungu_token');
+    if (token) {
+      fetchPayments();
+    } else {
+      setError('No autenticado. Por favor, vuelve a iniciar sesión.');
+      setLoading(false);
+    }
+  }, []);
 
   const fetchPayments = async () => {
     try {
       setLoading(true);
       setError('');
+      
       const response = await fetch(
-        `http://localhost:5000/api/admin/payment-verifications?status=${statusFilter}`,
+        `http://localhost:5000/api/orders/admin/payments/pending`,
         {
           headers: {
             'Authorization': `Bearer ${localStorage.getItem('tungu_token')}`
           }
         }
       );
+      
       const data = await response.json();
-      if (!response.ok) throw new Error(data.error || 'Error al cargar pagos');
+      
+      if (!response.ok) throw new Error(data.error || `Error al cargar pagos (${response.status})`);
       
       let paymentsArray = [];
       if (Array.isArray(data)) {
@@ -45,8 +54,8 @@ const AdminPaymentVerification = () => {
       
       setPayments(paymentsArray);
     } catch (err) {
-      console.error('Error fetchPayments:', err);
-      setError(err.message || 'Error al cargar pagos');
+      console.error('Error loadingpayments:', err);
+      setError(err.message || 'Error al cargar comprobantes de pago');
       setPayments([]);
     } finally {
       setLoading(false);
@@ -59,24 +68,21 @@ const AdminPaymentVerification = () => {
     try {
       setProcessingId(paymentId);
       const response = await fetch(
-        `http://localhost:5000/api/admin/payment-verifications/${paymentId}/approve`,
+        `http://localhost:5000/api/orders/admin/payments/${paymentId}/approve`,
         {
           method: 'PATCH',
           headers: {
             'Content-Type': 'application/json',
             'Authorization': `Bearer ${localStorage.getItem('tungu_token')}`
           },
-          body: JSON.stringify({ 
-            order_id: orderId,
-            notes: 'Comprobante verificado por administrador'
-          })
+          body: JSON.stringify({ notes: 'Comprobante verificado por administrador' })
         }
       );
       const data = await response.json();
       if (!response.ok) throw new Error(data.error || 'Error al aprobar pago');
       
       setPayments(payments.map(p => 
-        p.id === paymentId ? { ...p, status: 'approved' } : p
+        p.id === paymentId ? { ...p, status: 'aprobado' } : p
       ));
       alert('✓ Pago aprobado - Orden confirmada');
       setExpandedPayment(null);
@@ -98,7 +104,7 @@ const AdminPaymentVerification = () => {
     try {
       setProcessingId(paymentId);
       const response = await fetch(
-        `http://localhost:5000/api/admin/payment-verifications/${paymentId}/reject`,
+        `http://localhost:5000/api/orders/admin/payments/${paymentId}/reject`,
         {
           method: 'PATCH',
           headers: {
@@ -112,7 +118,7 @@ const AdminPaymentVerification = () => {
       if (!response.ok) throw new Error(data.error || 'Error al rechazar pago');
       
       setPayments(payments.map(p => 
-        p.id === paymentId ? { ...p, status: 'rejected' } : p
+        p.id === paymentId ? { ...p, status: 'rechazado' } : p
       ));
       alert('✗ Pago rechazado - Cliente deberá realizar nueva transferencia');
       setExpandedPayment(null);
@@ -125,24 +131,24 @@ const AdminPaymentVerification = () => {
 
   const getStatusColor = (status) => {
     switch (status) {
-      case 'pending':
-        return 'bg-amber-50 border-amber-200 text-amber-700';
-      case 'approved':
-        return 'bg-green-50 border-green-200 text-green-700';
-      case 'rejected':
-        return 'bg-red-50 border-red-200 text-red-700';
+      case 'pendiente':
+        return 'bg-amber-50 border-l-4 border-amber-400 text-amber-900';
+      case 'aprobado':
+        return 'bg-green-50 border-l-4 border-green-400 text-green-900';
+      case 'rechazado':
+        return 'bg-red-50 border-l-4 border-red-400 text-red-900';
       default:
-        return 'bg-gray-50 border-gray-200 text-gray-700';
+        return 'bg-gray-50 border-l-4 border-gray-400 text-gray-900';
     }
   };
 
   const getStatusIcon = (status) => {
     switch (status) {
-      case 'pending':
+      case 'pendiente':
         return faClock;
-      case 'approved':
+      case 'aprobado':
         return faCheckCircle;
-      case 'rejected':
+      case 'rechazado':
         return faTimesCircle;
       default:
         return faClock;
@@ -151,11 +157,11 @@ const AdminPaymentVerification = () => {
 
   const getStatusLabel = (status) => {
     switch (status) {
-      case 'pending':
+      case 'pendiente':
         return 'Pendiente';
-      case 'approved':
+      case 'aprobado':
         return 'Aprobado';
-      case 'rejected':
+      case 'rechazado':
         return 'Rechazado';
       default:
         return status;
@@ -178,37 +184,37 @@ const AdminPaymentVerification = () => {
       {/* Status Filter */}
       <div className="flex gap-3 border-b border-gray-200 pb-4 flex-wrap">
         <button
-          onClick={() => setStatusFilter('pending')}
+          onClick={() => setStatusFilter('pendiente')}
           className={`px-4 py-2 text-sm font-bold transition-all flex items-center gap-2 ${
-            statusFilter === 'pending'
+            statusFilter === 'pendiente'
               ? 'text-amber-600 border-b-2 border-amber-600'
               : 'text-gray-500 hover:text-gray-700'
           }`}
         >
           <FontAwesomeIcon icon={faClock} />
-          Pendientes ({payments.length})
+          Pendientes ({payments.filter(p => p.status === 'pendiente').length})
         </button>
         <button
-          onClick={() => setStatusFilter('approved')}
+          onClick={() => setStatusFilter('aprobado')}
           className={`px-4 py-2 text-sm font-bold transition-all flex items-center gap-2 ${
-            statusFilter === 'approved'
+            statusFilter === 'aprobado'
               ? 'text-green-600 border-b-2 border-green-600'
               : 'text-gray-500 hover:text-gray-700'
           }`}
         >
           <FontAwesomeIcon icon={faCheckCircle} />
-          Aprobados
+          Aprobados ({payments.filter(p => p.status === 'aprobado').length})
         </button>
         <button
-          onClick={() => setStatusFilter('rejected')}
+          onClick={() => setStatusFilter('rechazado')}
           className={`px-4 py-2 text-sm font-bold transition-all flex items-center gap-2 ${
-            statusFilter === 'rejected'
+            statusFilter === 'rechazado'
               ? 'text-red-600 border-b-2 border-red-600'
               : 'text-gray-500 hover:text-gray-700'
           }`}
         >
           <FontAwesomeIcon icon={faTimesCircle} />
-          Rechazados
+          Rechazados ({payments.filter(p => p.status === 'rechazado').length})
         </button>
       </div>
 
@@ -226,12 +232,12 @@ const AdminPaymentVerification = () => {
         <div className="text-center py-12">
           <FontAwesomeIcon icon={faFileImage} className="text-4xl text-gray-300 mb-4" />
           <p className="text-gray-500 font-medium">
-            {statusFilter === 'pending' ? 'No hay comprobantes pendientes' : 'No hay comprobantes en este estado'}
+            {statusFilter === 'pendiente' ? 'No hay comprobantes pendientes de verificación' : 'No hay comprobantes en este estado'}
           </p>
         </div>
       ) : (
         <div className="space-y-3">
-          {payments.map((payment) => (
+          {payments.filter(p => p.status === statusFilter).map((payment) => (
             <motion.div
               key={payment.id}
               initial={{ opacity: 0, y: 10 }}
@@ -262,7 +268,7 @@ const AdminPaymentVerification = () => {
                     </div>
                   </div>
                   <div className="text-right">
-                    <div className="font-bold text-lg">${payment.amount?.toFixed(2) || '0.00'}</div>
+                    <div className="font-bold text-lg">${(parseFloat(payment.amount) || 0).toFixed(2)}</div>
                     <div className="text-xs opacity-70">Orden #{payment.order_id}</div>
                   </div>
                 </div>
@@ -289,7 +295,7 @@ const AdminPaymentVerification = () => {
                     </div>
                     <div>
                       <p className="text-xs opacity-70 uppercase font-bold">Monto</p>
-                      <p className="font-bold text-lg mt-1">${payment.amount?.toFixed(2)}</p>
+                      <p className="font-bold text-lg mt-1">${(parseFloat(payment.amount) || 0).toFixed(2)}</p>
                     </div>
                     <div className="col-span-2">
                       <p className="text-xs opacity-70 uppercase font-bold">Referencia Transacción</p>
@@ -302,7 +308,7 @@ const AdminPaymentVerification = () => {
                   </div>
 
                   {/* Payment Proof Image */}
-                  {payment.proof_image && (
+                  {payment.receipt_url && (
                     <div className="space-y-2">
                       <p className="text-xs opacity-70 uppercase font-bold flex items-center gap-2">
                         <FontAwesomeIcon icon={faFileImage} />
@@ -310,10 +316,10 @@ const AdminPaymentVerification = () => {
                       </p>
                       <div className="relative bg-gray-100 rounded-xl overflow-hidden">
                         <img
-                          src={payment.proof_image}
+                          src={payment.receipt_url}
                           alt="Comprobante"
                           className="w-full h-64 object-cover cursor-pointer hover:opacity-75 transition-opacity"
-                          onClick={() => setPreviewImage(payment.proof_image)}
+                          onClick={() => setPreviewImage(payment.receipt_url)}
                         />
                         <div className="absolute inset-0 bg-black/0 hover:bg-black/20 transition-colors flex items-center justify-center">
                           <FontAwesomeIcon icon={faEye} className="text-white text-2xl opacity-0 hover:opacity-100" />
@@ -329,7 +335,7 @@ const AdminPaymentVerification = () => {
                     </div>
                   )}
 
-                  {payment.status === 'pending' && (
+                  {payment.status === 'pendiente' && (
                     <div className="space-y-3 pt-4 border-t border-current/20">
                       <div className="bg-blue-50/30 p-3 rounded-xl border border-blue-200/30">
                         <p className="text-xs font-bold text-blue-700 mb-2">
@@ -360,10 +366,10 @@ const AdminPaymentVerification = () => {
                     </div>
                   )}
 
-                  {payment.status === 'rejected' && payment.rejection_reason && (
-                    <div className="bg-red-100/30 p-3 rounded-xl border border-red-200/30">
-                      <p className="text-xs opacity-70 uppercase font-bold text-red-700 mb-1">Motivo Rechazo</p>
-                      <p className="text-sm italic text-red-700">{payment.rejection_reason}</p>
+                  {payment.status === 'rechazado' && payment.validation_notes && (
+                    <div className="bg-red-50 p-4 rounded-xl border border-red-200">
+                      <p className="text-xs opacity-70 uppercase font-bold text-red-700 mb-2">Motivo Rechazo</p>
+                      <p className="text-sm italic text-red-700">{payment.validation_notes.replace('Rechazado: ', '')}</p>
                     </div>
                   )}
                 </motion.div>

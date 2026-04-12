@@ -856,6 +856,171 @@ class OrderController {
       res.status(500).json({ error: error.message });
     }
   }
+
+  /**
+   * GET /api/admin/payments/pending
+   * Obtiene los pagos pendientes de verificación
+   */
+  static async getPendingPayments(req, res) {
+    try {
+      // Verificar que es admin
+      if (req.user.role !== 'admin') {
+        return res.status(403).json({ error: 'Solo administradores pueden ver pagos pendientes' });
+      }
+
+      const result = await pool.query(`
+        SELECT 
+          p.id,
+          p.order_id,
+          p.user_id,
+          p.amount,
+          p.payment_method,
+          p.receipt_url,
+          p.status,
+          p.created_at,
+          u.name as customer_name,
+          u.email as customer_email,
+          o.total_price as order_total,
+          o.status as order_status
+        FROM payments p
+        JOIN users u ON p.user_id = u.id
+        JOIN orders o ON p.order_id = o.id
+        WHERE p.payment_method = 'transferencia' AND p.status = 'pendiente'
+        ORDER BY p.created_at DESC
+      `);
+
+      res.status(200).json(result.rows);
+    } catch (error) {
+      res.status(500).json({ error: error.message });
+    }
+  }
+
+  /**
+   * PATCH /api/admin/payments/:paymentId/approve
+   * Aprueba un pago pendiente
+   */
+  static async approvePayment(req, res) {
+    try {
+      // Verificar que es admin
+      if (req.user.role !== 'admin') {
+        return res.status(403).json({ error: 'Solo administradores pueden aprobar pagos' });
+      }
+
+      const { paymentId } = req.params;
+
+      // Actualizar pago a aprobado
+      const result = await pool.query(
+        `UPDATE payments 
+         SET status = 'aprobado', validated_by = $1, validated_at = NOW(), validation_notes = 'Aprobado por administrador'
+         WHERE id = $2
+         RETURNING *`,
+        [req.user.id, paymentId]
+      );
+
+      if (result.rows.length === 0) {
+        return res.status(404).json({ error: 'Pago no encontrado' });
+      }
+
+      const payment = result.rows[0];
+
+      // Actualizar estado de la orden a pagado
+      await pool.query(
+        `UPDATE orders 
+         SET status = 'pagado', updated_at = NOW()
+         WHERE id = $1`,
+        [payment.order_id]
+      );
+
+      // Enviar notificación al usuario
+      await NotificationModel.create({
+        user_id: payment.user_id,
+        type: 'payment_approved',
+        title: 'Pago Aprobado',
+        message: `Tu pago para la orden #${payment.order_id} ha sido aprobado. Tu orden será procesada pronto.`,
+        related_order_id: payment.order_id
+      });
+
+      // Enviar email
+      try {
+        await EmailService.sendPaymentApprovalEmail(payment.user_id, payment.order_id);
+      } catch (e) {
+        console.error('Error enviando email:', e);
+      }
+
+      res.status(200).json({
+        message: 'Pago aprobado exitosamente',
+        payment: result.rows[0]
+      });
+    } catch (error) {
+      res.status(500).json({ error: error.message });
+    }
+  }
+
+  /**
+   * PATCH /api/admin/payments/:paymentId/reject
+   * Rechaza un pago pendiente
+   */
+  static async rejectPayment(req, res) {
+    try {
+      // Verificar que es admin
+      if (req.user.role !== 'admin') {
+        return res.status(403).json({ error: 'Solo administradores pueden rechazar pagos' });
+      }
+
+      const { paymentId } = req.params;
+      const { rejection_reason } = req.body;
+
+      if (!rejection_reason) {
+        return res.status(400).json({ error: 'Motivo de rechazo requerido' });
+      }
+
+      // Actualizar pago a rechazado
+      const result = await pool.query(
+        `UPDATE payments 
+         SET status = 'rechazado', validated_by = $1, validated_at = NOW(), validation_notes = $2
+         WHERE id = $3
+         RETURNING *`,
+        [req.user.id, `Rechazado: ${rejection_reason}`, paymentId]
+      );
+
+      if (result.rows.length === 0) {
+        return res.status(404).json({ error: 'Pago no encontrado' });
+      }
+
+      const payment = result.rows[0];
+
+      // Actualizar estado de la orden a pago rechazado
+      await pool.query(
+        `UPDATE orders 
+         SET status = 'pago_rechazado', updated_at = NOW()
+         WHERE id = $1`,
+        [payment.order_id]
+      );
+
+      // Enviar notificación al usuario
+      await NotificationModel.create({
+        user_id: payment.user_id,
+        type: 'payment_rejected',
+        title: 'Pago Rechazado',
+        message: `Tu pago para la orden #${payment.order_id} ha sido rechazado. Motivo: ${rejection_reason}. Por favor, realiza una nueva transferencia.`,
+        related_order_id: payment.order_id
+      });
+
+      // Enviar email
+      try {
+        await EmailService.sendPaymentRejectionEmail(payment.user_id, payment.order_id, rejection_reason);
+      } catch (e) {
+        console.error('Error enviando email:', e);
+      }
+
+      res.status(200).json({
+        message: 'Pago rechazado. Usuario ha sido notificado',
+        payment: result.rows[0]
+      });
+    } catch (error) {
+      res.status(500).json({ error: error.message });
+    }
+  }
 }
 
 export default OrderController;

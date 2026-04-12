@@ -15,6 +15,31 @@ import {
 const OrderDetailModal = ({ order, isOpen, onClose }) => {
   if (!order || !isOpen) return null;
 
+  const getStatusColor = (status) => {
+    switch(status.toLowerCase()) {
+      case 'pagado': return 'bg-green-100 text-green-600';
+      case 'pago_rechazado': return 'bg-red-100 text-red-600';
+      case 'confirmado': return 'bg-green-100 text-green-600';
+      case 'aceptado': return 'bg-blue-100 text-blue-600';
+      case 'envío completado': return 'bg-green-100 text-green-600';
+      case 'cancelado': return 'bg-red-100 text-red-600';
+      default: return 'bg-brand-primary/20 text-brand-secondary';
+    }
+  };
+
+  const getStatusLabel = (status) => {
+    const statusMap = {
+      'pagado': 'Pagado',
+      'pago_rechazado': 'Pago Rechazado',
+      'confirmado': 'Confirmado',
+      'pendiente': 'Pendiente',
+      'aceptado': 'Aceptado',
+      'envío completado': 'Envío Completado',
+      'cancelado': 'Cancelado'
+    };
+    return statusMap[status.toLowerCase()] || status;
+  };
+
   return (
     <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
       <motion.div 
@@ -53,11 +78,8 @@ const OrderDetailModal = ({ order, isOpen, onClose }) => {
           
           {/* Status Badge */}
           <div className="flex justify-center">
-            <span className={`px-6 py-2 rounded-full font-black text-xs uppercase tracking-widest ${
-              order.status === 'confirmado' || order.status === 'Aceptado' || order.status === 'Envío completado' ? 'bg-green-100 text-green-600' :
-              order.status === 'cancelado' ? 'bg-red-100 text-red-600' : 'bg-brand-primary/20 text-brand-secondary'
-            }`}>
-              {order.status}
+            <span className={`px-6 py-2 rounded-full font-black text-xs uppercase tracking-widest ${getStatusColor(order.status)}`}>
+              {getStatusLabel(order.status)}
             </span>
             {order.payment_method === 'efectivo' && order.status !== 'Envío completado' && (
               <p className="mt-4 text-[10px] font-black text-brand-primary bg-brand-primary/5 px-4 py-2 rounded-xl">

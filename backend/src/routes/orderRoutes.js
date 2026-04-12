@@ -9,24 +9,25 @@ const router = express.Router();
  * RUTAS DE ÓRDENES
  */
 
-// Rutas de Comprador
-router.get('/', authMiddleware, OrderController.getOrders);
-router.get('/stats/user', authMiddleware, OrderController.getUserStats);
-router.get('/:id', authMiddleware, OrderController.getOrderById);
-router.post('/checkout', authMiddleware, paymentUpload.single('receipt'), OrderController.checkout);
-router.put('/:id/confirm', authMiddleware, OrderController.confirmOrder);
-router.put('/:id/cancel', authMiddleware, OrderController.cancelOrder);
-router.post('/:id/validate-payment', authMiddleware, OrderController.validatePayment);
+// Rutas de Admin (DEBEN IR PRIMERO - rutas específicas)
+router.get('/admin/payments/pending', authMiddleware, OrderController.getPendingPayments);
+router.patch('/admin/payments/:paymentId/approve', authMiddleware, OrderController.approvePayment);
+router.patch('/admin/payments/:paymentId/reject', authMiddleware, OrderController.rejectPayment);
+router.get('/filter/status/:status', authMiddleware, OrderController.getOrdersByStatus);
 
-// Rutas de Vendedor
+// Rutas de Vendedor (específicas debe ir antes de genéricas)
 router.get('/seller/sales', authMiddleware, OrderController.getSellerSales);
 router.put('/seller/status/:itemId', authMiddleware, OrderController.updateSellerItemStatus);
 
-// Rutas de Admin
-router.get('/filter/status/:status', authMiddleware, OrderController.getOrdersByStatus);
+// Rutas de Comprador (GENERALES - van al final)
+router.get('/', authMiddleware, OrderController.getOrders);
+router.get('/stats/user', authMiddleware, OrderController.getUserStats);
+router.post('/checkout', authMiddleware, paymentUpload.single('receipt'), OrderController.checkout);
+router.post('/:id/validate-payment', authMiddleware, OrderController.validatePayment);
+router.put('/:id/confirm', authMiddleware, OrderController.confirmOrder);
+router.put('/:id/cancel', authMiddleware, OrderController.cancelOrder);
 router.put('/:id/status', authMiddleware, OrderController.updateStatus);
 router.delete('/:id', authMiddleware, OrderController.deleteOrder);
-router.put('/payments/:paymentId/approve', authMiddleware, OrderController.approvePayment);
-router.put('/payments/:paymentId/reject', authMiddleware, OrderController.rejectPayment);
+router.get('/:id', authMiddleware, OrderController.getOrderById);
 
 export default router;
