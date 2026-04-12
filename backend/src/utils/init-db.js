@@ -47,7 +47,9 @@ const initDb = async () => {
       DROP TABLE IF EXISTS notifications CASCADE;
       DROP TABLE IF EXISTS withdrawals CASCADE;
       DROP TABLE IF EXISTS wallet_transactions CASCADE;
+      DROP TABLE IF EXISTS seller_bank_accounts CASCADE;
       DROP TABLE IF EXISTS push_subscriptions CASCADE;
+      DROP TABLE IF EXISTS user_addresses CASCADE;
       DROP TABLE IF EXISTS users CASCADE;
       DROP TABLE IF EXISTS roles CASCADE;
     `);
@@ -238,23 +240,45 @@ const initDb = async () => {
           created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       );
 
+      -- 6. FINANCIAL & BANKING
+      CREATE TABLE seller_bank_accounts (
+        id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+        user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        banco VARCHAR(100) NOT NULL,
+        tipo_cuenta VARCHAR(20) NOT NULL CHECK (tipo_cuenta IN ('Ahorros', 'Corriente')),
+        numero_cuenta VARCHAR(50) NOT NULL,
+        titular VARCHAR(150) NOT NULL,
+        cedula_ruc VARCHAR(20) NOT NULL,
+        email_titular VARCHAR(100) NOT NULL,
+        is_default BOOLEAN DEFAULT false,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        UNIQUE(user_id, numero_cuenta)
+      );
+
       CREATE TABLE withdrawals (
           id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
-          user_id UUID REFERENCES users(id) ON DELETE CASCADE,
+          user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
           amount DECIMAL(12,2) NOT NULL,
-          status VARCHAR(20) DEFAULT 'pendiente',
-          bank_info JSONB NOT NULL,
-          created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+          bank_account_id UUID REFERENCES seller_bank_accounts(id) ON DELETE SET NULL,
+          status VARCHAR(20) DEFAULT 'pendiente' CHECK (status IN ('pendiente', 'aprobado', 'rechazado', 'completado')),
+          bank_info JSONB,
+          validated_by UUID REFERENCES users(id) ON DELETE SET NULL,
+          validated_at TIMESTAMP,
+          validation_notes TEXT,
+          created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+          updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       );
 
       CREATE TABLE wallet_transactions (
           id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
-          user_id UUID REFERENCES users(id) ON DELETE CASCADE,
+          user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+          withdrawal_id UUID REFERENCES withdrawals(id) ON DELETE SET NULL,
           order_id UUID REFERENCES orders(id) ON DELETE SET NULL,
-          type VARCHAR(20) NOT NULL, -- 'earning', 'withdrawal', 'refund'
+          type VARCHAR(50) NOT NULL CHECK (type IN ('earning', 'withdrawal', 'refund', 'debt_commission', 'debt_payment')),
           amount DECIMAL(12,2) NOT NULL,
           commission DECIMAL(12,2) DEFAULT 0,
-          status VARCHAR(20) DEFAULT 'completed',
+          status VARCHAR(20) DEFAULT 'completed' CHECK (status IN ('completed', 'pending', 'cancelled')),
           description TEXT,
           created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       );
@@ -269,6 +293,7 @@ const initDb = async () => {
           UNIQUE(user_id, endpoint)
       );
 
+      -- 7. ADDRESSES
       CREATE TABLE user_addresses (
           id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
           user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
@@ -282,7 +307,19 @@ const initDb = async () => {
           created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       );
 
-      -- 6. AUTOMATION (TRIGGERS)
+      -- 8. AUTOMATION (TRIGGERS & INDEXES)
+      -- Indexes for performance
+      CREATE INDEX idx_seller_bank_accounts_user_id ON seller_bank_accounts(user_id);
+      CREATE INDEX idx_seller_bank_accounts_is_default ON seller_bank_accounts(user_id, is_default);
+      CREATE INDEX idx_withdrawals_status ON withdrawals(status);
+      CREATE INDEX idx_withdrawals_user_status ON withdrawals(user_id, status);
+      CREATE INDEX idx_withdrawals_bank_account ON withdrawals(bank_account_id);
+      CREATE INDEX idx_withdrawals_created ON withdrawals(created_at);
+      CREATE INDEX idx_wallet_transactions_user ON wallet_transactions(user_id);
+      CREATE INDEX idx_wallet_transactions_type ON wallet_transactions(type);
+      CREATE INDEX idx_wallet_transactions_created ON wallet_transactions(created_at);
+
+      -- TRIGGERS
       -- Function to update product rating stats
       CREATE OR REPLACE FUNCTION update_product_rating_stats()
       RETURNS TRIGGER AS $$
