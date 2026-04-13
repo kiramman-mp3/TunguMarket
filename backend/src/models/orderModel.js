@@ -72,9 +72,20 @@ class OrderModel {
    */
   static async findByUserId(userId, limit = 10, offset = 0) {
     const query = `
-      SELECT * FROM orders
-      WHERE user_id = $1
-      ORDER BY created_at DESC
+      SELECT 
+        o.*,
+        json_agg(json_build_object(
+          'id', oi.id,
+          'product_id', oi.product_id,
+          'quantity', oi.quantity,
+          'price_at_purchase', oi.price_at_purchase,
+          'status', oi.status
+        )) FILTER (WHERE oi.id IS NOT NULL) as items
+      FROM orders o
+      LEFT JOIN order_items oi ON o.id = oi.order_id
+      WHERE o.user_id = $1
+      GROUP BY o.id
+      ORDER BY o.created_at DESC
       LIMIT $2 OFFSET $3
     `;
     const { rows } = await pool.query(query, [userId, limit, offset]);
@@ -259,13 +270,15 @@ class OrderModel {
         p.title as product_title, 
         u.name as buyer_name,
         u.email as buyer_email,
-        pm.payment_method
+        pm.payment_method,
+        pm.status as payment_status
       FROM order_items oi
       JOIN orders o ON oi.order_id = o.id
       JOIN products p ON oi.product_id = p.id
       JOIN users u ON o.user_id = u.id
       LEFT JOIN payments pm ON o.id = pm.order_id
       WHERE p.seller_id = $1
+        AND (pm.status IS NULL OR pm.status = 'aprobado' OR pm.payment_method IN ('tarjeta', 'efectivo'))
       ORDER BY o.created_at DESC
     `;
     const { rows } = await pool.query(query, [sellerId]);

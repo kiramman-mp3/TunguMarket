@@ -101,21 +101,10 @@ const SellerProfile = () => {
                   <FontAwesomeIcon icon={faBoxOpen} className="text-brand-primary" />
                   {products.length} Productos Activos
                 </span>
-                <span className="flex items-center gap-2">
-                  <FontAwesomeIcon icon={faStar} className="text-amber-400" />
-                  4.8 Rating
-                </span>
               </div>
             </div>
 
-            <div className="flex flex-col gap-3 w-full md:w-auto">
-               <button className="btn-primary py-4 px-10 rounded-2xl font-black shadow-xl text-sm">
-                  Seguir Vendedor
-               </button>
-               <button className="bg-white/60 border border-gray-100 py-3 px-10 rounded-2xl font-bold text-gray-500 hover:bg-white transition-all text-sm">
-                 Enviar Mensaje
-               </button>
-            </div>
+
           </div>
         </motion.div>
 

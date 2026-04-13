@@ -61,7 +61,7 @@ export const updateUserStatus = async (id, isBanned) => {
   return handleResponse(response);
 };
 export const updateSellerProfile = async (data) => {
-  const response = await fetch(`${API_URL}/profile`, {
+  const response = await fetch(`${API_URL}/seller-profile`, {
     method: 'PUT',
     headers: getHeaders(),
     body: JSON.stringify(data),

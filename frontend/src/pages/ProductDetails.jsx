@@ -12,7 +12,6 @@ import {
   faArrowLeft,
   faMinus,
   faPlus,
-  faShareAlt,
   faAlignLeft,
   faCheck,
   faSpinner,
@@ -193,9 +192,6 @@ const ProductDetails = () => {
             <FontAwesomeIcon icon={faArrowLeft} />
             Volver al catálogo
           </Link>
-          <button className="text-gray-400 hover:text-brand-secondary transition-colors">
-            <FontAwesomeIcon icon={faShareAlt} />
-          </button>
         </div>
 
         <div className="flex flex-col lg:flex-row gap-12">

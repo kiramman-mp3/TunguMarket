@@ -10,6 +10,7 @@ const router = express.Router();
  */
 
 // Rutas de Admin (DEBEN IR PRIMERO - rutas específicas)
+router.get('/admin/payments', authMiddleware, OrderController.getAllPayments);
 router.get('/admin/payments/pending', authMiddleware, OrderController.getPendingPayments);
 router.patch('/admin/payments/:paymentId/approve', authMiddleware, OrderController.approvePayment);
 router.patch('/admin/payments/:paymentId/reject', authMiddleware, OrderController.rejectPayment);

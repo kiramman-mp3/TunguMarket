@@ -11,7 +11,8 @@ import ConfirmModal from '../components/ConfirmModal';
 import { useToast } from '../hooks/useToast';
 
 const AdminWithdrawals = () => {
-  const [withdrawals, setWithdrawals] = useState([]);
+  const [pendingWithdrawals, setPendingWithdrawals] = useState([]);
+  const [allWithdrawals, setAllWithdrawals] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [expandedPayment, setExpandedPayment] = useState(null);
@@ -25,9 +26,37 @@ const AdminWithdrawals = () => {
   const [selectedWithdrawalId, setSelectedWithdrawalId] = useState(null);
   const { message, type, closeToast, success, error: showError } = useToast();
 
-  useEffect(() => {
-    fetchWithdrawals();
-  }, [viewMode]);
+  // Computed current withdrawals based on view mode
+  const withdrawals = viewMode === 'pending' ? pendingWithdrawals : allWithdrawals;
+
+useEffect(() => {
+  const loadAllWithdrawals = async () => {
+    try {
+      setLoading(true);
+      const pendingData = await getAdminPendingWithdrawals();
+      const allData = await getAdminAllWithdrawals();
+
+      // Procesar pending
+      let pendingArray = Array.isArray(pendingData) ? pendingData : (pendingData?.data || pendingData?.withdrawals || []);
+      setPendingWithdrawals(pendingArray);
+
+      // Procesar all
+      let allArray = Array.isArray(allData) ? allData : (allData?.data || allData?.withdrawals || []);
+      setAllWithdrawals(allArray);
+    } catch (err) {
+      console.error('Error loadAllWithdrawals:', err);
+      setError(err.message || 'Error al cargar retiros');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  loadAllWithdrawals();
+}, []); // Sin dependencia de viewMode
+
+useEffect(() => {
+  fetchWithdrawals();
+}, [viewMode]);
 
   const fetchWithdrawals = async () => {
     try {
@@ -54,11 +83,20 @@ const AdminWithdrawals = () => {
         withdrawalsArray = [];
       }
       
-      setWithdrawals(withdrawalsArray);
+      // Update the appropriate state based on viewMode
+      if (viewMode === 'pending') {
+        setPendingWithdrawals(withdrawalsArray);
+      } else {
+        setAllWithdrawals(withdrawalsArray);
+      }
     } catch (err) {
       console.error('Error fetchWithdrawals:', err);
       setError(err.message || 'Error al cargar retiros');
-      setWithdrawals([]);
+      if (viewMode === 'pending') {
+        setPendingWithdrawals([]);
+      } else {
+        setAllWithdrawals([]);
+      }
     } finally {
       setLoading(false);
     }
@@ -74,9 +112,15 @@ const AdminWithdrawals = () => {
     try {
       setProcessingId(selectedWithdrawalId);
       await approveWithdrawal(selectedWithdrawalId, 'Aprobado por administrador');
-      setWithdrawals(withdrawals.map(w => 
+      
+      // Update both states to keep them in sync
+      setPendingWithdrawals(pendingWithdrawals.map(w => 
         w.id === selectedWithdrawalId ? { ...w, status: 'aprobado' } : w
       ));
+      setAllWithdrawals(allWithdrawals.map(w => 
+        w.id === selectedWithdrawalId ? { ...w, status: 'aprobado' } : w
+      ));
+      
       success('Retiro aprobado');
       setExpandedPayment(null);
       setShowApproveConfirm(false);
@@ -103,9 +147,15 @@ const AdminWithdrawals = () => {
     try {
       setProcessingId(selectedWithdrawalId);
       await rejectWithdrawal(selectedWithdrawalId, rejectReason);
-      setWithdrawals(withdrawals.map(w => 
+      
+      // Update both states to keep them in sync
+      setPendingWithdrawals(pendingWithdrawals.map(w => 
         w.id === selectedWithdrawalId ? { ...w, status: 'rechazado' } : w
       ));
+      setAllWithdrawals(allWithdrawals.map(w => 
+        w.id === selectedWithdrawalId ? { ...w, status: 'rechazado' } : w
+      ));
+      
       success('Retiro rechazado');
       setRejectingId(null);
       setRejectReason('');
@@ -219,7 +269,7 @@ const AdminWithdrawals = () => {
           }`}
         >
           <FontAwesomeIcon icon={faClock} />
-          Pendientes ({withdrawals.length})
+          Pendientes ({pendingWithdrawals.length})
         </button>
         <button
           onClick={() => {
@@ -233,7 +283,7 @@ const AdminWithdrawals = () => {
           }`}
         >
           <FontAwesomeIcon icon={faMoneyBillWave} />
-          Todos ({withdrawals.length})
+          Todos ({allWithdrawals.length})
         </button>
       </div>
 
@@ -381,11 +431,18 @@ const AdminWithdrawals = () => {
                             setProcessingId(withdrawal.id);
                             await markTransferred(withdrawal.id, transferNo);
                             
-                            setWithdrawals(withdrawals.map(w => 
+                            // Update both states to keep them in sync
+                            setPendingWithdrawals(pendingWithdrawals.map(w => 
                               w.id === withdrawal.id 
                                 ? { ...w, status: 'transferido', transfer_number: transferNo }
                                 : w
                             ));
+                            setAllWithdrawals(allWithdrawals.map(w => 
+                              w.id === withdrawal.id 
+                                ? { ...w, status: 'transferido', transfer_number: transferNo }
+                                : w
+                            ));
+                            
                             setTransferDetails({ ...transferDetails, [withdrawal.id]: {} });
                             success('Transferencia marcada como realizada');
                           } catch (err) {

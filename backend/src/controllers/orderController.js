@@ -805,7 +805,7 @@ class OrderController {
 
       // Verificar que el item pertenece a un producto del vendedor
       const itemResult = await pool.query(`
-        SELECT oi.*, p.seller_id, o.user_id as buyer_id, p.title as product_title, pay.payment_method
+        SELECT oi.*, p.seller_id, o.user_id as buyer_id, p.title as product_title, pay.payment_method, pay.status as payment_status
         FROM order_items oi
         JOIN products p ON oi.product_id = p.id
         JOIN orders o ON oi.order_id = o.id
@@ -821,6 +821,22 @@ class OrderController {
 
       if (item.seller_id !== sellerId) {
         return res.status(403).json({ error: 'No tienes permiso sobre este ítem' });
+      }
+
+      // ✅ VALIDACIÓN CRÍTICA: Verificar que el pago esté aprobado o sea tarjeta/efectivo
+      const paymentMethod = item.payment_method || 'desconocido';
+      const paymentStatus = item.payment_status;
+
+      if (paymentMethod === 'transferencia' && paymentStatus !== 'aprobado') {
+        return res.status(403).json({ 
+          error: `No puedes marcar este ítem como enviado. El pago está en estado: ${paymentStatus || 'pendiente'}. Espera a que el administrador lo apruebe.`
+        });
+      }
+
+      if (paymentStatus === 'rechazado') {
+        return res.status(403).json({ 
+          error: 'No puedes marcar este ítem como enviado. El pago ha sido rechazado.'
+        });
       }
 
       if (item.status === 'Envío completado') {
@@ -935,6 +951,47 @@ class OrderController {
         JOIN users u ON p.user_id = u.id
         JOIN orders o ON p.order_id = o.id
         WHERE p.payment_method = 'transferencia' AND p.status = 'pendiente'
+        ORDER BY p.created_at DESC
+      `);
+
+      res.status(200).json(result.rows);
+    } catch (error) {
+      res.status(500).json({ error: error.message });
+    }
+  }
+
+  /**
+   * GET /api/orders/admin/payments
+   * Obtiene todos los pagos (con cualquier estado)
+   */
+  static async getAllPayments(req, res) {
+    try {
+      // Verificar que es admin
+      if (req.user.role !== 'admin') {
+        return res.status(403).json({ error: 'Solo administradores pueden ver pagos' });
+      }
+
+      const result = await pool.query(`
+        SELECT 
+          p.id,
+          p.order_id,
+          p.user_id,
+          p.amount,
+          p.payment_method,
+          p.receipt_url,
+          p.status,
+          p.created_at,
+          p.validated_by,
+          p.validated_at,
+          p.validation_notes,
+          u.name as customer_name,
+          u.email as customer_email,
+          o.total_price as order_total,
+          o.status as order_status
+        FROM payments p
+        JOIN users u ON p.user_id = u.id
+        JOIN orders o ON p.order_id = o.id
+        WHERE p.payment_method = 'transferencia'
         ORDER BY p.created_at DESC
       `);
 
