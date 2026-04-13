@@ -29,9 +29,34 @@ const AdminWithdrawals = () => {
   // Computed current withdrawals based on view mode
   const withdrawals = viewMode === 'pending' ? pendingWithdrawals : allWithdrawals;
 
-  useEffect(() => {
-    fetchWithdrawals();
-  }, [viewMode]);
+useEffect(() => {
+  const loadAllWithdrawals = async () => {
+    try {
+      setLoading(true);
+      const pendingData = await getAdminPendingWithdrawals();
+      const allData = await getAdminAllWithdrawals();
+
+      // Procesar pending
+      let pendingArray = Array.isArray(pendingData) ? pendingData : (pendingData?.data || pendingData?.withdrawals || []);
+      setPendingWithdrawals(pendingArray);
+
+      // Procesar all
+      let allArray = Array.isArray(allData) ? allData : (allData?.data || allData?.withdrawals || []);
+      setAllWithdrawals(allArray);
+    } catch (err) {
+      console.error('Error loadAllWithdrawals:', err);
+      setError(err.message || 'Error al cargar retiros');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  loadAllWithdrawals();
+}, []); // Sin dependencia de viewMode
+
+useEffect(() => {
+  fetchWithdrawals();
+}, [viewMode]);
 
   const fetchWithdrawals = async () => {
     try {
