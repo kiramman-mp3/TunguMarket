@@ -51,16 +51,6 @@ export default function TabLayout() {
         }}
       />
       <Tabs.Screen
-        name="sell"
-        options={{
-          title: 'Vender',
-          tabBarLabel: 'Vender',
-          tabBarIcon: ({ color, focused }) => (
-            <Ionicons name={focused ? 'add-circle' : 'add-circle-outline'} size={26} color={color} />
-          ),
-        }}
-      />
-      <Tabs.Screen
         name="profile"
         options={{
           title: 'Mi Perfil',

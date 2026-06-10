@@ -17,9 +17,6 @@ const isAdmin = (req, res, next) => {
 // Obtener retiros del vendedor
 router.get('/', authenticateToken, WithdrawalController.getWithdrawals);
 
-// Crear solicitud de retiro (versión antigua - mantener para compatibilidad)
-router.post('/request', authenticateToken, WithdrawalController.requestWithdrawal);
-
 // Crear solicitud de retiro (nueva versión con bank_account_id)
 router.post('/', authenticateToken, WithdrawalController.createWithdrawal);
 

@@ -118,14 +118,6 @@ export default function ProfileScreen() {
               <Ionicons name="chevron-forward" size={18} color={Colors.brand.muted} />
             </TouchableOpacity>
 
-            <TouchableOpacity style={styles.menuItem} onPress={() => router.push('/my-products')}>
-              <View style={styles.menuItemLeft}>
-                <Ionicons name="list-outline" size={22} color={Colors.brand.secondary} />
-                <Text style={styles.menuItemText}>Mis Productos (Catálogo)</Text>
-              </View>
-              <Ionicons name="chevron-forward" size={18} color={Colors.brand.muted} />
-            </TouchableOpacity>
-
             <TouchableOpacity style={styles.menuItem} onPress={() => router.push('/profile/bank-accounts')}>
               <View style={styles.menuItemLeft}>
                 <Ionicons name="card-outline" size={22} color={Colors.brand.secondary} />

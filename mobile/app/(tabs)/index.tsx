@@ -94,7 +94,7 @@ export default function ExploreScreen() {
         )}
         {isMyProduct && (
           <View style={[styles.flaggedBadge, { backgroundColor: Colors.brand.secondary }]}>
-            <Text style={styles.flaggedText}>Mi Producto</Text>
+            <Text style={styles.flaggedText}>Tu Producto</Text>
           </View>
         )}
         <View style={styles.cardContent}>
@@ -109,14 +109,7 @@ export default function ExploreScreen() {
                 <Text style={styles.rating}>⭐ {parseFloat(item.average_rating).toFixed(1)}</Text>
               )}
             </View>
-            {isMyProduct ? (
-              <TouchableOpacity
-                style={[styles.cartBtn, { backgroundColor: Colors.brand.primary }]}
-                onPress={() => router.push(`/edit-product/${item.id}` as any)}
-              >
-                <Ionicons name="create-outline" size={20} color={Colors.brand.secondary} />
-              </TouchableOpacity>
-            ) : (
+            {!isMyProduct && (
               <TouchableOpacity
                 style={styles.cartBtn}
                 onPress={() => handleAddToCart(item)}

@@ -281,15 +281,12 @@ export default function ProductDetailsScreen() {
       {/* Buy Button Footer */}
       <View style={styles.footer}>
         {isMyProduct ? (
-          <TouchableOpacity
-            style={[styles.buyBtn, { backgroundColor: Colors.brand.primary }]}
-            onPress={() => router.push(`/edit-product/${product.id}` as any)}
-          >
-            <Ionicons name="create-outline" size={22} color={Colors.brand.secondary} />
-            <Text style={[styles.buyBtnText, { color: Colors.brand.secondary }]}>
-              Editar Producto
+          <View style={styles.ownProductMessage}>
+            <Ionicons name="information-circle-outline" size={20} color={Colors.brand.secondary} />
+            <Text style={styles.ownProductMessageText}>
+              Este es tu producto. Edítalo desde una computadora.
             </Text>
-          </TouchableOpacity>
+          </View>
         ) : (
           <TouchableOpacity
             style={[styles.buyBtn, product.stock === 0 && styles.disabledBtn]}
@@ -666,5 +663,20 @@ const styles = StyleSheet.create({
     color: '#ffffff',
     fontSize: 15,
     fontWeight: '800',
+  },
+  ownProductMessage: {
+    backgroundColor: '#f1f5f9',
+    borderRadius: 18,
+    padding: 16,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+  },
+  ownProductMessageText: {
+    color: Colors.brand.secondary,
+    fontSize: 14,
+    fontWeight: '700',
+    textAlign: 'center',
   },
 });

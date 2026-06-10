@@ -172,13 +172,13 @@ class PaymentValidator {
    * @param {string} userId - ID del usuario
    * @returns {Promise<object>} { isDuplicate: boolean, existingPayment?: object }
    */
-  async checkDuplicateReceipt(receiptHash, userId) {
+  async checkDuplicateReceipt(receiptHash) {
     try {
       const result = await pool.query(
         `SELECT id, order_id, status, created_at 
          FROM payments 
-         WHERE receipt_hash = $1 AND user_id = $2`,
-        [receiptHash, userId]
+         WHERE receipt_hash = $1`,
+        [receiptHash]
       );
 
       if (result.rows.length > 0) {
@@ -250,7 +250,7 @@ class PaymentValidator {
 
     // 5. Generar hash y verificar duplicados
     const receiptHash = this.generateReceiptHash(paymentData.receiptData);
-    const duplicateCheck = await this.checkDuplicateReceipt(receiptHash, paymentData.userId);
+    const duplicateCheck = await this.checkDuplicateReceipt(receiptHash);
 
     if (duplicateCheck.isDuplicate) {
       const existingPayment = duplicateCheck.existingPayment;

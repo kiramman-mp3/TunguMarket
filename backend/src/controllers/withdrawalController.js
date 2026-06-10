@@ -8,46 +8,6 @@ import EmailService from '../services/emailService.js';
 import WalletModel from '../models/walletModel.js';
 
 class WithdrawalController {
-  // Método antiguo - mantener para compatibilidad
-  static async requestWithdrawal(req, res) {
-    const client = await pool.connect();
-    try {
-      await client.query('BEGIN');
-      const userId = req.user.id;
-      const { amount, bankInfo } = req.body;
-
-      if (!amount || amount <= 0) {
-        return res.status(400).json({ error: 'Monto inválido' });
-      }
-
-      // Intentar descontar saldo de forma atómica
-      const updateResult = await client.query(
-        'UPDATE users SET balance = balance - $1 WHERE id = $2 AND balance >= $1 RETURNING balance',
-        [amount, userId]
-      );
-
-      if (updateResult.rowCount === 0) {
-        await client.query('ROLLBACK');
-        return res.status(400).json({ error: 'Saldo insuficiente para procesar el retiro' });
-      }
-
-      // Crear solicitud de retiro
-      const withdrawal = await WithdrawalModel.create(userId, amount, bankInfo);
-
-      await client.query('COMMIT');
-
-      res.status(201).json({
-        message: 'Solicitud de retiro enviada',
-        data: withdrawal
-      });
-    } catch (error) {
-      await client.query('ROLLBACK');
-      res.status(500).json({ error: error.message });
-    } finally {
-      client.release();
-    }
-  }
-
   // Nuevo método: Crear retiro con cuenta bancaria guardada
   static async createWithdrawal(req, res) {
     const client = await pool.connect();
