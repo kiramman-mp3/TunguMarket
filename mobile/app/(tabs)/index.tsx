@@ -6,10 +6,12 @@ import { getAllProducts, getCategories, searchProducts } from '../../src/api/end
 import { Colors } from '../../src/constants/theme';
 import { useCart } from '../../src/context/CartContext';
 import { getImageUrl } from '../../src/api/client';
+import { useAuth } from '../../src/context/AuthContext';
 
 export default function ExploreScreen() {
   const router = useRouter();
   const { addToCart } = useCart();
+  const { user } = useAuth();
   const [products, setProducts] = useState<any[]>([]);
   const [categories, setCategories] = useState<any[]>([]);
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
@@ -76,6 +78,7 @@ export default function ExploreScreen() {
     // Resolve primary image URL
     const rawImageUrl = item.primary_image || item.image_url || (item.images && item.images.find((img: any) => img.is_primary)?.image_url) || (item.images && item.images[0]?.image_url) || 'https://images.unsplash.com/photo-1542838132-92c53300491e?auto=format&fit=crop&q=80&w=400';
     const imageUrl = getImageUrl(rawImageUrl);
+    const isMyProduct = user && item.seller_id === user.id;
 
     return (
       <TouchableOpacity
@@ -89,10 +92,15 @@ export default function ExploreScreen() {
             <Text style={styles.flaggedText}>Bloqueado</Text>
           </View>
         )}
+        {isMyProduct && (
+          <View style={[styles.flaggedBadge, { backgroundColor: Colors.brand.secondary }]}>
+            <Text style={styles.flaggedText}>Mi Producto</Text>
+          </View>
+        )}
         <View style={styles.cardContent}>
           <Text style={styles.categoryName}>{item.category_name || 'General'}</Text>
           <Text style={styles.title} numberOfLines={1}>{item.title}</Text>
-          <Text style={styles.vendor} numberOfLines={1}>Vendedor: {item.seller_name || 'Tungu Seller'}</Text>
+          <Text style={styles.vendor} numberOfLines={1}>Vendedor: {isMyProduct ? 'Tú' : (item.seller_name || 'Tungu Seller')}</Text>
           
           <View style={styles.bottomRow}>
             <View>
@@ -101,12 +109,21 @@ export default function ExploreScreen() {
                 <Text style={styles.rating}>⭐ {parseFloat(item.average_rating).toFixed(1)}</Text>
               )}
             </View>
-            <TouchableOpacity
-              style={styles.cartBtn}
-              onPress={() => handleAddToCart(item)}
-            >
-              <Ionicons name="cart-outline" size={20} color={Colors.brand.secondary} />
-            </TouchableOpacity>
+            {isMyProduct ? (
+              <TouchableOpacity
+                style={[styles.cartBtn, { backgroundColor: Colors.brand.primary }]}
+                onPress={() => router.push(`/edit-product/${item.id}` as any)}
+              >
+                <Ionicons name="create-outline" size={20} color={Colors.brand.secondary} />
+              </TouchableOpacity>
+            ) : (
+              <TouchableOpacity
+                style={styles.cartBtn}
+                onPress={() => handleAddToCart(item)}
+              >
+                <Ionicons name="cart-outline" size={20} color={Colors.brand.secondary} />
+              </TouchableOpacity>
+            )}
           </View>
         </View>
       </TouchableOpacity>

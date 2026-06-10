@@ -174,3 +174,16 @@ export const markNotificationRead = async (id: string) => {
 export const getSellerInfo = async (id: string) => {
   return client.get(`/users/seller/${id}`);
 };
+
+// 10. USER PROFILE EDITING
+export const updateProfileName = async (name: string) => {
+  return client.put('/users/profile', { name });
+};
+
+export const changePassword = async (currentPassword: string, newPassword: string) => {
+  return client.put('/users/change-password', { currentPassword, newPassword });
+};
+
+export const updateAvatar = async (formData: FormData) => {
+  return client.post('/users/profile/avatar', formData);
+};

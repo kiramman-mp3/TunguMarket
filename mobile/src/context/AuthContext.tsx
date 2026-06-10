@@ -10,6 +10,7 @@ interface AuthContextType {
   loading: boolean;
   login: (userData: any, token: string) => Promise<void>;
   logout: () => Promise<void>;
+  updateUser: (newData: any) => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -130,8 +131,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     await SecureStore.deleteItemAsync('tungu_token');
   };
 
+  const updateUser = async (newData: any) => {
+    const updatedUser = { ...user, ...newData };
+    setUser(updatedUser);
+    await SecureStore.setItemAsync('tungu_user', JSON.stringify(updatedUser));
+  };
+
   return (
-    <AuthContext.Provider value={{ user, loading, login, logout }}>
+    <AuthContext.Provider value={{ user, loading, login, logout, updateUser }}>
       {children}
       <BanModal isOpen={showBanModal} onClose={logout} />
     </AuthContext.Provider>

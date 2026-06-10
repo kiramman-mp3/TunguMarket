@@ -4,6 +4,7 @@ import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../../src/context/AuthContext';
 import { Colors } from '../../src/constants/theme';
+import { getImageUrl } from '../../src/api/client';
 
 export default function ProfileScreen() {
   const router = useRouter();
@@ -45,19 +46,36 @@ export default function ProfileScreen() {
         {/* User Card */}
         <View style={styles.userCard}>
           <Image
-            source={{ uri: user.avatar_url || 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&q=80&w=200' }}
+            source={{ uri: getImageUrl(user.avatar_url) || 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&q=80&w=200' }}
             style={styles.avatar}
           />
           <View style={styles.userInfo}>
             <Text style={styles.userName}>{user.name}</Text>
             <Text style={styles.userEmail}>{user.email}</Text>
-            <View style={styles.roleBadge}>
-              <Text style={styles.roleText}>
-                {isSeller ? 'Vendedor' : 'Comprador'}
-              </Text>
+            <View style={styles.roleRow}>
+              <View style={styles.roleBadge}>
+                <Text style={styles.roleText}>
+                  {isSeller ? 'Vendedor' : 'Comprador'}
+                </Text>
+              </View>
+              <TouchableOpacity
+                style={styles.editBtnMini}
+                onPress={() => router.push('/profile/edit-profile')}
+              >
+                <Ionicons name="create-outline" size={13} color={Colors.brand.secondary} />
+                <Text style={styles.editBtnMiniText}>Editar</Text>
+              </TouchableOpacity>
             </View>
           </View>
         </View>
+
+        {/* Completar Perfil button just like web */}
+        <TouchableOpacity
+          style={styles.profileCompletionBtn}
+          onPress={() => router.push('/profile/edit-profile')}
+        >
+          <Text style={styles.profileCompletionText}>Completar Perfil / cambiar foto 📸</Text>
+        </TouchableOpacity>
 
         {/* Seller Wallet Panel */}
         {isSeller && (
@@ -121,6 +139,14 @@ export default function ProfileScreen() {
         {/* General User Section */}
         <View style={styles.menuGroup}>
           <Text style={styles.menuGroupTitle}>Mi Cuenta</Text>
+
+          <TouchableOpacity style={styles.menuItem} onPress={() => router.push('/profile/edit-profile')}>
+            <View style={styles.menuItemLeft}>
+              <Ionicons name="person-outline" size={22} color={Colors.brand.secondary} />
+              <Text style={styles.menuItemText}>Editar Perfil (Datos y Foto)</Text>
+            </View>
+            <Ionicons name="chevron-forward" size={18} color={Colors.brand.muted} />
+          </TouchableOpacity>
 
           <TouchableOpacity style={styles.menuItem} onPress={() => router.push('/profile/orders')}>
             <View style={styles.menuItemLeft}>
@@ -217,6 +243,42 @@ const styles = StyleSheet.create({
     fontWeight: '800',
     color: Colors.brand.secondary,
     textTransform: 'uppercase',
+  },
+  roleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginTop: 4,
+  },
+  editBtnMini: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 3,
+    backgroundColor: '#f1f5f9',
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 6,
+  },
+  editBtnMiniText: {
+    fontSize: 10,
+    fontWeight: '700',
+    color: Colors.brand.secondary,
+  },
+  profileCompletionBtn: {
+    borderWidth: 2,
+    borderStyle: 'dashed',
+    borderColor: '#e2e8f0',
+    borderRadius: 18,
+    paddingVertical: 14,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 20,
+    backgroundColor: '#ffffff',
+  },
+  profileCompletionText: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: Colors.brand.muted,
   },
   walletPanel: {
     backgroundColor: '#ffffff',

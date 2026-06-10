@@ -5,10 +5,12 @@ import { Ionicons } from '@expo/vector-icons';
 import { getSellerInfo, getSellerProducts } from '../../src/api/endpoints';
 import { Colors } from '../../src/constants/theme';
 import { getImageUrl } from '../../src/api/client';
+import { useAuth } from '../../src/context/AuthContext';
 
 export default function SellerProfileScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
+  const { user } = useAuth();
 
   const [seller, setSeller] = useState<any>(null);
   const [products, setProducts] = useState<any[]>([]);
@@ -22,8 +24,8 @@ export default function SellerProfileScreen() {
           getSellerInfo(id),
           getSellerProducts(id, 1, 50)
         ]);
-        setSeller(infoRes.data);
-        setProducts(prodRes.products || prodRes.data || []);
+        setSeller(infoRes || infoRes.data);
+        setProducts(prodRes.products || prodRes.data?.products || (Array.isArray(prodRes.data) ? prodRes.data : []));
       } catch (err: any) {
         Alert.alert('Error', err.message || 'No se pudo cargar la información del vendedor');
         router.back();
@@ -39,6 +41,8 @@ export default function SellerProfileScreen() {
   const renderProductItem = ({ item }: { item: any }) => {
     const rawImageUrl = item.primary_image || item.image_url || (item.images && item.images[0]?.image_url) || 'https://images.unsplash.com/photo-1542838132-92c53300491e?auto=format&fit=crop&q=80&w=400';
     const imageUrl = getImageUrl(rawImageUrl);
+    const isMyProduct = user && (item.seller_id === user.id || id === user.id);
+
     return (
       <TouchableOpacity
         style={styles.card}
@@ -46,6 +50,11 @@ export default function SellerProfileScreen() {
         onPress={() => router.push(`/product/${item.id}` as any)}
       >
         <Image source={{ uri: imageUrl }} style={styles.cardImage} />
+        {isMyProduct && (
+          <View style={styles.flaggedBadge}>
+            <Text style={styles.flaggedText}>Mi Producto</Text>
+          </View>
+        )}
         <View style={styles.cardContent}>
           <Text style={styles.title} numberOfLines={1}>{item.title}</Text>
           <Text style={styles.price}>${parseFloat(item.price).toFixed(2)}</Text>
@@ -256,5 +265,20 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     marginTop: 8,
     fontWeight: '600',
+  },
+  flaggedBadge: {
+    position: 'absolute',
+    top: 8,
+    left: 8,
+    backgroundColor: Colors.brand.secondary,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 8,
+  },
+  flaggedText: {
+    color: '#ffffff',
+    fontSize: 10,
+    fontWeight: '800',
+    textTransform: 'uppercase',
   },
 });

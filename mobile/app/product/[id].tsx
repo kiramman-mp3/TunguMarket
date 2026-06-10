@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import { StyleSheet, View, Text, ScrollView, Image, TouchableOpacity, ActivityIndicator, Alert, Dimensions } from 'react-native';
+import { StyleSheet, View, Text, ScrollView, Image, TouchableOpacity, ActivityIndicator, Alert, Dimensions, Modal, TextInput } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
-import { getProductById, toggleWishlist, getProductReviews } from '../../src/api/endpoints';
+import { getProductById, toggleWishlist, getProductReviews, createReview } from '../../src/api/endpoints';
 import { Colors } from '../../src/constants/theme';
 import { useCart } from '../../src/context/CartContext';
 import { useAuth } from '../../src/context/AuthContext';
@@ -21,6 +21,12 @@ export default function ProductDetailsScreen() {
   const [loading, setLoading] = useState(true);
   const [isFavorite, setIsFavorite] = useState(false);
   const [favLoading, setFavLoading] = useState(false);
+
+  // Review modal state
+  const [showReviewModal, setShowReviewModal] = useState(false);
+  const [reviewRating, setReviewRating] = useState(5);
+  const [reviewComment, setReviewComment] = useState('');
+  const [reviewSubmitting, setReviewSubmitting] = useState(false);
 
   useEffect(() => {
     const loadProductData = async () => {
@@ -61,6 +67,59 @@ export default function ProductDetailsScreen() {
     }
   }, [id]);
 
+  const handleOpenReviewModal = () => {
+    setReviewRating(5);
+    setReviewComment('');
+    setShowReviewModal(true);
+  };
+
+  const reloadProductData = async () => {
+    try {
+      const [prodRes, reviewsRes] = await Promise.all([
+        getProductById(id),
+        getProductReviews(id)
+      ]);
+      setProduct(prodRes.product || prodRes.data);
+      
+      let reviewsList: any[] = [];
+      if (reviewsRes) {
+        if (Array.isArray(reviewsRes)) {
+          reviewsList = reviewsRes;
+        } else if (Array.isArray(reviewsRes.reviews)) {
+          reviewsList = reviewsRes.reviews;
+        } else if (reviewsRes.data) {
+          if (Array.isArray(reviewsRes.data)) {
+            reviewsList = reviewsRes.data;
+          } else if (Array.isArray(reviewsRes.data.reviews)) {
+            reviewsList = reviewsRes.data.reviews;
+          }
+        }
+      }
+      setReviews(reviewsList);
+      setIsFavorite(!!prodRes.is_in_wishlist);
+    } catch (err) {
+      console.error('Error reloading product data:', err);
+    }
+  };
+
+  const handleSubmitReview = async () => {
+    if (!id) return;
+    try {
+      setReviewSubmitting(true);
+      await createReview(id, reviewRating, reviewComment);
+      Alert.alert('¡Gracias!', 'Tu reseña ha sido publicada con éxito.');
+      setShowReviewModal(false);
+      await reloadProductData();
+    } catch (err: any) {
+      Alert.alert(
+        'Error', 
+        err.message || 'No se pudo publicar la reseña. Asegúrate de haber completado y recibido este pedido primero.'
+      );
+    } finally {
+      setReviewSubmitting(false);
+    }
+  };
+
   const handleToggleFavorite = async () => {
     if (!user) {
       Alert.alert('Inicia sesión', 'Debes iniciar sesión para guardar en favoritos.');
@@ -97,6 +156,7 @@ export default function ProductDetailsScreen() {
 
   const rawImageUrl = product.primary_image || product.image_url || (product.images && product.images.find((img: any) => img.is_primary)?.image_url) || (product.images && product.images[0]?.image_url) || 'https://images.unsplash.com/photo-1542838132-92c53300491e?auto=format&fit=crop&q=80&w=600';
   const imageUrl = getImageUrl(rawImageUrl);
+  const isMyProduct = user && product.seller_id === user.id;
 
   return (
     <View style={styles.container}>
@@ -106,13 +166,15 @@ export default function ProductDetailsScreen() {
           <Ionicons name="arrow-back" size={24} color={Colors.brand.secondary} />
         </TouchableOpacity>
 
-        <TouchableOpacity style={styles.iconCircle} onPress={handleToggleFavorite} disabled={favLoading}>
-          <Ionicons
-            name={isFavorite ? 'heart' : 'heart-outline'}
-            size={24}
-            color={isFavorite ? Colors.brand.error : Colors.brand.secondary}
-          />
-        </TouchableOpacity>
+        {!isMyProduct && (
+          <TouchableOpacity style={styles.iconCircle} onPress={handleToggleFavorite} disabled={favLoading}>
+            <Ionicons
+              name={isFavorite ? 'heart' : 'heart-outline'}
+              size={24}
+              color={isFavorite ? Colors.brand.error : Colors.brand.secondary}
+            />
+          </TouchableOpacity>
+        )}
       </View>
 
       <ScrollView showsVerticalScrollIndicator={false}>
@@ -183,7 +245,14 @@ export default function ProductDetailsScreen() {
           <View style={styles.divider} />
 
           {/* Reviews list */}
-          <Text style={styles.sectionTitle}>Opiniones sobre el producto</Text>
+          <View style={styles.reviewsHeaderRow}>
+            <Text style={styles.sectionTitle}>Opiniones sobre el producto</Text>
+            {user && product.seller_id !== user.id && (
+              <TouchableOpacity onPress={handleOpenReviewModal} style={styles.writeReviewBtn}>
+                <Text style={styles.writeReviewBtnText}>Escribir reseña</Text>
+              </TouchableOpacity>
+            )}
+          </View>
           {reviews.length === 0 ? (
             <Text style={styles.noReviews}>Aún no hay opiniones de otros compradores.</Text>
           ) : (
@@ -211,17 +280,84 @@ export default function ProductDetailsScreen() {
 
       {/* Buy Button Footer */}
       <View style={styles.footer}>
-        <TouchableOpacity
-          style={[styles.buyBtn, product.stock === 0 && styles.disabledBtn]}
-          onPress={handleAddToCart}
-          disabled={product.stock === 0}
-        >
-          <Ionicons name="cart" size={22} color="#ffffff" />
-          <Text style={styles.buyBtnText}>
-            {product.stock > 0 ? 'Añadir al Carrito' : 'Agotado'}
-          </Text>
-        </TouchableOpacity>
+        {isMyProduct ? (
+          <TouchableOpacity
+            style={[styles.buyBtn, { backgroundColor: Colors.brand.primary }]}
+            onPress={() => router.push(`/edit-product/${product.id}` as any)}
+          >
+            <Ionicons name="create-outline" size={22} color={Colors.brand.secondary} />
+            <Text style={[styles.buyBtnText, { color: Colors.brand.secondary }]}>
+              Editar Producto
+            </Text>
+          </TouchableOpacity>
+        ) : (
+          <TouchableOpacity
+            style={[styles.buyBtn, product.stock === 0 && styles.disabledBtn]}
+            onPress={handleAddToCart}
+            disabled={product.stock === 0}
+          >
+            <Ionicons name="cart" size={22} color="#ffffff" />
+            <Text style={styles.buyBtnText}>
+              {product.stock > 0 ? 'Añadir al Carrito' : 'Agotado'}
+            </Text>
+          </TouchableOpacity>
+        )}
       </View>
+
+      {/* Leave Review Modal */}
+      {showReviewModal && (
+        <Modal transparent visible={showReviewModal} animationType="slide">
+          <View style={styles.modalOverlay}>
+            <View style={styles.modalContent}>
+              <View style={styles.modalHeader}>
+                <Text style={styles.modalTitle}>Calificar Producto</Text>
+                <TouchableOpacity onPress={() => setShowReviewModal(false)}>
+                  <Ionicons name="close" size={24} color={Colors.brand.dark} />
+                </TouchableOpacity>
+              </View>
+
+              <Text style={styles.modalSubtitle}>¿Cuántas estrellas le das a este producto?</Text>
+              
+              {/* Star selector */}
+              <View style={styles.starsSelectorRow}>
+                {[1, 2, 3, 4, 5].map(star => (
+                  <TouchableOpacity key={star} onPress={() => setReviewRating(star)}>
+                    <Ionicons
+                      name={star <= reviewRating ? 'star' : 'star-outline'}
+                      size={40}
+                      color={Colors.brand.primary}
+                      style={{ marginHorizontal: 6 }}
+                    />
+                  </TouchableOpacity>
+                ))}
+              </View>
+
+              <Text style={styles.modalSubtitle}>Comentario (Opcional):</Text>
+              <TextInput
+                style={styles.reviewInput}
+                placeholder="Escribe tu opinión sobre el producto..."
+                placeholderTextColor={Colors.brand.muted}
+                multiline
+                numberOfLines={3}
+                value={reviewComment}
+                onChangeText={setReviewComment}
+              />
+
+              <TouchableOpacity
+                style={[styles.submitReviewBtn, reviewSubmitting && styles.disabledBtn]}
+                onPress={handleSubmitReview}
+                disabled={reviewSubmitting}
+              >
+                {reviewSubmitting ? (
+                  <ActivityIndicator color="#ffffff" />
+                ) : (
+                  <Text style={styles.submitReviewBtnText}>Enviar Calificación</Text>
+                )}
+              </TouchableOpacity>
+            </View>
+          </View>
+        </Modal>
+      )}
     </View>
   );
 }
@@ -456,5 +592,79 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     backgroundColor: '#ffffff',
+  },
+  reviewsHeaderRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  writeReviewBtn: {
+    backgroundColor: 'rgba(251, 191, 36, 0.15)',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 8,
+  },
+  writeReviewBtnText: {
+    fontSize: 11,
+    fontWeight: '800',
+    color: Colors.brand.secondary,
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    justifyContent: 'flex-end',
+  },
+  modalContent: {
+    backgroundColor: '#ffffff',
+    borderTopLeftRadius: 28,
+    borderTopRightRadius: 28,
+    padding: 24,
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 20,
+  },
+  modalTitle: {
+    fontSize: 18,
+    fontWeight: '800',
+    color: Colors.brand.secondary,
+  },
+  modalSubtitle: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: Colors.brand.dark,
+    marginBottom: 10,
+  },
+  starsSelectorRow: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    marginBottom: 20,
+  },
+  reviewInput: {
+    borderWidth: 1.5,
+    borderColor: '#e2e8f0',
+    borderRadius: 16,
+    padding: 12,
+    fontSize: 14,
+    color: Colors.brand.dark,
+    height: 90,
+    textAlignVertical: 'top',
+    fontWeight: '600',
+    marginBottom: 20,
+  },
+  submitReviewBtn: {
+    backgroundColor: Colors.brand.secondary,
+    height: 52,
+    borderRadius: 16,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  submitReviewBtnText: {
+    color: '#ffffff',
+    fontSize: 15,
+    fontWeight: '800',
   },
 });
