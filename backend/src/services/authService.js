@@ -46,7 +46,7 @@ class AuthService {
     return user;
   }
 
-  static async login({ email, password, ipAddress, deviceInfo }) {
+  static async login({ email, password, ipAddress, deviceInfo, isMobile = false }) {
     const user = await UserModel.findByEmail(email);
     
     if (!user) {
@@ -82,11 +82,15 @@ class AuthService {
     await UserModel.recordLoginLog({ userId: user.id, email, ipAddress, deviceInfo, status: 'success', message: 'Inicio de sesión exitoso' });
 
     // Generate JWT
-    const token = this.generateToken(user);
+    const token = this.generateToken(user, isMobile);
 
     // Create session in DB
     const expiresAt = new Date();
-    expiresAt.setHours(expiresAt.getHours() + 24); // 24 hour session
+    if (isMobile) {
+      expiresAt.setFullYear(expiresAt.getFullYear() + 100); // 100 years for mobile
+    } else {
+      expiresAt.setHours(expiresAt.getHours() + 24); // 24 hour session for web
+    }
 
     await SessionModel.createSession({
       userId: user.id,
@@ -99,11 +103,12 @@ class AuthService {
     return { user, token };
   }
 
-  static generateToken(user) {
+  static generateToken(user, isMobile = false) {
+    const options = isMobile ? {} : { expiresIn: '24h' };
     return jwt.sign(
       { id: user.id, email: user.email, role: user.role_name },
       process.env.JWT_SECRET,
-      { expiresIn: '24h' }
+      options
     );
   }
 
@@ -117,7 +122,7 @@ class AuthService {
 
   // --- New Methods for Module 1 ---
 
-  static async verifyEmail(email, token) {
+  static async verifyEmail(email, token, isMobile = false) {
     const user = await UserModel.findByEmail(email);
     if (!user) throw new Error('Usuario no encontrado');
 
@@ -132,9 +137,13 @@ class AuthService {
     // After verification, we could return a session token or just a success message 
     // Usually, we want them to log in after verification or just log them in automatically 
     // Here, we'll log them in automatically for better UX
-    const sessionToken = this.generateToken(user);
+    const sessionToken = this.generateToken(user, isMobile);
     const expiresAt = new Date();
-    expiresAt.setHours(expiresAt.getHours() + 24);
+    if (isMobile) {
+      expiresAt.setFullYear(expiresAt.getFullYear() + 100);
+    } else {
+      expiresAt.setHours(expiresAt.getHours() + 24);
+    }
 
     await SessionModel.createSession({
       userId: user.id,

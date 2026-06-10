@@ -3,6 +3,7 @@ import * as SecureStore from 'expo-secure-store';
 import EventSource from 'react-native-sse';
 import Constants from 'expo-constants';
 import BanModal from '../components/BanModal';
+import { addAuthErrorListener } from '../api/client';
 
 interface AuthContextType {
   user: any;
@@ -37,6 +38,23 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     loadStorageData();
   }, []);
 
+  // Subscribe to global auth error events from the client
+  useEffect(() => {
+    const removeListener = addAuthErrorListener((type) => {
+      if (type === 'TOKEN_EXPIRED') {
+        console.log('[AuthContext Mobile] Auth token expired or invalid, logging out...');
+        logout();
+      } else if (type === 'ACCOUNT_BANNED') {
+        console.log('[AuthContext Mobile] Account banned detected...');
+        setShowBanModal(true);
+      }
+    });
+
+    return () => {
+      removeListener();
+    };
+  }, []);
+
   // Real-time notifications connection (SSE) for Mobile
   useEffect(() => {
     let es: EventSource | null = null;
@@ -66,6 +84,20 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
         es.addEventListener('error', (event: any) => {
           console.error('[SSE Mobile] Connection error:', event.message);
+          if (event.message) {
+            try {
+              const errData = JSON.parse(event.message);
+              if (errData.error === 'Invalid notification token' || errData.message === 'Invalid notification token') {
+                console.log('[SSE Mobile] Invalid notification token detected, logging out...');
+                logout();
+              }
+            } catch (e) {
+              if (event.message.includes('Invalid notification token')) {
+                console.log('[SSE Mobile] Invalid notification token string detected, logging out...');
+                logout();
+              }
+            }
+          }
         });
       }
     };
@@ -86,9 +118,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       throw new Error('El acceso administrativo solo está disponible en la versión web.');
     }
 
-    setUser(userData);
     await SecureStore.setItemAsync('tungu_user', JSON.stringify(userData));
     await SecureStore.setItemAsync('tungu_token', token);
+    setUser(userData);
   };
 
   const logout = async () => {

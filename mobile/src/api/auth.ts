@@ -8,10 +8,21 @@ const getBaseUrl = () => {
 
 const API_URL = getBaseUrl();
 
+const getHeaders = (token?: string) => {
+  const headers: Record<string, string> = {
+    'Content-Type': 'application/json',
+    'X-Client-Type': 'mobile',
+  };
+  if (token) {
+    headers['Authorization'] = `Bearer ${token}`;
+  }
+  return headers;
+};
+
 export const registerUser = async (userData: any) => {
   const response = await fetch(`${API_URL}/register`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: getHeaders(),
     body: JSON.stringify(userData),
   });
   const data = await response.json() as any;
@@ -22,7 +33,7 @@ export const registerUser = async (userData: any) => {
 export const loginUser = async (credentials: any) => {
   const response = await fetch(`${API_URL}/login`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: getHeaders(),
     body: JSON.stringify(credentials),
   });
   const data = await response.json() as any;
@@ -30,15 +41,10 @@ export const loginUser = async (credentials: any) => {
   return data;
 };
 
-
-
 export const logoutUser = async (token: string) => {
   const response = await fetch(`${API_URL}/logout`, {
     method: 'POST',
-    headers: { 
-      'Content-Type': 'application/json',
-      'Authorization': `Bearer ${token}`
-    },
+    headers: getHeaders(token),
   });
   return response.ok;
 };
@@ -48,7 +54,7 @@ export const logoutUser = async (token: string) => {
 export const verifyEmail = async (email: string, token: string) => {
   const response = await fetch(`${API_URL}/verify-email`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: getHeaders(),
     body: JSON.stringify({ email, token }),
   });
   const data = await response.json() as any;
@@ -59,7 +65,7 @@ export const verifyEmail = async (email: string, token: string) => {
 export const resendVerification = async (email: string) => {
   const response = await fetch(`${API_URL}/resend-verification`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: getHeaders(),
     body: JSON.stringify({ email }),
   });
   const data = await response.json() as any;
@@ -70,7 +76,7 @@ export const resendVerification = async (email: string) => {
 export const forgotPassword = async (email: string) => {
   const response = await fetch(`${API_URL}/forgot-password`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: getHeaders(),
     body: JSON.stringify({ email }),
   });
   const data = await response.json() as any;
@@ -81,7 +87,7 @@ export const forgotPassword = async (email: string) => {
 export const validateResetToken = async (email: string, token: string) => {
   const response = await fetch(`${API_URL}/validate-reset-token`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: getHeaders(),
     body: JSON.stringify({ email, token }),
   });
   const data = await response.json() as any;
@@ -92,7 +98,7 @@ export const validateResetToken = async (email: string, token: string) => {
 export const resetPassword = async (email: string, token: string, password: string) => {
   const response = await fetch(`${API_URL}/reset-password`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: getHeaders(),
     body: JSON.stringify({ email, token, password }),
   });
   const data = await response.json() as any;

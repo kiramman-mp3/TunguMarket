@@ -26,8 +26,9 @@ class AuthController {
       const { email, password } = req.body;
       const ipAddress = req.ip;
       const deviceInfo = req.headers['user-agent'];
+      const isMobile = req.headers['x-client-type'] === 'mobile';
 
-      const { user, token } = await AuthService.login({ email, password, ipAddress, deviceInfo });
+      const { user, token } = await AuthService.login({ email, password, ipAddress, deviceInfo, isMobile });
 
       res.status(200).json({
         message: 'Inicio de sesión exitoso',
@@ -77,7 +78,8 @@ class AuthController {
   static async verifyEmail(req, res) {
     try {
       const { email, token } = req.body;
-      const result = await AuthService.verifyEmail(email, token);
+      const isMobile = req.headers['x-client-type'] === 'mobile';
+      const result = await AuthService.verifyEmail(email, token, isMobile);
       res.status(200).json({
         ...result,
         user: {
