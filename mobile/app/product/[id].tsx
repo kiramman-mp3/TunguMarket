@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { StyleSheet, View, Text, ScrollView, Image, TouchableOpacity, ActivityIndicator, Alert, Dimensions, Modal, TextInput } from 'react-native';
+import { StyleSheet, View, Text, ScrollView, Image, TouchableOpacity, ActivityIndicator, Alert, Dimensions, Modal, TextInput, KeyboardAvoidingView, Platform } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { getProductById, toggleWishlist, getProductReviews, createReview } from '../../src/api/endpoints';
@@ -304,7 +304,7 @@ export default function ProductDetailsScreen() {
       {/* Leave Review Modal */}
       {showReviewModal && (
         <Modal transparent visible={showReviewModal} animationType="slide">
-          <View style={styles.modalOverlay}>
+          <KeyboardAvoidingView behavior="padding" style={styles.modalOverlay}>
             <View style={styles.modalContent}>
               <View style={styles.modalHeader}>
                 <Text style={styles.modalTitle}>Calificar Producto</Text>
@@ -352,7 +352,7 @@ export default function ProductDetailsScreen() {
                 )}
               </TouchableOpacity>
             </View>
-          </View>
+          </KeyboardAvoidingView>
         </Modal>
       )}
     </View>

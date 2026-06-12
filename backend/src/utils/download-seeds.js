@@ -16,8 +16,8 @@ if (!fs.existsSync(destDir)) {
 const CATEGORY_IMAGES = {
   'alimentos_1.png': 'https://images.unsplash.com/photo-1542838132-92c53300491e?w=500&q=80',
   'alimentos_2.png': 'https://images.unsplash.com/photo-1504674900247-0877df9cc836?w=500&q=80',
-  'artesanias_1.png': 'https://images.unsplash.com/photo-1513519245088-0e12902e5a38?w=500&q=80',
-  'artesanias_2.png': 'https://images.unsplash.com/photo-1590736969955-71cb94801758?w=500&q=80',
+  'artesanias_1.png': 'https://plus.unsplash.com/premium_photo-1664105111034-33e24dc90a78?fm=jpg&q=60&w=3000&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxzZWFyY2h8MXx8YXJ0ZXNhbiVDMyVBRGFzfGVufDB8fDB8fHww',
+  'artesanias_2.png': 'https://images.unsplash.com/photo-1690541478715-898f26cbc28d?fm=jpg&q=60&w=3000&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxzZWFyY2h8Mnx8YXJ0ZXNhbiVDMyVBRGF8ZW58MHx8MHx8fDA%3D',
   'calzado_1.png': 'https://images.unsplash.com/photo-1542291026-7eec264c27ff?w=500&q=80',
   'calzado_2.png': 'https://images.unsplash.com/photo-1549298916-b41d501d3772?w=500&q=80',
   'ropa_1.png': 'https://images.unsplash.com/photo-1523381210434-271e8be1f52b?w=500&q=80',
@@ -43,7 +43,7 @@ const download = (url, dest) => {
         resolve();
       });
     }).on('error', (err) => {
-      fs.unlink(dest, () => {});
+      fs.unlink(dest, () => { });
       reject(err);
     });
   });

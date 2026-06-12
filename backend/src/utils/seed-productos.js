@@ -58,8 +58,8 @@ const seedChaos = async () => {
 
     const categoriesRes = await client.query('SELECT id, name FROM categories');
     const categories = categoriesRes.rows;
-    const adminRes = await client.query("SELECT id FROM users WHERE email = 'admin@tungumarket.com'");
-    if (adminRes.rows.length === 0) throw new Error('Crea el admin primero.');
+    const adminRes = await client.query("SELECT id FROM users WHERE email = 'usuario@prueba.com'");
+    if (adminRes.rows.length === 0) throw new Error('Crea el usuario@prueba.com primero.');
     const adminId = adminRes.rows[0].id;
 
     console.log('Limpiando catálogo anterior...');
