@@ -63,7 +63,8 @@ class UserController {
       }
 
       const userId = req.user.id;
-      const baseUrl = process.env.BACKEND_URL || `${req.protocol}://${req.get('host')}`;
+      const port = process.env.PORT || 5000;
+      const baseUrl = process.env.BACKEND_URL || `http://localhost:${port}`;
       const avatarUrl = `${baseUrl}/uploads/avatars/${req.file.filename}`;
 
       const updatedUser = await UserModel.updateProfile(userId, { avatar_url: avatarUrl });

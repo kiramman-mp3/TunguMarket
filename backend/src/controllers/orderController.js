@@ -198,7 +198,8 @@ class OrderController {
       
       let receiptUrl = null;
       if (payment_method === 'transferencia' && req.file) {
-        const baseUrl = process.env.BACKEND_URL || `${req.protocol}://${req.get('host')}`;
+        const port = process.env.PORT || 5000;
+        const baseUrl = process.env.BACKEND_URL || `http://localhost:${port}`;
         receiptUrl = `${baseUrl}/uploads/payments/${req.file.filename}`;
       }
 

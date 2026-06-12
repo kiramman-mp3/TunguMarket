@@ -102,5 +102,12 @@ export const getIp = () => {
 export const getImageUrl = (url?: string) => {
   if (!url) return '';
   const ip = getIp();
-  return url.replace('localhost', ip).replace('127.0.0.1', ip);
+  
+  // Replace localhost, 127.0.0.1, or any local network IP (192.168.x.x, 172.x.x.x) with the current IP
+  return url
+    .replace('localhost', ip)
+    .replace('127.0.0.1', ip)
+    .replace(/192\.168\.\d+\.\d+/g, ip)
+    .replace(/172\.(1[6-9]|2[0-9]|3[0-1])\.\d+\.\d+/g, ip)
+    .replace(/10\.\d+\.\d+\.\d+/g, ip);
 };

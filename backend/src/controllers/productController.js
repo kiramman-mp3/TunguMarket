@@ -240,7 +240,8 @@ class ProductController {
 
       // ========== GESTIÓN DE IMÁGENES MÚLTIPLES ==========
       if (req.files && req.files.length > 0) {
-        const baseUrl = process.env.BACKEND_URL || `${req.protocol}://${req.get('host')}`;
+        const port = process.env.PORT || 5000;
+        const baseUrl = process.env.BACKEND_URL || `http://localhost:${port}`;
         
         for (let i = 0; i < req.files.length; i++) {
           const file = req.files[i];
@@ -342,7 +343,8 @@ class ProductController {
 
       // ========== ACTUALIZACIÓN DE IMÁGENES MÚLTIPLES ==========
       if (req.files && req.files.length > 0) {
-        const baseUrl = process.env.BACKEND_URL || `${req.protocol}://${req.get('host')}`;
+        const port = process.env.PORT || 5000;
+        const baseUrl = process.env.BACKEND_URL || `http://localhost:${port}`;
         
         // Obtener el orden actual para continuar
         const currentCount = await ProductImageModel.countByProductId(id);
