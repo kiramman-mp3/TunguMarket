@@ -42,7 +42,7 @@ export const getProductById = async (id) => {
  * Realiza una búsqueda de productos con filtros combinados
  */
 export const searchProducts = async (filtersObj, page = 1) => {
-  const params = new URLSearchParams({ page });
+  const params = new URLSearchParams({ page, limit: 100 });
   
   if (filtersObj.q) params.append('q', filtersObj.q);
   if (filtersObj.categoryId) params.append('categoryId', filtersObj.categoryId);

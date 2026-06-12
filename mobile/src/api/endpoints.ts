@@ -1,7 +1,7 @@
 import { client } from './client';
 
 // 1. PRODUCTS & CATEGORIES
-export const getAllProducts = async (page = 1, limit = 12, categoryId: string | null = null) => {
+export const getAllProducts = async (page = 1, limit = 100, categoryId: string | null = null) => {
   if (categoryId) {
     return client.get(`/products/category/${categoryId}?page=${page}&limit=${limit}`);
   }
@@ -17,7 +17,7 @@ export const getProductById = async (id: string) => {
 };
 
 export const searchProducts = async (filters: { q?: string; categoryId?: string; minPrice?: string; maxPrice?: string; minRating?: string }, page = 1) => {
-  const params = new URLSearchParams({ page: String(page) });
+  const params = new URLSearchParams({ page: String(page), limit: '100' });
   if (filters.q) params.append('q', filters.q);
   if (filters.categoryId) params.append('categoryId', filters.categoryId);
   if (filters.minPrice) params.append('minPrice', filters.minPrice);

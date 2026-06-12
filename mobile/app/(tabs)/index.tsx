@@ -26,7 +26,7 @@ export default function ExploreScreen() {
       if (query.trim()) {
         prodData = await searchProducts({ q: query, categoryId: catId || undefined });
       } else {
-        prodData = await getAllProducts(1, 40, catId);
+        prodData = await getAllProducts(1, 100, catId);
       }
       setProducts(prodData.products || prodData.data?.products || (Array.isArray(prodData.data) ? prodData.data : []));
     } catch (error) {

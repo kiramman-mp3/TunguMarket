@@ -23,6 +23,13 @@ export default function LoginScreen() {
     setLoading(true);
     try {
       const data = await loginUser({ email, password });
+      
+      if (data.user && data.user.role === 'admin') {
+        Alert.alert('Acceso Denegado', 'Los administradores no pueden iniciar sesión desde la aplicación móvil. Usa la plataforma web.');
+        setLoading(false);
+        return;
+      }
+
       await login(data.user, data.token);
       router.replace('/(tabs)');
     } catch (error: any) {
