@@ -26,7 +26,11 @@ export default function LoginScreen() {
       await login(data.user, data.token);
       router.replace('/(tabs)');
     } catch (error: any) {
-      Alert.alert('Error', error.message || 'Credenciales inválidas');
+      if (error.message === 'EMAIL_NOT_VERIFIED') {
+        router.push({ pathname: '/(auth)/pending-verification', params: { email } });
+      } else {
+        Alert.alert('Error', error.message || 'Credenciales inválidas');
+      }
     } finally {
       setLoading(false);
     }
