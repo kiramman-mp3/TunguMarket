@@ -157,7 +157,18 @@ class UserModel {
   }
 
   static async findSellerById(id) {
-    const query = 'SELECT id, name, seller_name, seller_bio, avatar_url, created_at, role_id FROM users WHERE id = $1';
+    const query = `
+      SELECT 
+        u.id, u.name, u.seller_name, u.seller_bio, u.avatar_url, u.created_at, u.role_id,
+        (
+          SELECT COALESCE(AVG(r.rating), 0) 
+          FROM reviews r 
+          JOIN products p ON r.product_id = p.id 
+          WHERE p.seller_id = u.id
+        ) as average_rating
+      FROM users u 
+      WHERE u.id = $1
+    `;
     const { rows } = await pool.query(query, [id]);
     return rows[0];
   }

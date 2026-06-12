@@ -53,18 +53,6 @@ export default function ProfileScreen() {
             <Text style={styles.userName}>{user.name}</Text>
             <Text style={styles.userEmail}>{user.email}</Text>
             <View style={styles.roleRow}>
-              <View style={styles.roleBadge}>
-                <Text style={styles.roleText}>
-                  {isSeller ? 'Vendedor' : 'Comprador'}
-                </Text>
-              </View>
-              <TouchableOpacity
-                style={styles.editBtnMini}
-                onPress={() => router.push('/profile/edit-profile')}
-              >
-                <Ionicons name="create-outline" size={13} color={Colors.brand.secondary} />
-                <Text style={styles.editBtnMiniText}>Editar</Text>
-              </TouchableOpacity>
             </View>
           </View>
         </View>
@@ -135,7 +123,7 @@ export default function ProfileScreen() {
           <TouchableOpacity style={styles.menuItem} onPress={() => router.push('/profile/edit-profile')}>
             <View style={styles.menuItemLeft}>
               <Ionicons name="person-outline" size={22} color={Colors.brand.secondary} />
-              <Text style={styles.menuItemText}>Editar Perfil (Datos y Foto)</Text>
+              <Text style={styles.menuItemText}>Editar Perfil</Text>
             </View>
             <Ionicons name="chevron-forward" size={18} color={Colors.brand.muted} />
           </TouchableOpacity>
@@ -143,7 +131,7 @@ export default function ProfileScreen() {
           <TouchableOpacity style={styles.menuItem} onPress={() => router.push('/profile/orders')}>
             <View style={styles.menuItemLeft}>
               <Ionicons name="receipt-outline" size={22} color={Colors.brand.secondary} />
-              <Text style={styles.menuItemText}>Mis Pedidos (Compras)</Text>
+              <Text style={styles.menuItemText}>Mis Compras</Text>
             </View>
             <Ionicons name="chevron-forward" size={18} color={Colors.brand.muted} />
           </TouchableOpacity>
@@ -151,7 +139,7 @@ export default function ProfileScreen() {
           <TouchableOpacity style={styles.menuItem} onPress={() => router.push('/profile/addresses')}>
             <View style={styles.menuItemLeft}>
               <Ionicons name="location-outline" size={22} color={Colors.brand.secondary} />
-              <Text style={styles.menuItemText}>Mis Direcciones de Envío</Text>
+              <Text style={styles.menuItemText}>Mis Direcciones</Text>
             </View>
             <Ionicons name="chevron-forward" size={18} color={Colors.brand.muted} />
           </TouchableOpacity>
@@ -167,7 +155,7 @@ export default function ProfileScreen() {
           <TouchableOpacity style={styles.menuItem} onPress={() => router.push('/profile/notifications')}>
             <View style={styles.menuItemLeft}>
               <Ionicons name="notifications-outline" size={22} color={Colors.brand.secondary} />
-              <Text style={styles.menuItemText}>Centro de Notificaciones</Text>
+              <Text style={styles.menuItemText}>Notificaciones</Text>
             </View>
             <Ionicons name="chevron-forward" size={18} color={Colors.brand.muted} />
           </TouchableOpacity>
