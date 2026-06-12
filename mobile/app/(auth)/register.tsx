@@ -105,6 +105,7 @@ export default function RegisterScreen() {
                 <TextInput 
                   style={styles.input}
                   placeholder="Juan Pérez"
+                  placeholderTextColor={Colors.brand.muted}
                   value={name}
                   onChangeText={setName}
                   autoCapitalize="words"
@@ -120,6 +121,7 @@ export default function RegisterScreen() {
                 <TextInput 
                   style={styles.input}
                   placeholder="ejemplo@correo.com"
+                  placeholderTextColor={Colors.brand.muted}
                   keyboardType="email-address"
                   autoCapitalize="none"
                   value={email}
@@ -190,6 +192,7 @@ export default function RegisterScreen() {
                 <TextInput 
                   style={styles.input}
                   placeholder="Mínimo 8 caracteres"
+                  placeholderTextColor={Colors.brand.muted}
                   secureTextEntry={!showPassword}
                   value={password}
                   onChangeText={setPassword}
@@ -307,6 +310,7 @@ const styles = StyleSheet.create({
   },
   input: {
     flex: 1,
+    height: '100%',
     fontSize: 16,
     color: Colors.brand.dark,
     fontWeight: '500',

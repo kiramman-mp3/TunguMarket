@@ -24,14 +24,26 @@ class DockerManager {
      */
     getIp() {
         const interfaces = os.networkInterfaces();
+        let candidateIp = null;
+        let virtualIp = null;
+
         for (const name of Object.keys(interfaces)) {
             for (const iface of interfaces[name]) {
                 if (iface.family === 'IPv4' && !iface.internal) {
-                    return iface.address;
+                    const nameLower = name.toLowerCase();
+                    // Detect if it's a virtual adapter
+                    if (nameLower.includes('vethernet') || nameLower.includes('wsl') || nameLower.includes('virtual') || nameLower.includes('vmware')) {
+                        if (!virtualIp) virtualIp = iface.address;
+                    } else {
+                        // Found a real physical adapter IP
+                        if (!candidateIp) candidateIp = iface.address;
+                    }
                 }
             }
         }
-        return '127.0.0.1';
+        
+        // Prefer the physical adapter IP, fallback to virtual, then localhost
+        return candidateIp || virtualIp || '127.0.0.1';
     }
 
     /**

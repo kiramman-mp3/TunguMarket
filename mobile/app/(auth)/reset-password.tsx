@@ -139,6 +139,7 @@ export default function ResetPasswordScreen() {
                         <TextInput 
                           style={styles.input}
                           placeholder="ejemplo@correo.com"
+                          placeholderTextColor={Colors.brand.muted}
                           keyboardType="email-address"
                           autoCapitalize="none"
                           value={email}
@@ -200,6 +201,7 @@ export default function ResetPasswordScreen() {
                       <TextInput 
                         style={styles.input}
                         placeholder="••••••••"
+                        placeholderTextColor={Colors.brand.muted}
                         secureTextEntry
                         autoFocus
                         value={password}
@@ -215,6 +217,7 @@ export default function ResetPasswordScreen() {
                       <TextInput 
                         style={styles.input}
                         placeholder="••••••••"
+                        placeholderTextColor={Colors.brand.muted}
                         secureTextEntry
                         value={confirmPassword}
                         onChangeText={setConfirmPassword}
@@ -354,6 +357,7 @@ const styles = StyleSheet.create({
   },
   input: {
     flex: 1,
+    height: '100%',
     fontSize: 16,
     color: Colors.brand.dark,
     fontWeight: '500',
