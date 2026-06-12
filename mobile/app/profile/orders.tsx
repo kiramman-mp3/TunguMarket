@@ -24,7 +24,11 @@ export default function BuyerOrdersScreen() {
     try {
       setLoading(true);
       const res = await getMyOrders();
-      setOrders(res.orders || res.data || []);
+      let ordersArray = [];
+      if (res.data && Array.isArray(res.data.orders)) ordersArray = res.data.orders;
+      else if (Array.isArray(res.data)) ordersArray = res.data;
+      else if (Array.isArray(res.orders)) ordersArray = res.orders;
+      setOrders(ordersArray);
     } catch (err: any) {
       Alert.alert('Error', err.message || 'No se pudieron cargar tus pedidos');
     } finally {

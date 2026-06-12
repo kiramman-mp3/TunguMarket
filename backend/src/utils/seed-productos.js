@@ -62,9 +62,7 @@ const seedChaos = async () => {
     if (adminRes.rows.length === 0) throw new Error('Crea el usuario@prueba.com primero.');
     const adminId = adminRes.rows[0].id;
 
-    console.log('Limpiando catálogo anterior...');
-    await client.query('DELETE FROM products WHERE seller_id = $1', [adminId]);
-
+    // No eliminamos productos anteriores para no romper restricciones de llaves foráneas con órdenes existentes.
     console.log(`Poblando datos reales para ${categories.length} categorías...`);
 
     let count = 0;

@@ -79,10 +79,13 @@ class OrderModel {
           'product_id', oi.product_id,
           'quantity', oi.quantity,
           'price_at_purchase', oi.price_at_purchase,
-          'status', oi.status
+          'status', oi.status,
+          'title', p.title,
+          'image_url', (SELECT image_url FROM product_images WHERE product_id = p.id AND is_primary = true LIMIT 1)
         )) FILTER (WHERE oi.id IS NOT NULL) as items
       FROM orders o
       LEFT JOIN order_items oi ON o.id = oi.order_id
+      LEFT JOIN products p ON oi.product_id = p.id
       WHERE o.user_id = $1
       GROUP BY o.id
       ORDER BY o.created_at DESC
