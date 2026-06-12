@@ -111,14 +111,6 @@ export default function BuyerOrdersScreen() {
                   <Text style={styles.productTitle} numberOfLines={1}>{subItem.title}</Text>
                   <Text style={styles.productQty}>Cant: {subItem.quantity} | ${parseFloat(subItem.price_at_purchase).toFixed(2)} c/u</Text>
                 </View>
-                {item.status.toLowerCase() === 'envío completado' && (
-                  <TouchableOpacity
-                    style={styles.reviewBtn}
-                    onPress={() => handleOpenReview(subItem.product_id)}
-                  >
-                    <Text style={styles.reviewBtnText}>Calificar</Text>
-                  </TouchableOpacity>
-                )}
               </View>
             );
           })}
@@ -192,7 +184,7 @@ export default function BuyerOrdersScreen() {
               </View>
 
               <Text style={styles.modalSubtitle}>¿Cuántas estrellas le das a este producto?</Text>
-              
+
               {/* Star selector */}
               <View style={styles.starsSelectorRow}>
                 {[1, 2, 3, 4, 5].map(star => (

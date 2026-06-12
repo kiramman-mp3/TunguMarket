@@ -37,12 +37,9 @@ class UserController {
 
       const updatedUser = await UserModel.updateProfile(userId, { name });
 
-      // Notificar por correo
-      try {
-        await EmailService.sendProfileUpdateNotification(updatedUser.email, updatedUser.name, 'Nombre de Usuario');
-      } catch (emailError) {
-        console.error('Error enviando correo de actualización de nombre:', emailError);
-      }
+      // Notificar por correo (en segundo plano sin bloquear)
+      EmailService.sendProfileUpdateNotification(updatedUser.email, updatedUser.name, 'Nombre de Usuario')
+        .catch(emailError => console.error('Error enviando correo de actualización de nombre:', emailError));
 
       res.status(200).json({ 
         message: 'Perfil actualizado con éxito', 
@@ -103,12 +100,9 @@ class UserController {
 
       await UserModel.updatePassword(userId, passwordHash);
 
-      // Notificar alerta de seguridad por correo
-      try {
-        await EmailService.sendSecurityAlertEmail(user.email, user.name);
-      } catch (emailError) {
-        console.error('Error enviando alerta de seguridad por contraseña:', emailError);
-      }
+      // Notificar alerta de seguridad por correo (en segundo plano)
+      EmailService.sendSecurityAlertEmail(user.email, user.name)
+        .catch(emailError => console.error('Error enviando alerta de seguridad por contraseña:', emailError));
 
       res.status(200).json({ message: 'Contraseña actualizada correctamente' });
     } catch (error) {
