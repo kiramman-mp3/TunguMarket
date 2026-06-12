@@ -89,7 +89,7 @@ const NotificationPanel = () => {
   };
 
   const getIcon = (type) => {
-    switch(type) {
+    switch (type) {
       case 'sale': return faDollarSign;
       case 'shipping': return faTruck;
       case 'payment': return faCheckDouble;
@@ -106,20 +106,11 @@ const NotificationPanel = () => {
           <FontAwesomeIcon icon={faBell} className="text-brand-primary" />
           Centro de Notificaciones
         </h2>
-        
+
         <div className="flex gap-4 items-center">
-          {pushStatus !== 'granted' && (
-            <button 
-              onClick={handleEnablePush}
-              className="text-xs font-bold text-white bg-brand-primary hover:bg-brand-secondary px-4 py-2 rounded-xl flex items-center gap-2 transition-colors shadow-md"
-            >
-              <FontAwesomeIcon icon={faBolt} />
-              Activar Push
-            </button>
-          )}
 
           {notifications.some(n => !n.is_read) && (
-            <button 
+            <button
               onClick={handleMarkAllRead}
               className="text-xs font-bold text-brand-primary hover:text-brand-secondary px-3 py-2 bg-brand-primary/10 rounded-xl transition-colors"
             >
@@ -138,7 +129,7 @@ const NotificationPanel = () => {
         <div className="space-y-3">
           <AnimatePresence>
             {notifications.map((n) => (
-              <motion.div 
+              <motion.div
                 key={n.id}
                 layout
                 initial={{ opacity: 0, x: -10 }}

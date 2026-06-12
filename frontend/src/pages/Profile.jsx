@@ -26,14 +26,10 @@ import { getWalletSummary } from '../api/wallet';
 import EditProfile from './profile-sections/EditProfile';
 
 // Profile Sections
-import BuyerOrders from './profile-sections/BuyerOrders';
-import SellerSales from './profile-sections/SellerSales';
-import Wishlist from './profile-sections/Wishlist';
-import NotificationPanel from './profile-sections/NotificationPanel';
-import WalletView from './profile-sections/WalletView';
-import AddressManager from './profile-sections/AddressManager';
-import BankAccountManager from './profile-sections/BankAccountManager';
-import SellerWithdrawals from './profile-sections/SellerWithdrawals';
+import AccountWrapper from './profile-sections/AccountWrapper';
+import TransactionsWrapper from './profile-sections/TransactionsWrapper';
+import FinancesWrapper from './profile-sections/FinancesWrapper';
+import ActivityWrapper from './profile-sections/ActivityWrapper';
 import LoadingScreen from '../components/LoadingScreen';
 
 const Profile = () => {
@@ -53,33 +49,19 @@ const Profile = () => {
 
   const tabs = [
     { id: 'dashboard', label: 'Dashboard', icon: faChartLine },
-    { id: 'purchases', label: 'Mis Compras', icon: faShoppingBag },
-    { id: 'sales', label: 'Mis Ventas', icon: faStore },
-    { id: 'edit', label: 'Editar Perfil', icon: faUserEdit },
-    { id: 'wishlist', label: 'Favoritos', icon: faHeart },
-    { id: 'notifications', label: 'Notificaciones', icon: faBell },
-    { id: 'wallet', label: 'Billetera', icon: faWallet },
-    { id: 'addresses', label: 'Direcciones', icon: faMapMarkerAlt },
-    ...(user?.role !== 'admin' ? [
-      { id: 'bank-accounts', label: 'Cuentas Bancarias', icon: faBank },
-      { id: 'withdrawals', label: 'Mis Retiros', icon: faMoneyBillWave },
-    ] : []),
+    { id: 'account', label: 'Mi Cuenta', icon: faUserEdit },
+    { id: 'transactions', label: 'Mis Transacciones', icon: faShoppingBag },
+    { id: 'finances', label: 'Finanzas', icon: faWallet },
+    { id: 'activity', label: 'Actividad', icon: faBell },
   ];
-
-  // Eliminada lógica de fetching de actividad para limpiar el componente
 
   const renderContent = () => {
     switch (activeTab) {
       case 'dashboard': return renderDashboard();
-      case 'edit': return <EditProfile />;
-      case 'purchases': return <BuyerOrders />;
-      case 'sales': return <SellerSales />;
-      case 'wishlist': return <Wishlist />;
-      case 'notifications': return <NotificationPanel />;
-      case 'wallet': return <WalletView />;
-      case 'addresses': return <AddressManager />;
-      case 'bank-accounts': return <BankAccountManager />;
-      case 'withdrawals': return <SellerWithdrawals onNavigateTo={setActiveTab} />;
+      case 'account': return <AccountWrapper />;
+      case 'transactions': return <TransactionsWrapper />;
+      case 'finances': return <FinancesWrapper user={user} />;
+      case 'activity': return <ActivityWrapper />;
       default: return null;
     }
   };
@@ -117,7 +99,7 @@ const Profile = () => {
           </div>
           <p className="text-2xl font-bold text-brand-secondary">Mis Compras</p>
           <p className="text-sm text-gray-400 mt-1">Revisa el estado de tus pedidos</p>
-          <button onClick={() => setActiveTab('purchases')} className="mt-4 btn-outline py-2 px-4 rounded-xl text-xs font-bold">Ver Todo</button>
+          <button onClick={() => setActiveTab('transactions')} className="mt-4 btn-outline py-2 px-4 rounded-xl text-xs font-bold">Ver Todo</button>
         </motion.div>
 
         <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }} className="glass-card p-8">
@@ -128,7 +110,7 @@ const Profile = () => {
           </div>
           <p className="text-2xl font-bold text-brand-secondary">Alertas</p>
           <p className="text-sm text-gray-400 mt-1">Nuevas notificaciones recibidas</p>
-          <button onClick={() => setActiveTab('notifications')} className="mt-4 btn-outline py-2 px-4 rounded-xl text-xs font-bold">Ver Centro de Mensajes</button>
+          <button onClick={() => setActiveTab('activity')} className="mt-4 btn-outline py-2 px-4 rounded-xl text-xs font-bold">Ver Centro de Mensajes</button>
         </motion.div>
       </div>
 
@@ -154,7 +136,7 @@ const Profile = () => {
                 </div>
             </div>
             <button 
-              onClick={() => setActiveTab('edit')}
+              onClick={() => setActiveTab('account')}
               className="w-full py-4 border-2 border-dashed border-gray-100 rounded-2xl text-gray-400 hover:border-brand-primary hover:text-brand-primary transition-all font-bold text-sm"
             >
               Completar Perfil / cambiar foto 📸

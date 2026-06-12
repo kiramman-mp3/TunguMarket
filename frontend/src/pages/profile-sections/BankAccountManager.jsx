@@ -68,7 +68,7 @@ const BankAccountManager = () => {
       setLoading(true);
       setError('');
       let data = await getMyBankAccounts();
-      
+
       // Manejar diferentes estructuras de respuesta
       let accountsArray = [];
       if (Array.isArray(data)) {
@@ -78,7 +78,7 @@ const BankAccountManager = () => {
       } else if (data?.accounts && Array.isArray(data.accounts)) {
         accountsArray = data.accounts;
       }
-      
+
       setAccounts(accountsArray);
     } catch (err) {
       console.error('Error fetchAccounts:', err);
@@ -104,7 +104,7 @@ const BankAccountManager = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    
+
     if (!formData.banco.trim() || !formData.numero_cuenta.trim() || !formData.titular.trim() || !formData.cedula_ruc.trim() || !formData.email_titular.trim()) {
       showError('Completa todos los campos requeridos');
       return;
@@ -135,12 +135,12 @@ const BankAccountManager = () => {
         setAccounts(accounts.map(a => a.id === editingId ? { ...a, ...formData } : a));
       } else {
         let newAccount = await createBankAccount(formData);
-        
+
         // Manejar diferentes estructuras de respuesta
         if (newAccount?.data && typeof newAccount.data === 'object') {
           newAccount = newAccount.data;
         }
-        
+
         setAccounts([...accounts, newAccount]);
       }
       handleReset();
@@ -216,7 +216,7 @@ const BankAccountManager = () => {
         }}
         isDangerous={true}
       />
-      
+
       {error && (
         <motion.div
           initial={{ opacity: 0, y: -10 }}
@@ -385,22 +385,13 @@ const BankAccountManager = () => {
                     </div>
                     <p className="text-sm text-gray-600 font-mono mb-2">{account.numero_cuenta}</p>
                     <p className="text-xs text-gray-500">
-                      <span className="font-bold">{account.titular}</span> • 
+                      <span className="font-bold">{account.titular}</span> •
                       <span className="capitalize ml-1">{account.tipo_cuenta}</span>
                     </p>
                   </div>
                 </div>
 
                 <div className="flex gap-2 flex-shrink-0">
-                  {!account.es_predeterminada && (
-                    <button
-                      onClick={() => handleSetDefault(account.id)}
-                      className="p-2 text-gray-500 hover:text-brand-secondary hover:bg-gray-100 rounded-xl transition-all"
-                      title="Establecer como predeterminada"
-                    >
-                      <FontAwesomeIcon icon={faStar} />
-                    </button>
-                  )}
                   <button
                     onClick={() => handleEdit(account)}
                     className="p-2 text-brand-secondary hover:bg-brand-secondary/10 rounded-xl transition-all"
