@@ -177,7 +177,7 @@ export default function ProductDetailsScreen() {
         )}
       </View>
 
-      <ScrollView showsVerticalScrollIndicator={false}>
+      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 120 }}>
         {/* Top Product Image */}
         <Image source={{ uri: imageUrl }} style={styles.heroImage} />
 
