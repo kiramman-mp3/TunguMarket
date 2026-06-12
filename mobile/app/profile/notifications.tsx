@@ -2,7 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { StyleSheet, View, Text, FlatList, TouchableOpacity, ActivityIndicator, Alert } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
-import { getNotifications, markNotificationRead } from '../../src/api/endpoints';
+import { Swipeable } from 'react-native-gesture-handler';
+import { getNotifications, markNotificationRead, deleteNotification } from '../../src/api/endpoints';
 import { Colors } from '../../src/constants/theme';
 
 export default function NotificationsScreen() {
@@ -66,6 +67,27 @@ export default function NotificationsScreen() {
     }
   };
 
+  const handleDelete = async (notificationId: string) => {
+    try {
+      await deleteNotification(notificationId);
+      setNotifications(prev => prev.filter(n => n.id !== notificationId));
+    } catch (err: any) {
+      Alert.alert('Error', 'No se pudo eliminar la notificación');
+      console.error('Error deleting notification:', err);
+    }
+  };
+
+  const renderRightActions = (id: string) => {
+    return (
+      <TouchableOpacity
+        style={styles.deleteButton}
+        onPress={() => handleDelete(id)}
+      >
+        <Ionicons name="trash-outline" size={24} color="#ffffff" />
+      </TouchableOpacity>
+    );
+  };
+
   const renderNotificationItem = ({ item }: { item: any }) => {
     const formattedDate = new Date(item.created_at).toLocaleDateString('es-EC', {
       year: 'numeric',
@@ -78,24 +100,30 @@ export default function NotificationsScreen() {
     const isRead = item.is_read;
 
     return (
-      <TouchableOpacity
-        style={[styles.card, !isRead && styles.cardUnread]}
-        onPress={() => !isRead && handleMarkAsRead(item.id)}
-        activeOpacity={0.8}
+      <Swipeable
+        renderRightActions={() => renderRightActions(item.id)}
+        overshootRight={false}
+        containerStyle={styles.swipeableContainer}
       >
-        <View style={[styles.iconContainer, { backgroundColor: getIconColor(item.type) + '10' }]}>
-          <Ionicons name={getNotificationIcon(item.type)} size={20} color={getIconColor(item.type)} />
-        </View>
-        
-        <View style={styles.content}>
-          <View style={styles.row}>
-            <Text style={[styles.title, !isRead && styles.titleUnread]}>{item.title}</Text>
-            {!isRead && <View style={styles.unreadIndicator} />}
+        <TouchableOpacity
+          style={[styles.card, !isRead && styles.cardUnread]}
+          onPress={() => !isRead && handleMarkAsRead(item.id)}
+          activeOpacity={0.8}
+        >
+          <View style={[styles.iconContainer, { backgroundColor: getIconColor(item.type) + '10' }]}>
+            <Ionicons name={getNotificationIcon(item.type)} size={20} color={getIconColor(item.type)} />
           </View>
-          <Text style={styles.message}>{item.message}</Text>
-          <Text style={styles.date}>{formattedDate}</Text>
-        </View>
-      </TouchableOpacity>
+          
+          <View style={styles.content}>
+            <View style={styles.row}>
+              <Text style={[styles.title, !isRead && styles.titleUnread]}>{item.title}</Text>
+              {!isRead && <View style={styles.unreadIndicator} />}
+            </View>
+            <Text style={styles.message}>{item.message}</Text>
+            <Text style={styles.date}>{formattedDate}</Text>
+          </View>
+        </TouchableOpacity>
+      </Swipeable>
     );
   };
 
@@ -179,7 +207,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#ffffff',
     borderRadius: 20,
     padding: 16,
-    marginBottom: 12,
+    marginBottom: 0,
     flexDirection: 'row',
     alignItems: 'flex-start',
     borderWidth: 1,
@@ -187,7 +215,7 @@ const styles = StyleSheet.create({
   },
   cardUnread: {
     borderColor: 'rgba(30, 58, 138, 0.15)',
-    backgroundColor: 'rgba(30, 58, 138, 0.02)',
+    backgroundColor: '#f4f7fb', // Solid color to prevent container background from bleeding through
   },
   iconContainer: {
     width: 38,
@@ -259,5 +287,19 @@ const styles = StyleSheet.create({
     color: Colors.brand.muted,
     textAlign: 'center',
     lineHeight: 20,
+  },
+  swipeableContainer: {
+    marginBottom: 12,
+    borderRadius: 20,
+    overflow: 'hidden',
+  },
+  deleteButton: {
+    backgroundColor: '#ef4444',
+    justifyContent: 'center',
+    alignItems: 'center',
+    width: 80,
+    height: '100%',
+    borderTopRightRadius: 20,
+    borderBottomRightRadius: 20,
   },
 });

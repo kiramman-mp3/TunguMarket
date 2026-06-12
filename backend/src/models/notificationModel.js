@@ -57,6 +57,19 @@ class NotificationModel {
   }
 
   /**
+   * Elimina una notificación
+   */
+  static async delete(id, userId) {
+    const query = `
+      DELETE FROM notifications
+      WHERE id = $1 AND user_id = $2
+      RETURNING id
+    `;
+    const { rows } = await pool.query(query, [id, userId]);
+    return rows[0];
+  }
+
+  /**
    * Guarda una nueva suscripción Web Push para el usuario
    */
   static async savePushSubscription(userId, subscription) {

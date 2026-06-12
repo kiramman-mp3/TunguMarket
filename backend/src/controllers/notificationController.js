@@ -32,6 +32,20 @@ class NotificationController {
     }
   }
 
+  static async deleteNotification(req, res) {
+    try {
+      const userId = req.user.id;
+      const { id } = req.params;
+      const deleted = await NotificationModel.delete(id, userId);
+      if (!deleted) {
+        return res.status(404).json({ error: 'Notificación no encontrada o no pertenece al usuario' });
+      }
+      res.status(200).json({ message: 'Notificación eliminada correctamente' });
+    } catch (error) {
+      res.status(500).json({ error: error.message });
+    }
+  }
+
   static async subscribe(req, res) {
     try {
       const userId = req.user.id;

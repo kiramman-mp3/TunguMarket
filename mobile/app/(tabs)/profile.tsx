@@ -52,46 +52,8 @@ export default function ProfileScreen() {
           <View style={styles.userInfo}>
             <Text style={styles.userName}>{user.name}</Text>
             <Text style={styles.userEmail}>{user.email}</Text>
-            <View style={styles.roleRow}>
-            </View>
           </View>
         </View>
-
-        {/* Completar Perfil button just like web */}
-        <TouchableOpacity
-          style={styles.profileCompletionBtn}
-          onPress={() => router.push('/profile/edit-profile')}
-        >
-          <Text style={styles.profileCompletionText}>Completar Perfil / cambiar foto 📸</Text>
-        </TouchableOpacity>
-
-        {/* Seller Wallet Panel */}
-        {isSeller && (
-          <View style={styles.walletPanel}>
-            <View style={styles.walletHeader}>
-              <View>
-                <Text style={styles.walletLabel}>Balance Virtual</Text>
-                <Text style={styles.walletValue}>${balance.toFixed(2)}</Text>
-              </View>
-              {user.blocked_for_debt ? (
-                <View style={[styles.statusBadge, styles.statusDebt]}>
-                  <Text style={styles.statusDebtText}>Bloqueado por Deuda</Text>
-                </View>
-              ) : (
-                <View style={[styles.statusBadge, styles.statusOk]}>
-                  <Text style={styles.statusOkText}>Activo</Text>
-                </View>
-              )}
-            </View>
-            <TouchableOpacity
-              style={styles.walletAction}
-              onPress={() => router.push('/profile/wallet')}
-            >
-              <Text style={styles.walletActionText}>Detalle de movimientos</Text>
-              <Ionicons name="arrow-forward" size={16} color={Colors.brand.secondary} />
-            </TouchableOpacity>
-          </View>
-        )}
 
         {/* Seller Section */}
         {isSeller && (

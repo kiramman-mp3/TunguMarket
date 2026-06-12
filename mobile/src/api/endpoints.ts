@@ -167,7 +167,11 @@ export const getNotifications = async () => {
 };
 
 export const markNotificationRead = async (id: string) => {
-  return client.patch(`/notifications/${id}/read`);
+  return client.put(`/notifications/mark-read/${id}`);
+};
+
+export const deleteNotification = async (id: string) => {
+  return client.delete(`/notifications/${id}`);
 };
 
 // 9. PUBLIC SELLER INFO

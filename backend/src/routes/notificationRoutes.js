@@ -44,6 +44,7 @@ router.get('/stream', (req, res) => {
 router.get('/', authenticateToken, NotificationController.getNotifications);
 router.put('/mark-read/:id', authenticateToken, NotificationController.markAsRead);
 router.put('/mark-all-read', authenticateToken, NotificationController.markAllAsRead);
+router.delete('/:id', authenticateToken, NotificationController.deleteNotification);
 router.post('/subscribe', authenticateToken, NotificationController.subscribe);
 
 export default router;
