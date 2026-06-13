@@ -2,8 +2,6 @@
 
 TunguMarket es una plataforma integral de marketplace diseñada específicamente para apoyar a los pequeños y medianos emprendimientos de la región de Tungurahua (Ecuador). Permite a los usuarios descubrir, comprar y vender productos locales de forma segura, fomentando el comercio y la economía de la comunidad.
 
-![TunguMarket Banner](https://images.unsplash.com/photo-1542838132-92c53300491e?auto=format&fit=crop&q=80&w=1200)
-
 ## 🌟 Características Principales
 
 *   **Multiplataforma:** Experiencia unificada tanto en web (React) como en dispositivos móviles (React Native/Expo).
@@ -102,14 +100,5 @@ TunguMarket implementa buenas prácticas de seguridad:
 *   Las contraseñas nunca se guardan en texto plano (hashing con Bcrypt).
 *   Las transacciones y solicitudes sensibles están protegidas mediante middlewares JWT.
 *   Validaciones estrictas tanto del lado del cliente (React/Expo) como en el servidor (Express Validator) para prevenir inyecciones SQL y asegurar la integridad de datos.
----
-*Hecho con ♥ para potenciar el comercio de Tungurahua.*
 
-## 🤝 Contribuir
-¡Toda contribución es bienvenida! Para realizar cambios:
-1. Haz un *Fork* del proyecto.
-2. Crea una rama para tu nueva funcionalidad (`git checkout -b feature/nueva-funcionalidad`).
-3. Realiza tus commits (`git commit -m 'feat: nueva funcionalidad'`).
-4. Sube los cambios a tu rama (`git push origin feature/nueva-funcionalidad`).
-5. Abre un *Pull Request* hacia la rama `develop`.
 

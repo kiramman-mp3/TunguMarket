@@ -30,8 +30,8 @@ const Register = () => {
       age--;
     }
     
-    if (age < 18) {
-      setError('Debes tener al menos 18 años para registrarte.');
+    if (age < 10) {
+      setError('Debes tener al menos 10 años para registrarte.');
       return;
     }
 
@@ -129,7 +129,7 @@ const Register = () => {
                   className="input-field pl-12 text-gray-500"
                 />
               </div>
-              <p className="mt-1 text-[10px] text-gray-400">Debes ser mayor de 18 años.</p>
+              <p className="mt-1 text-[10px] text-gray-400">Debes ser mayor de 10 años.</p>
             </div>
 
             <div>
