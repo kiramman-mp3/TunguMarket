@@ -1,4 +1,5 @@
-const API_URL = `http://${window.location.hostname}:5000/api/reviews`;
+const BASE_URL = import.meta.env.VITE_API_URL || `http://${window.location.hostname}:5000/api`;
+const API_URL = `${BASE_URL}/reviews`;
 
 const handleResponse = async (response) => {
   const data = await response.json();
