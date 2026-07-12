@@ -144,6 +144,7 @@ const initDb = async () => {
         average_rating NUMERIC(3, 2) NOT NULL DEFAULT 0.00,
         review_count INTEGER NOT NULL DEFAULT 0,
         views INTEGER NOT NULL DEFAULT 0,
+        deleted_at TIMESTAMP,
         created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
         updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
       );

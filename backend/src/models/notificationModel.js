@@ -98,6 +98,14 @@ class NotificationModel {
     const { rows } = await pool.query(query, [userId]);
     return rows;
   }
+
+  /**
+   * Elimina una suscripción Push obsoleta/expirada
+   */
+  static async deletePushSubscription(endpoint) {
+    const query = 'DELETE FROM push_subscriptions WHERE endpoint = $1';
+    await pool.query(query, [endpoint]);
+  }
 }
 
 export default NotificationModel;

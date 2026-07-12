@@ -8,6 +8,31 @@ class SSEService {
   constructor() {
     // Map of userId -> Set of Response objects (multiple tabs/devices)
     this.clients = new Map();
+
+    // Heartbeat mechanism to keep connections alive (every 30 seconds)
+    this.heartbeatInterval = setInterval(() => {
+      this.sendHeartbeat();
+    }, 30000);
+  }
+
+  /**
+   * Sends an SSE comment heartbeat to all active connections
+   */
+  sendHeartbeat() {
+    let clientCount = 0;
+    this.clients.forEach((userClients, userId) => {
+      userClients.forEach(res => {
+        try {
+          res.write(':\n\n'); // standard SSE comment heartbeat
+          clientCount++;
+        } catch (error) {
+          console.error(`[SSE] Error sending heartbeat to user ${userId}:`, error.message);
+        }
+      });
+    });
+    if (clientCount > 0) {
+      console.log(`[SSE] Sent heartbeat comment to ${clientCount} active clients.`);
+    }
   }
 
   /**

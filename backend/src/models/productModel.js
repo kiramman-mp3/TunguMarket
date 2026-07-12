@@ -40,7 +40,7 @@ class ProductModel {
     const countQuery = `
       SELECT COUNT(*)::integer as count FROM products p
       JOIN users u ON p.seller_id = u.id
-      WHERE p.status = 'activo' AND u.blocked_for_debt = false
+      WHERE p.status = 'activo' AND p.deleted_at IS NULL AND u.blocked_for_debt = false
     `;
     const dataQuery = `
       SELECT
@@ -52,7 +52,7 @@ class ProductModel {
       FROM products p
       LEFT JOIN categories c ON p.category_id = c.id
       JOIN users u ON p.seller_id = u.id
-      WHERE p.status = 'activo' AND u.blocked_for_debt = false
+      WHERE p.status = 'activo' AND p.deleted_at IS NULL AND u.blocked_for_debt = false
       ORDER BY p.created_at DESC
       LIMIT $1 OFFSET $2
     `;
@@ -79,7 +79,7 @@ class ProductModel {
     const countQuery = `
       SELECT COUNT(*)::integer as count FROM products p
       JOIN users u ON p.seller_id = u.id
-      WHERE p.category_id = $1 AND p.status = 'activo' AND u.blocked_for_debt = false
+      WHERE p.category_id = $1 AND p.status = 'activo' AND p.deleted_at IS NULL AND u.blocked_for_debt = false
     `;
     const dataQuery = `
       SELECT
@@ -91,7 +91,7 @@ class ProductModel {
       FROM products p
       LEFT JOIN categories c ON p.category_id = c.id
       JOIN users u ON p.seller_id = u.id
-      WHERE p.category_id = $1 AND p.status = 'activo' AND u.blocked_for_debt = false
+      WHERE p.category_id = $1 AND p.status = 'activo' AND p.deleted_at IS NULL AND u.blocked_for_debt = false
       ORDER BY p.created_at DESC
       LIMIT $2 OFFSET $3
     `;
@@ -117,7 +117,7 @@ class ProductModel {
   static async findBySeller(sellerId, limit = 20, offset = 0) {
     const countQuery = `
       SELECT COUNT(*)::integer as count FROM products
-      WHERE seller_id = $1
+      WHERE seller_id = $1 AND deleted_at IS NULL
     `;
     const dataQuery = `
       SELECT
@@ -131,7 +131,7 @@ class ProductModel {
       LEFT JOIN categories c ON p.category_id = c.id
       JOIN users u ON p.seller_id = u.id
       LEFT JOIN order_items oi ON p.id = oi.product_id
-      WHERE p.seller_id = $1
+      WHERE p.seller_id = $1 AND p.deleted_at IS NULL
       GROUP BY p.id, c.name, u.seller_name, u.name, u.avatar_url
       ORDER BY p.created_at DESC
       LIMIT $2 OFFSET $3
@@ -164,7 +164,7 @@ class ProductModel {
       FROM products p
       LEFT JOIN categories c ON p.category_id = c.id
       JOIN users u ON p.seller_id = u.id
-      WHERE p.id = $1 AND u.blocked_for_debt = false
+      WHERE p.id = $1 AND p.deleted_at IS NULL AND u.blocked_for_debt = false
     `;
 
     const { rows } = await pool.query(query, [id]);
@@ -234,7 +234,8 @@ class ProductModel {
    */
   static async delete(id) {
     const query = `
-      DELETE FROM products
+      UPDATE products
+      SET deleted_at = CURRENT_TIMESTAMP, status = 'inactivo'
       WHERE id = $1
       RETURNING id
     `;
@@ -261,7 +262,7 @@ class ProductModel {
     let countQuery = `
       SELECT COUNT(*)::integer as count FROM products p
       JOIN users u ON p.seller_id = u.id
-      WHERE ${statusFilter} u.blocked_for_debt = false
+      WHERE ${statusFilter} p.deleted_at IS NULL AND u.blocked_for_debt = false
     `;
     let dataQuery = `
       SELECT
@@ -273,7 +274,7 @@ class ProductModel {
       FROM products p
       LEFT JOIN categories c ON p.category_id = c.id
       JOIN users u ON p.seller_id = u.id
-      WHERE ${statusFilter} u.blocked_for_debt = false
+      WHERE ${statusFilter} p.deleted_at IS NULL AND u.blocked_for_debt = false
     `;
 
     const queryParams = [];
@@ -346,7 +347,7 @@ class ProductModel {
       FROM products p
       LEFT JOIN categories c ON p.category_id = c.id
       LEFT JOIN users u ON p.seller_id = u.id
-      WHERE p.status = 'activo' AND p.average_rating > 0
+      WHERE p.status = 'activo' AND p.deleted_at IS NULL AND p.average_rating > 0
       ORDER BY p.average_rating DESC, p.review_count DESC
       LIMIT $1
     `;
@@ -368,10 +369,10 @@ class ProductModel {
           SELECT COALESCE(SUM(oi.quantity), 0)
           FROM order_items oi
           JOIN products p2 ON oi.product_id = p2.id
-          WHERE p2.seller_id = $1
+          WHERE p2.seller_id = $1 AND p2.deleted_at IS NULL
         ) as total_sales
       FROM products
-      WHERE seller_id = $1 AND status = 'activo'
+      WHERE seller_id = $1 AND status = 'activo' AND deleted_at IS NULL
     `;
     const { rows } = await pool.query(query, [sellerId]);
     return {
@@ -386,7 +387,7 @@ class ProductModel {
    * Obtiene todos los productos para administración con filtros
    */
   static async adminFindAll(limit = 20, offset = 0, status = null) {
-    let countQuery = `SELECT COUNT(*)::integer as count FROM products`;
+    let countQuery = `SELECT COUNT(*)::integer as count FROM products WHERE deleted_at IS NULL`;
     let dataQuery = `
       SELECT
         p.*,
@@ -397,12 +398,13 @@ class ProductModel {
       FROM products p
       LEFT JOIN categories c ON p.category_id = c.id
       JOIN users u ON p.seller_id = u.id
+      WHERE p.deleted_at IS NULL
     `;
     
     const queryParams = [];
     if (status) {
-      countQuery += ` WHERE status = $1`;
-      dataQuery += ` WHERE p.status = $1`;
+      countQuery += ` AND status = $1`;
+      dataQuery += ` AND p.status = $1`;
       queryParams.push(status);
     }
     

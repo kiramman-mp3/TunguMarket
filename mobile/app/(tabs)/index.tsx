@@ -18,21 +18,46 @@ export default function ExploreScreen() {
   const [searchQuery, setSearchQuery] = useState('');
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [page, setPage] = useState(1);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const [hasMore, setHasMore] = useState(true);
 
-  const fetchData = useCallback(async (catId: string | null = null, query = '') => {
+  const fetchData = useCallback(async (catId: string | null = null, query = '', pageNum = 1, shouldAppend = false) => {
     try {
-      setLoading(true);
-      let prodData;
-      if (query.trim()) {
-        prodData = await searchProducts({ q: query, categoryId: catId || undefined });
+      if (pageNum === 1) {
+        setLoading(true);
       } else {
-        prodData = await getAllProducts(1, 100, catId);
+        setLoadingMore(true);
       }
-      setProducts(prodData.products || prodData.data?.products || (Array.isArray(prodData.data) ? prodData.data : []));
+      
+      let prodData;
+      const limit = 10;
+      if (query.trim()) {
+        prodData = await searchProducts({ q: query, categoryId: catId || undefined }, pageNum);
+      } else {
+        prodData = await getAllProducts(pageNum, limit, catId);
+      }
+      
+      const newProducts = prodData.products || prodData.data?.products || (Array.isArray(prodData.data) ? prodData.data : []);
+      
+      if (shouldAppend) {
+        setProducts(prev => [...prev, ...newProducts]);
+      } else {
+        setProducts(newProducts);
+      }
+      
+      if (newProducts.length < limit) {
+        setHasMore(false);
+      } else {
+        setHasMore(true);
+      }
+      
+      setPage(pageNum);
     } catch (error) {
       console.error('Error fetching products:', error);
     } finally {
       setLoading(false);
+      setLoadingMore(false);
     }
   }, []);
 
@@ -52,18 +77,36 @@ export default function ExploreScreen() {
 
   const onRefresh = async () => {
     setRefreshing(true);
-    await Promise.all([loadCategories(), fetchData(selectedCategory, searchQuery)]);
+    setHasMore(true);
+    await Promise.all([loadCategories(), fetchData(selectedCategory, searchQuery, 1, false)]);
     setRefreshing(false);
   };
 
   const handleCategorySelect = (catId: string) => {
     const activeId = catId === 'all' ? null : catId;
     setSelectedCategory(activeId);
-    fetchData(activeId, searchQuery);
+    setHasMore(true);
+    fetchData(activeId, searchQuery, 1, false);
   };
 
   const handleSearchSubmit = () => {
-    fetchData(selectedCategory, searchQuery);
+    setHasMore(true);
+    fetchData(selectedCategory, searchQuery, 1, false);
+  };
+
+  const handleLoadMore = () => {
+    if (!loading && !loadingMore && hasMore) {
+      fetchData(selectedCategory, searchQuery, page + 1, true);
+    }
+  };
+
+  const renderFooter = () => {
+    if (!loadingMore) return null;
+    return (
+      <View style={{ paddingVertical: 20, alignItems: 'center' }}>
+        <ActivityIndicator size="small" color={Colors.brand.secondary} />
+      </View>
+    );
   };
 
   const handleAddToCart = async (product: any) => {
@@ -196,6 +239,9 @@ export default function ExploreScreen() {
           refreshControl={
             <RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={[Colors.brand.secondary]} />
           }
+          onEndReached={handleLoadMore}
+          onEndReachedThreshold={0.5}
+          ListFooterComponent={renderFooter}
         />
       )}
     </View>

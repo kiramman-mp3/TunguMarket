@@ -23,6 +23,7 @@ import Cart from './pages/Cart';
 import Checkout from './pages/Checkout';
 import LoginPromptModal from './components/LoginPromptModal';
 import AccessibilityWidget from './components/AccessibilityWidget';
+import ProtectedRoute from './components/ProtectedRoute';
 
 function AppContent() {
   const { isLoginPromptOpen, closeLoginPrompt } = useCart();
@@ -37,16 +38,40 @@ function AppContent() {
           <Route path="/pending-verification" element={<PendingVerification />} />
           <Route path="/forgot-password" element={<ForgotPassword />} />
           <Route path="/reset-password" element={<ResetPassword />} />
-          <Route path="/profile" element={<Profile />} />
-          <Route path="/admin" element={<AdminPanel />} />
+          <Route path="/profile" element={
+            <ProtectedRoute>
+              <Profile />
+            </ProtectedRoute>
+          } />
+          <Route path="/admin" element={
+            <ProtectedRoute requireAdmin={true}>
+              <AdminPanel />
+            </ProtectedRoute>
+          } />
           <Route path="/shop" element={<Shop />} />
           <Route path="/product/:id" element={<ProductDetails />} />
-          <Route path="/sell" element={<Sell />} />
-          <Route path="/edit-product/:id" element={<EditProduct />} />
+          <Route path="/sell" element={
+            <ProtectedRoute>
+              <Sell />
+            </ProtectedRoute>
+          } />
+          <Route path="/edit-product/:id" element={
+            <ProtectedRoute>
+              <EditProduct />
+            </ProtectedRoute>
+          } />
           <Route path="/cart" element={<Cart />} />
-          <Route path="/checkout" element={<Checkout />} />
+          <Route path="/checkout" element={
+            <ProtectedRoute>
+              <Checkout />
+            </ProtectedRoute>
+          } />
           <Route path="/seller/:id" element={<SellerProfile />} />
-          <Route path="/my-products" element={<MyProducts />} />
+          <Route path="/my-products" element={
+            <ProtectedRoute>
+              <MyProducts />
+            </ProtectedRoute>
+          } />
         </Routes>
       </Layout>
       <AccessibilityWidget />
