@@ -222,7 +222,7 @@ El backend requiere configurar las siguientes variables de entorno para su corre
 
 ## 📄 Licencia
 
-El proyecto no posee una licencia definida actualmente (Todos los derechos reservados).
+Este proyecto está bajo la Licencia MIT. Para más detalles, consulta el archivo [LICENSE](./LICENSE).
 
 ---
 
