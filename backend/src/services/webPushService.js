@@ -41,10 +41,10 @@ class WebPushService {
         };
 
         return webpush.sendNotification(pushSubscription, payloadString)
-          .catch((err) => {
+          .catch(async (err) => {
             if (err.statusCode === 410 || err.statusCode === 404) {
-              // TODO: Subscription has unsubscribed or expired, should delete from DB
-              console.log('Subscription expired:', sub.endpoint);
+              console.log('Subscription expired, deleting from DB:', sub.endpoint);
+              await NotificationModel.deletePushSubscription(sub.endpoint).catch(console.error);
             } else {
               console.error('Error sending push notification:', err);
             }

@@ -13,13 +13,22 @@ dotenv.config({ path: path.join(__dirname, '../../../.env') });
 
 const { Pool } = pg;
 
-const pool = new Pool({
-  user: process.env.POSTGRES_USER || 'postgres',
-  host: process.env.POSTGRES_HOST || 'localhost',
-  database: process.env.POSTGRES_DB || 'tungumarket',
-  password: process.env.POSTGRES_PASSWORD || 'postgres',
-  port: parseInt(process.env.POSTGRES_PORT || '5432', 10),
-});
+const pool = new Pool(
+  process.env.DATABASE_URL
+    ? {
+        connectionString: process.env.DATABASE_URL,
+        ssl: {
+          rejectUnauthorized: false
+        }
+      }
+    : {
+        user: process.env.POSTGRES_USER || 'postgres',
+        host: process.env.POSTGRES_HOST || 'localhost',
+        database: process.env.POSTGRES_DB || 'tungumarket',
+        password: process.env.POSTGRES_PASSWORD || 'postgres',
+        port: parseInt(process.env.POSTGRES_PORT || '5432', 10),
+      }
+);
 
 const initDb = async () => {
   const client = await pool.connect();
@@ -144,6 +153,7 @@ const initDb = async () => {
         average_rating NUMERIC(3, 2) NOT NULL DEFAULT 0.00,
         review_count INTEGER NOT NULL DEFAULT 0,
         views INTEGER NOT NULL DEFAULT 0,
+        deleted_at TIMESTAMP,
         created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
         updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
       );

@@ -34,7 +34,7 @@ class AuthService {
     });
 
     // Generate 6-Digit Verification Token
-    const token = Math.floor(100000 + Math.random() * 900000).toString();
+    const token = crypto.randomInt(100000, 999999).toString();
     console.log(`[TEST] Verification Code for ${user.email}: ${token}`);
     await UserModel.createVerificationToken(user.id, token);
 
@@ -87,7 +87,7 @@ class AuthService {
     // Create session in DB
     const expiresAt = new Date();
     if (isMobile) {
-      expiresAt.setFullYear(expiresAt.getFullYear() + 100); // 100 years for mobile
+      expiresAt.setDate(expiresAt.getDate() + 30); // 30 days for mobile
     } else {
       expiresAt.setHours(expiresAt.getHours() + 24); // 24 hour session for web
     }
@@ -104,7 +104,7 @@ class AuthService {
   }
 
   static generateToken(user, isMobile = false) {
-    const options = isMobile ? {} : { expiresIn: '24h' };
+    const options = { expiresIn: isMobile ? '30d' : '24h' };
     return jwt.sign(
       { id: user.id, email: user.email, role: user.role_name },
       process.env.JWT_SECRET,
@@ -140,7 +140,7 @@ class AuthService {
     const sessionToken = this.generateToken(user, isMobile);
     const expiresAt = new Date();
     if (isMobile) {
-      expiresAt.setFullYear(expiresAt.getFullYear() + 100);
+      expiresAt.setDate(expiresAt.getDate() + 30); // 30 days for mobile
     } else {
       expiresAt.setHours(expiresAt.getHours() + 24);
     }
@@ -163,7 +163,7 @@ class AuthService {
     await UserModel.deleteVerificationTokensByUser(user.id);
 
     // Generate new numeric token
-    const token = Math.floor(100000 + Math.random() * 900000).toString();
+    const token = crypto.randomInt(100000, 999999).toString();
     console.log(`[TEST] Resent Verification Code for ${user.email}: ${token}`);
     await UserModel.createVerificationToken(user.id, token);
 
@@ -186,7 +186,7 @@ class AuthService {
     // Delete old reset tokens
     await UserModel.deletePasswordResetTokensByUser(user.id);
 
-    const token = Math.floor(100000 + Math.random() * 900000).toString();
+    const token = crypto.randomInt(100000, 999999).toString();
     console.log(`[TEST] Password Reset Code for ${user.email}: ${token}`);
     await UserModel.createPasswordResetToken(user.id, token);
 
