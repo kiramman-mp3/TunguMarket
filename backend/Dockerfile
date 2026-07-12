@@ -6,7 +6,8 @@ COPY package*.json ./
 
 RUN npm install
 
+COPY . .
+
 EXPOSE 5000
 
-# Iniciamos con nodemon para desarrollo
-CMD ["npm", "run", "dev"]
+CMD ["npm", "start"]
