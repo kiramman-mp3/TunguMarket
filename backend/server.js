@@ -50,6 +50,16 @@ app.get('/api/health', (req, res) => {
   res.status(200).json({ status: 'ok', message: 'La API de TunguMarket está en funcionamiento' });
 });
 
+// Welcome message at root
+app.get('/', (req, res) => {
+  res.status(200).json({
+    name: "TunguMarket API",
+    description: "API de servicios para el Marketplace de Tungurahua",
+    version: "1.0.0",
+    status: "online"
+  });
+});
+
 // Error handling
 app.use(notFound);
 app.use(errorHandler);
