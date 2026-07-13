@@ -2,9 +2,12 @@ import Constants from 'expo-constants';
 import * as SecureStore from 'expo-secure-store';
 
 const getBaseUrl = () => {
-  const debuggerHost = Constants.expoConfig?.hostUri;
-  const ip = debuggerHost ? debuggerHost.split(':')[0] : 'localhost';
-  return `http://${ip}:5000/api`;
+  if (__DEV__) {
+    const debuggerHost = Constants.expoConfig?.hostUri;
+    const ip = debuggerHost ? debuggerHost.split(':')[0] : 'localhost';
+    return `http://${ip}:5000/api`;
+  }
+  return 'https://tungumarket-production.up.railway.app/api';
 };
 
 export const API_BASE_URL = getBaseUrl();
@@ -101,13 +104,18 @@ export const getIp = () => {
 
 export const getImageUrl = (url?: string) => {
   if (!url) return '';
-  const ip = getIp();
-  
-  // Replace localhost, 127.0.0.1, or any local network IP (192.168.x.x, 172.x.x.x) with the current IP
+  if (__DEV__) {
+    const ip = getIp();
+    return url
+      .replace('localhost', ip)
+      .replace('127.0.0.1', ip)
+      .replace(/192\.168\.\d+\.\d+/g, ip)
+      .replace(/172\.(1[6-9]|2[0-9]|3[0-1])\.\d+\.\d+/g, ip)
+      .replace(/10\.\d+\.\d+\.\d+/g, ip);
+  }
   return url
-    .replace('localhost', ip)
-    .replace('127.0.0.1', ip)
-    .replace(/192\.168\.\d+\.\d+/g, ip)
-    .replace(/172\.(1[6-9]|2[0-9]|3[0-1])\.\d+\.\d+/g, ip)
-    .replace(/10\.\d+\.\d+\.\d+/g, ip);
+    .replace(/http:\/\/localhost:5000/g, 'https://tungumarket-production.up.railway.app')
+    .replace(/http:\/\/127\.0\.0\.1:5000/g, 'https://tungumarket-production.up.railway.app')
+    .replace('localhost:5000', 'tungumarket-production.up.railway.app')
+    .replace('127.0.0.1:5000', 'tungumarket-production.up.railway.app');
 };
