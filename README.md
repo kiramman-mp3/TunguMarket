@@ -12,6 +12,14 @@ TunguMarket es una plataforma unificada y multiplataforma de comercio electróni
 
 ---
 
+## 🔗 Enlaces del Proyecto
+
+*   **Sitio Web en Producción (Vercel):** [https://tungu-market.vercel.app](https://tungu-market.vercel.app)
+*   **API del Servidor (Railway):** [https://tungumarket-production.up.railway.app](https://tungumarket-production.up.railway.app)
+*   **Descarga de la Aplicación Móvil (Android):** [Descargar último archivo APK (Releases)](https://github.com/kiramman-mp3/TunguMarket/releases)
+
+---
+
 ## 📝 Descripción
 
 En la región de Tungurahua, muchos productores artesanales, agricultores y fabricantes de calzado y textiles carecen de canales digitales optimizados para comercializar sus productos. **TunguMarket** resuelve esta brecha ofreciendo un espacio seguro que conecta de forma directa a compradores y vendedores de la comunidad. 
